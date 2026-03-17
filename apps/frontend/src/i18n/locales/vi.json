@@ -1,0 +1,39 @@
+{
+  "nav": {
+    "stores": "Gian hàng",
+    "map": "Bản đồ"
+  },
+  "map": {
+    "loading": "Đang tải bản đồ...",
+    "title": "Bản đồ Phố Ẩm Thực",
+    "pinCount": "{{count}} gian hàng",
+    "directions": "Chỉ đường",
+    "listenCommentary": "Nghe thuyết minh",
+    "viewDetails": "Xem chi tiết",
+    "close": "Đóng"
+  },
+  "stores": {
+    "title": "Phố Ẩm Thực",
+    "subtitle": "Khám phá các gian hàng ẩm thực",
+    "loading": "Đang tải...",
+    "count": "{{count}} gian hàng",
+    "filterLabel": "Lọc theo sở thích:",
+    "clearFilter": "Xóa bộ lọc",
+    "viewGrid": "Hiển thị lưới",
+    "viewList": "Hiển thị danh sách",
+    "emptyNoFilter": "Không tìm thấy gian hàng nào",
+    "emptyWithFilter": "Không tìm thấy gian hàng phù hợp. Thử bỏ bớt bộ lọc?"
+  },
+  "storeDetail": {
+    "commentaryTitle": "Nghe thuyết minh về gian hàng này",
+    "noCommentary": "Chưa có nội dung thuyết minh",
+    "listen": "Nghe thuyết minh",
+    "pause": "Tạm dừng",
+    "resume": "Tiếp tục",
+    "stop": "Dừng",
+    "menu": "Thực đơn",
+    "reviews": "Đánh giá",
+    "viewOnMap": "Xem trên bản đồ",
+    "inactive": "Gian hàng hiện không hoạt động"
+  }
+}

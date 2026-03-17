@@ -1,0 +1,39 @@
+{
+  "nav": {
+    "stores": "Stores",
+    "map": "Map"
+  },
+  "map": {
+    "loading": "Loading map...",
+    "title": "Pho Am Thuc Map",
+    "pinCount": "{{count}} stores",
+    "directions": "Directions",
+    "listenCommentary": "Listen",
+    "viewDetails": "View details",
+    "close": "Close"
+  },
+  "stores": {
+    "title": "Pho Am Thuc",
+    "subtitle": "Explore street food stalls",
+    "loading": "Loading...",
+    "count": "{{count}} stores",
+    "filterLabel": "Filter by preference:",
+    "clearFilter": "Clear filters",
+    "viewGrid": "Grid view",
+    "viewList": "List view",
+    "emptyNoFilter": "No stores found",
+    "emptyWithFilter": "No matching stores. Try removing some filters?"
+  },
+  "storeDetail": {
+    "commentaryTitle": "Listen to the store commentary",
+    "noCommentary": "No commentary available",
+    "listen": "Listen",
+    "pause": "Pause",
+    "resume": "Resume",
+    "stop": "Stop",
+    "menu": "Menu",
+    "reviews": "Reviews",
+    "viewOnMap": "View on map",
+    "inactive": "This store is currently unavailable"
+  }
+}
