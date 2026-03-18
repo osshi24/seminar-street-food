@@ -1,0 +1,42 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Retry",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "close": "Close",
+    "search": "Search"
+  },
+  "language": {
+    "vi": "Tiếng Việt",
+    "en": "English",
+    "fr": "Français",
+    "zh": "中文",
+    "ja": "日本語",
+    "ko": "한국어",
+    "th": "ภาษาไทย"
+  },
+  "store": {
+    "noContent": "No commentary available",
+    "inactive": "This store is currently unavailable",
+    "hasCommentary": "Has commentary",
+    "menuItems": "Menu",
+    "draft": {
+      "pending": "Pending review",
+      "rejected": "Rejected",
+      "approved": "Approved"
+    }
+  },
+  "pipeline": {
+    "running": "Commentary is being synthesized...",
+    "completed": "Commentary ready",
+    "failed": "Unable to synthesize commentary"
+  },
+  "audio": {
+    "unavailable": "Audio temporarily unavailable",
+    "play": "Play",
+    "pause": "Pause"
+  }
+}
