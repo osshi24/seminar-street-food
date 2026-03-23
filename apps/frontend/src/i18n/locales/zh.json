@@ -1,0 +1,39 @@
+{
+  "nav": {
+    "stores": "摊位",
+    "map": "地图"
+  },
+  "map": {
+    "loading": "地图加载中...",
+    "title": "美食街地图",
+    "pinCount": "{{count}} 家摊位",
+    "directions": "导航",
+    "listenCommentary": "收听讲解",
+    "viewDetails": "查看详情",
+    "close": "关闭"
+  },
+  "stores": {
+    "title": "美食街",
+    "subtitle": "探索街头美食摊位",
+    "loading": "加载中...",
+    "count": "{{count}} 家摊位",
+    "filterLabel": "按口味筛选：",
+    "clearFilter": "清除筛选",
+    "viewGrid": "网格视图",
+    "viewList": "列表视图",
+    "emptyNoFilter": "未找到任何摊位",
+    "emptyWithFilter": "未找到符合条件的摊位，请减少筛选条件。"
+  },
+  "storeDetail": {
+    "commentaryTitle": "收听本摊位讲解",
+    "noCommentary": "暂无讲解内容",
+    "listen": "收听讲解",
+    "pause": "暂停",
+    "resume": "继续",
+    "stop": "停止",
+    "menu": "菜单",
+    "reviews": "评价",
+    "viewOnMap": "在地图上查看",
+    "inactive": "该摊位暂时不可用"
+  }
+}
