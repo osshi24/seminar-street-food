@@ -1,0 +1,39 @@
+{
+  "nav": {
+    "stores": "屋台",
+    "map": "地図"
+  },
+  "map": {
+    "loading": "地図を読み込んでいます...",
+    "title": "フォーアムトゥック マップ",
+    "pinCount": "{{count}} 店舗",
+    "directions": "道案内",
+    "listenCommentary": "解説を聴く",
+    "viewDetails": "詳細を見る",
+    "close": "閉じる"
+  },
+  "stores": {
+    "title": "フォーアムトゥック",
+    "subtitle": "ストリートフードを探索する",
+    "loading": "読み込み中...",
+    "count": "{{count}} 店舗",
+    "filterLabel": "好みで絞り込む：",
+    "clearFilter": "フィルターをクリア",
+    "viewGrid": "グリッド表示",
+    "viewList": "リスト表示",
+    "emptyNoFilter": "店舗が見つかりません",
+    "emptyWithFilter": "条件に合う店舗が見つかりません。フィルターを減らしてみてください。"
+  },
+  "storeDetail": {
+    "commentaryTitle": "この店舗の解説を聴く",
+    "noCommentary": "解説はまだありません",
+    "listen": "解説を聴く",
+    "pause": "一時停止",
+    "resume": "再開",
+    "stop": "停止",
+    "menu": "メニュー",
+    "reviews": "レビュー",
+    "viewOnMap": "地図で見る",
+    "inactive": "この店舗は現在利用できません"
+  }
+}

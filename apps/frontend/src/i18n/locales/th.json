@@ -1,0 +1,39 @@
+{
+  "nav": {
+    "stores": "ร้านค้า",
+    "map": "แผนที่"
+  },
+  "map": {
+    "loading": "กำลังโหลดแผนที่...",
+    "title": "แผนที่โฝ่อามทึก",
+    "pinCount": "{{count}} ร้านค้า",
+    "directions": "นำทาง",
+    "listenCommentary": "ฟังคำบรรยาย",
+    "viewDetails": "ดูรายละเอียด",
+    "close": "ปิด"
+  },
+  "stores": {
+    "title": "โฝ่อามทึก",
+    "subtitle": "สำรวจร้านอาหารริมถนน",
+    "loading": "กำลังโหลด...",
+    "count": "{{count}} ร้านค้า",
+    "filterLabel": "กรองตามความชอบ:",
+    "clearFilter": "ล้างตัวกรอง",
+    "viewGrid": "มุมมองตาราง",
+    "viewList": "มุมมองรายการ",
+    "emptyNoFilter": "ไม่พบร้านค้า",
+    "emptyWithFilter": "ไม่พบร้านค้าที่ตรงกับเงื่อนไข ลองลดตัวกรองดูไหม?"
+  },
+  "storeDetail": {
+    "commentaryTitle": "ฟังคำบรรยายของร้านนี้",
+    "noCommentary": "ยังไม่มีคำบรรยาย",
+    "listen": "ฟังคำบรรยาย",
+    "pause": "หยุดชั่วคราว",
+    "resume": "เล่นต่อ",
+    "stop": "หยุด",
+    "menu": "เมนู",
+    "reviews": "รีวิว",
+    "viewOnMap": "ดูบนแผนที่",
+    "inactive": "ร้านนี้ไม่พร้อมให้บริการในขณะนี้"
+  }
+}
