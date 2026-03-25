@@ -1,0 +1,42 @@
+{
+  "common": {
+    "loading": "Đang tải...",
+    "error": "Đã xảy ra lỗi",
+    "retry": "Thử lại",
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "confirm": "Xác nhận",
+    "close": "Đóng",
+    "search": "Tìm kiếm"
+  },
+  "language": {
+    "vi": "Tiếng Việt",
+    "en": "English",
+    "fr": "Français",
+    "zh": "中文",
+    "ja": "日本語",
+    "ko": "한국어",
+    "th": "ภาษาไทย"
+  },
+  "store": {
+    "noContent": "Chưa có nội dung thuyết minh",
+    "inactive": "Gian hàng hiện không hoạt động",
+    "hasCommentary": "Có thuyết minh",
+    "menuItems": "Món ăn",
+    "draft": {
+      "pending": "Đang chờ duyệt",
+      "rejected": "Bị từ chối",
+      "approved": "Đã duyệt"
+    }
+  },
+  "pipeline": {
+    "running": "Thuyết minh đang được tổng hợp...",
+    "completed": "Thuyết minh sẵn sàng",
+    "failed": "Không thể tổng hợp thuyết minh"
+  },
+  "audio": {
+    "unavailable": "Audio tạm thời không khả dụng",
+    "play": "Phát",
+    "pause": "Dừng"
+  }
+}
