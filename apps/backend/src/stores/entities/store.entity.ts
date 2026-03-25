@@ -32,6 +32,18 @@ export class Store {
   @Column({ length: 1000, nullable: true })
   description: string | null;
 
+  @Column({ length: 20, nullable: true })
+  phone: string | null;
+
+  @Column({ length: 500, nullable: true })
+  address: string | null;
+
+  @Column({ name: 'opening_hours', length: 255, nullable: true })
+  openingHours: string | null;
+
+  @Column({ name: 'social_links', type: 'jsonb', nullable: true })
+  socialLinks: { facebook?: string; instagram?: string; tiktok?: string } | null;
+
   @Column({
     type: 'enum',
     enum: StoreStatus,

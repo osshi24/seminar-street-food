@@ -15,11 +15,38 @@ interface MapViewProps {
   sharedLocation?: { lat: number; lng: number };
   selectedPinId?: string | null;
   route?: RouteDisplay | null;
+  flyTo?: { lat: number; lng: number } | null;
   onPinSelect: (pin: PublicPin) => void;
   onMapClick: () => void;
 }
 
-const CDN = 'https://unpkg.com/leaflet@1.9.4/dist/images';
+function buildStoreIcon(pin: PublicPin, isSelected: boolean) {
+  const size = isSelected ? 56 : 48;
+  const border = isSelected ? '3px solid #f97316' : '2px solid #fff';
+  const shadow = isSelected
+    ? '0 0 0 4px rgba(249,115,22,0.3), 0 2px 8px rgba(0,0,0,0.3)'
+    : '0 2px 6px rgba(0,0,0,0.25)';
+  const pulseRing = isSelected
+    ? '<div style="position:absolute;inset:-6px;border-radius:50%;background:rgba(249,115,22,0.25);animation:pulse-ring 1.2s ease-out infinite"></div>'
+    : '';
+
+  const imgHtml = pin.thumbnailUrl
+    ? `<img src="${pin.thumbnailUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" />`
+    : `<div style="width:100%;height:100%;border-radius:50%;background:#f97316;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:${isSelected ? 18 : 16}px">${pin.storeName.charAt(0)}</div>`;
+
+  const label = `<div style="position:absolute;top:${size + 2}px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(0,0,0,0.7);color:#fff;font-size:10px;padding:1px 6px;border-radius:4px;font-weight:500;max-width:100px;overflow:hidden;text-overflow:ellipsis;pointer-events:none">${pin.storeName}</div>`;
+
+  const html =
+    `<div style="position:relative;width:${size}px;display:flex;flex-direction:column;align-items:center">` +
+    pulseRing +
+    `<div style="width:${size}px;height:${size}px;border-radius:50%;border:${border};box-shadow:${shadow};overflow:hidden;background:#fff">` +
+    imgHtml +
+    '</div>' +
+    label +
+    '</div>';
+
+  return html;
+}
 
 export default function MapView({
   pins,
@@ -27,6 +54,7 @@ export default function MapView({
   sharedLocation,
   selectedPinId,
   route,
+  flyTo,
   onPinSelect,
   onMapClick,
 }: MapViewProps) {
@@ -36,11 +64,20 @@ export default function MapView({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markersRef = useRef<Map<string, any>>(new Map());
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pinsRef = useRef<Map<string, PublicPin>>(new Map());
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const boundaryLayerRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const routeLayerRef = useRef<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const userMarkerRef = useRef<any>(null);
+  // Track callbacks in refs so map event handlers always use latest
+  const onPinSelectRef = useRef(onPinSelect);
+  onPinSelectRef.current = onPinSelect;
+  const onMapClickRef = useRef(onMapClick);
+  onMapClickRef.current = onMapClick;
 
-  // Init map
+  // Init map (once)
   useEffect(() => {
     if (typeof window === 'undefined' || !mapRef.current) return;
     if (mapInstanceRef.current) return;
@@ -49,26 +86,12 @@ export default function MapView({
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const L = require('leaflet') as typeof import('leaflet');
 
-    const defaultCenter: [number, number] = sharedLocation
-      ? [sharedLocation.lat, sharedLocation.lng]
-      : pins.length > 0
-      ? [Number(pins[0].latitude), Number(pins[0].longitude)]
-      : [10.762622, 106.660172];
-
-    const map = L.map(mapRef.current).setView(defaultCenter, 16);
+    const map = L.map(mapRef.current).setView([10.762622, 106.660172], 16);
     mapInstanceRef.current = map;
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
     }).addTo(map);
-
-    // Draw boundary
-    if (boundary && boundary.coordinates.length >= 3) {
-      L.polygon(
-        boundary.coordinates.map((c) => [c.lat, c.lng] as [number, number]),
-        { color: '#f97316', fillOpacity: 0.08, weight: 2 },
-      ).addTo(map);
-    }
 
     // Shared location marker (blue)
     if (sharedLocation) {
@@ -84,18 +107,9 @@ export default function MapView({
       map.flyTo([sharedLocation.lat, sharedLocation.lng], 17);
     }
 
-    // Store pins
-    pins.forEach((pin) => {
-      const marker = L.marker([Number(pin.latitude), Number(pin.longitude)]).addTo(map);
-      marker.on('click', () => {
-        onPinSelect(pin);
-      });
-      markersRef.current.set(pin.storeId, marker);
-    });
-
     // Click on empty map → close sheet
     map.on('click', () => {
-      onMapClick();
+      onMapClickRef.current();
     });
 
     // "Locate me" button
@@ -122,37 +136,100 @@ export default function MapView({
       map.remove();
       mapInstanceRef.current = null;
       markersRef.current.clear();
+      pinsRef.current.clear();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Pulse animation on selected pin
+  // Sync boundary when data arrives
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !boundary || boundary.coordinates.length < 3) return;
+    if (boundaryLayerRef.current) return; // already drawn
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const L = require('leaflet') as typeof import('leaflet');
+
+    const boundaryPolygon = L.polygon(
+      boundary.coordinates.map((c) => [c.lat, c.lng] as [number, number]),
+      { color: '#f97316', fillOpacity: 0.08, weight: 2 },
+    ).addTo(map);
+    boundaryLayerRef.current = boundaryPolygon;
+
+    // Fit map to boundary so user sees the whole street immediately
+    if (!sharedLocation) {
+      map.fitBounds(boundaryPolygon.getBounds(), { padding: [40, 40] });
+    }
+  }, [boundary, sharedLocation]);
+
+  // Sync pins when data arrives or changes
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || pins.length === 0) return;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const L = require('leaflet') as typeof import('leaflet');
+
+    // Remove old markers that no longer exist
+    markersRef.current.forEach((marker, storeId) => {
+      if (!pins.find((p) => p.storeId === storeId)) {
+        map.removeLayer(marker);
+        markersRef.current.delete(storeId);
+        pinsRef.current.delete(storeId);
+      }
+    });
+
+    // Add new markers
+    pins.forEach((pin) => {
+      if (markersRef.current.has(pin.storeId)) return; // already on map
+      pinsRef.current.set(pin.storeId, pin);
+      const iconSize = 48;
+      const icon = L.divIcon({
+        html: buildStoreIcon(pin, false),
+        className: '',
+        iconSize: [iconSize, iconSize + 18],
+        iconAnchor: [iconSize / 2, iconSize / 2],
+      });
+      const marker = L.marker([Number(pin.latitude), Number(pin.longitude)], { icon }).addTo(map);
+      marker.on('click', () => {
+        onPinSelectRef.current(pin);
+      });
+      markersRef.current.set(pin.storeId, marker);
+    });
+
+    // Fit to pins if no boundary
+    if (!boundaryLayerRef.current && pins.length > 1 && !sharedLocation) {
+      const group = L.featureGroup(Array.from(markersRef.current.values()));
+      map.fitBounds(group.getBounds(), { padding: [40, 40] });
+    }
+  }, [pins, sharedLocation]);
+
+  // Update icons when selected pin changes
   useEffect(() => {
     if (typeof window === 'undefined') return;
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const L = require('leaflet') as typeof import('leaflet');
 
-    const pulseHtml =
-      '<div style="position:relative;width:32px;height:32px">' +
-      '<div style="position:absolute;inset:0;border-radius:50%;background:rgba(249,115,22,0.3);animation:pulse-ring 1.2s ease-out infinite"></div>' +
-      `<img src="${CDN}/marker-icon.png" style="position:absolute;left:3px;top:0;width:25px;height:41px" />` +
-      '</div>';
-
     markersRef.current.forEach((marker, storeId) => {
-      if (storeId === selectedPinId) {
-        marker.setIcon(
-          L.divIcon({ html: pulseHtml, className: '', iconSize: [32, 45], iconAnchor: [16, 45] }),
-        );
-      } else {
-        marker.setIcon(L.icon({
-          iconUrl: `${CDN}/marker-icon.png`,
-          shadowUrl: `${CDN}/marker-shadow.png`,
-          iconSize: [25, 41],
-          iconAnchor: [12, 41],
-        }));
-      }
+      const pin = pinsRef.current.get(storeId);
+      if (!pin) return;
+      const isSelected = storeId === selectedPinId;
+      const size = isSelected ? 56 : 48;
+      marker.setIcon(
+        L.divIcon({
+          html: buildStoreIcon(pin, isSelected),
+          className: '',
+          iconSize: [size, size + 18],
+          iconAnchor: [size / 2, size / 2],
+        }),
+      );
     });
   }, [selectedPinId]);
+
+  // Fly to location (from search)
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !flyTo) return;
+    map.flyTo([flyTo.lat, flyTo.lng], 18, { duration: 0.8 });
+  }, [flyTo]);
 
   // Draw / clear route polyline + user location marker
   useEffect(() => {
