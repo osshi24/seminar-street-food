@@ -4,20 +4,29 @@ import { useEffect, useRef } from 'react';
 import { initLeafletIcons } from '../../../../lib/map/leaflet-config';
 import { PublicPin, BoundaryData } from '../../../../lib/api/map';
 
+export interface RouteDisplay {
+  coordinates: [number, number][];
+  userLocation: [number, number];
+}
+
 interface MapViewProps {
   pins: PublicPin[];
   boundary: BoundaryData | null;
   sharedLocation?: { lat: number; lng: number };
   selectedPinId?: string | null;
+  route?: RouteDisplay | null;
   onPinSelect: (pin: PublicPin) => void;
   onMapClick: () => void;
 }
+
+const CDN = 'https://unpkg.com/leaflet@1.9.4/dist/images';
 
 export default function MapView({
   pins,
   boundary,
   sharedLocation,
   selectedPinId,
+  route,
   onPinSelect,
   onMapClick,
 }: MapViewProps) {
@@ -26,7 +35,12 @@ export default function MapView({
   const mapInstanceRef = useRef<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markersRef = useRef<Map<string, any>>(new Map());
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const routeLayerRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const userMarkerRef = useRef<any>(null);
 
+  // Init map
   useEffect(() => {
     if (typeof window === 'undefined' || !mapRef.current) return;
     if (mapInstanceRef.current) return;
@@ -112,13 +126,12 @@ export default function MapView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Pulse animation on selected / nearby pin
+  // Pulse animation on selected pin
   useEffect(() => {
     if (typeof window === 'undefined') return;
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const L = require('leaflet') as typeof import('leaflet');
 
-    const CDN = 'https://unpkg.com/leaflet@1.9.4/dist/images';
     const pulseHtml =
       '<div style="position:relative;width:32px;height:32px">' +
       '<div style="position:absolute;inset:0;border-radius:50%;background:rgba(249,115,22,0.3);animation:pulse-ring 1.2s ease-out infinite"></div>' +
@@ -140,6 +153,54 @@ export default function MapView({
       }
     });
   }, [selectedPinId]);
+
+  // Draw / clear route polyline + user location marker
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const L = require('leaflet') as typeof import('leaflet');
+
+    // Clear previous route
+    if (routeLayerRef.current) {
+      map.removeLayer(routeLayerRef.current);
+      routeLayerRef.current = null;
+    }
+    if (userMarkerRef.current) {
+      map.removeLayer(userMarkerRef.current);
+      userMarkerRef.current = null;
+    }
+
+    if (!route) return;
+
+    // Draw polyline
+    const polyline = L.polyline(route.coordinates, {
+      color: '#2563eb',
+      weight: 5,
+      opacity: 0.8,
+      dashArray: '10 6',
+    }).addTo(map);
+    routeLayerRef.current = polyline;
+
+    // User location marker (blue pulsing dot)
+    const userIcon = L.divIcon({
+      html:
+        '<div style="position:relative;width:20px;height:20px">' +
+        '<div style="position:absolute;inset:0;border-radius:50%;background:rgba(37,99,235,0.3);animation:pulse-ring 1.5s ease-out infinite"></div>' +
+        '<div style="position:absolute;top:4px;left:4px;width:12px;height:12px;border-radius:50%;background:#2563eb;border:2px solid white;box-shadow:0 0 4px rgba(0,0,0,0.3)"></div>' +
+        '</div>',
+      className: '',
+      iconSize: [20, 20],
+      iconAnchor: [10, 10],
+    });
+    const userMarker = L.marker(route.userLocation, { icon: userIcon, zIndexOffset: 1000 })
+      .addTo(map);
+    userMarkerRef.current = userMarker;
+
+    // Fit map to show entire route
+    map.fitBounds(polyline.getBounds(), { padding: [60, 60] });
+  }, [route]);
 
   return (
     <>

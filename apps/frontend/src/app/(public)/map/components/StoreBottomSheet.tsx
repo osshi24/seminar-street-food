@@ -10,13 +10,15 @@ import CommentaryPlayer from '../../../../components/stores/CommentaryPlayer';
 interface StoreBottomSheetProps {
   pin: PublicPin | null;
   onClose: () => void;
+  onDirections?: (lat: number, lng: number) => void;
+  isRouting?: boolean;
 }
 
 function formatVND(amount: number) {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 }
 
-export default function StoreBottomSheet({ pin, onClose }: StoreBottomSheetProps) {
+export default function StoreBottomSheet({ pin, onClose, onDirections, isRouting }: StoreBottomSheetProps) {
   const { t } = useTranslation();
   const sheetRef = useRef<HTMLDivElement>(null);
   const [showCommentary, setShowCommentary] = useState(false);
@@ -44,10 +46,15 @@ export default function StoreBottomSheet({ pin, onClose }: StoreBottomSheetProps
     }
   }, [pin]);
 
-  function openDirections() {
+  function handleDirections() {
     if (!pin) return;
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${pin.latitude},${pin.longitude}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    if (onDirections) {
+      onDirections(Number(pin.latitude), Number(pin.longitude));
+    } else {
+      // Fallback: open Google Maps
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${pin.latitude},${pin.longitude}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
   }
 
   return (
@@ -120,13 +127,21 @@ export default function StoreBottomSheet({ pin, onClose }: StoreBottomSheetProps
             {/* Action buttons */}
             <div className="flex gap-2 flex-wrap">
               <button
-                onClick={openDirections}
+                onClick={handleDirections}
+                disabled={isRouting}
                 aria-label={`${t('map.directions')} ${pin.storeName}`}
-                className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+                className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60 transition-colors"
               >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                </svg>
+                {isRouting ? (
+                  <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : (
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                  </svg>
+                )}
                 {t('map.directions')}
               </button>
 
