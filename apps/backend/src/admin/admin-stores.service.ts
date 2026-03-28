@@ -17,6 +17,7 @@ import { NotificationRecipientType } from '../entities/notification.entity';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { COMMENTARY_QUEUE } from '../commentary/commentary.constants';
+import { STORE_TRANSLATION_QUEUE } from '../stores/store-translation.processor';
 
 @Injectable()
 export class AdminStoresService {
@@ -38,6 +39,7 @@ export class AdminStoresService {
     private readonly notificationsService: NotificationsService,
     private readonly dataSource: DataSource,
     @InjectQueue(COMMENTARY_QUEUE) private readonly commentaryQueue: Queue,
+    @InjectQueue(STORE_TRANSLATION_QUEUE) private readonly storeTranslationQueue: Queue,
   ) {}
 
   async listPendingDrafts(page = 1, limit = 20) {
@@ -147,12 +149,23 @@ export class AdminStoresService {
       });
     });
 
-    // After COMMIT: enqueue BullMQ job
+    // After COMMIT: enqueue BullMQ jobs
     if (commentaryId) {
       try {
-        await this.commentaryQueue.add('process', { commentaryId, storeId: draft.storeId });
+        await this.commentaryQueue.add('process', { commentaryId, storeId: draft.storeId }, {
+          jobId: `commentary-${commentaryId}`,
+        });
       } catch (err) {
         this.logger.error(`Failed to enqueue commentary job for ${commentaryId}: ${(err as Error).message}`);
+      }
+
+      // Enqueue store content translation (name, description, menu items)
+      try {
+        await this.storeTranslationQueue.add('translate-store', { storeId: draft.storeId }, {
+          jobId: `store-trans-${draft.storeId}`,
+        });
+      } catch (err) {
+        this.logger.error(`Failed to enqueue store translation job: ${(err as Error).message}`);
       }
 
       // Send notification
@@ -176,11 +189,6 @@ export class AdminStoresService {
     let queued = 0;
 
     for (const commentary of commentaries) {
-      // Delete all non-vi translations (vi = source text, keep it)
-      await this.translationRepo.delete({
-        commentaryId: commentary.id,
-      });
-
       // Re-save Vietnamese source text
       await this.translationRepo.upsert(
         {
@@ -198,20 +206,34 @@ export class AdminStoresService {
         pipelineStatus: CommentaryPipelineStatus.PENDING,
       });
 
-      // Find the store that owns this commentary
       const store = await this.storeRepo.findOne({
         where: { activeCommentaryId: commentary.id },
       });
 
-      // Enqueue job
+      // Dedup: use commentaryId as jobId so duplicate calls don't stack
       await this.commentaryQueue.add('process', {
         commentaryId: commentary.id,
         storeId: store?.id ?? commentary.storeId,
-      });
+      }, { jobId: `commentary-${commentary.id}` });
       queued++;
     }
 
     this.logger.log(`Reprocess: queued ${queued} commentary jobs`);
+    return { queued };
+  }
+
+  /** Re-queue all active stores for content translation (name, description, menu items) */
+  async reprocessAllStoreTranslations(): Promise<{ queued: number }> {
+    const stores = await this.storeRepo.find({ where: { status: StoreStatus.ACTIVE } });
+    let queued = 0;
+    for (const store of stores) {
+      // Dedup: use storeId as jobId so duplicate calls don't stack
+      await this.storeTranslationQueue.add('translate-store', { storeId: store.id }, {
+        jobId: `store-trans-${store.id}`,
+      });
+      queued++;
+    }
+    this.logger.log(`Store translation: queued ${queued} jobs`);
     return { queued };
   }
 
