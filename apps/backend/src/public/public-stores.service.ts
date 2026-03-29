@@ -4,6 +4,8 @@ import { Repository } from 'typeorm';
 import { Store, StoreStatus } from '../stores/entities/store.entity';
 import { MenuItem } from '../stores/entities/menu-item.entity';
 import { StoreImage } from '../stores/entities/store-image.entity';
+import { StoreTranslation } from '../stores/entities/store-translation.entity';
+import { MenuItemTranslation } from '../stores/entities/menu-item-translation.entity';
 import { Commentary } from '../commentary/entities/commentary.entity';
 import { CommentaryTranslation } from '../commentary/entities/commentary-translation.entity';
 
@@ -20,9 +22,13 @@ export class PublicStoresService {
     private readonly commentaryRepo: Repository<Commentary>,
     @InjectRepository(CommentaryTranslation)
     private readonly translationRepo: Repository<CommentaryTranslation>,
+    @InjectRepository(StoreTranslation)
+    private readonly storeTranslationRepo: Repository<StoreTranslation>,
+    @InjectRepository(MenuItemTranslation)
+    private readonly menuItemTranslationRepo: Repository<MenuItemTranslation>,
   ) {}
 
-  async listStores(q?: string, page = 1, limit = 20) {
+  async listStores(q?: string, page = 1, limit = 20, lang = 'vi') {
     const qb = this.storeRepo
       .createQueryBuilder('s')
       .where('s.status = :status', { status: StoreStatus.ACTIVE });
@@ -39,6 +45,17 @@ export class PublicStoresService {
       .take(limit)
       .getManyAndCount();
 
+    // Batch load translations for all stores
+    const storeIds = stores.map((s) => s.id);
+    const translations = lang !== 'vi' && storeIds.length > 0
+      ? await this.storeTranslationRepo
+          .createQueryBuilder('t')
+          .where('t.storeId IN (:...ids)', { ids: storeIds })
+          .andWhere('t.languageCode = :lang', { lang })
+          .getMany()
+      : [];
+    const transMap = new Map(translations.map((t) => [t.storeId, t]));
+
     const data = await Promise.all(
       stores.map(async (store) => {
         const menuItemCount = await this.menuItemRepo.count({
@@ -49,10 +66,11 @@ export class PublicStoresService {
           where: { storeId: store.id, isInDraft: false },
           order: { orderIndex: 'ASC' },
         });
+        const t = transMap.get(store.id);
         return {
           id: store.id,
-          name: store.name,
-          description: store.description,
+          name: t?.translatedName || store.name,
+          description: t?.translatedDescription || store.description,
           thumbnailUrl: firstImage?.url ?? null,
           menuItemCount,
           hasCommentary,
@@ -63,7 +81,7 @@ export class PublicStoresService {
     return { data, total, page, limit };
   }
 
-  async getStoreDetail(storeId: string) {
+  async getStoreDetail(storeId: string, lang = 'vi') {
     const store = await this.storeRepo.findOne({ where: { id: storeId } });
     if (!store || store.status === StoreStatus.INACTIVE) {
       throw new NotFoundException('Store not found');
@@ -85,14 +103,55 @@ export class PublicStoresService {
       pipelineStatus = commentary?.pipelineStatus ?? null;
     }
 
+    // Apply translations
+    let storeName = store.name;
+    let storeDescription = store.description;
+    if (lang !== 'vi') {
+      const storeTrans = await this.storeTranslationRepo.findOne({
+        where: { storeId, languageCode: lang },
+      });
+      if (storeTrans) {
+        storeName = storeTrans.translatedName || store.name;
+        storeDescription = storeTrans.translatedDescription || store.description;
+      }
+    }
+
+    // Apply menu item translations
+    let translatedMenuItems = menuItems.map((mi) => ({
+      id: mi.id,
+      name: mi.name,
+      description: mi.description,
+      price: mi.price,
+      tags: (mi as any).tags,
+    }));
+    if (lang !== 'vi') {
+      const menuItemIds = menuItems.map((mi) => mi.id);
+      if (menuItemIds.length > 0) {
+        const menuTrans = await this.menuItemTranslationRepo
+          .createQueryBuilder('t')
+          .where('t.menuItemId IN (:...ids)', { ids: menuItemIds })
+          .andWhere('t.languageCode = :lang', { lang })
+          .getMany();
+        const menuTransMap = new Map(menuTrans.map((t) => [t.menuItemId, t]));
+        translatedMenuItems = translatedMenuItems.map((mi) => {
+          const t = menuTransMap.get(mi.id);
+          return {
+            ...mi,
+            name: t?.translatedName || mi.name,
+            description: t?.translatedDescription || mi.description,
+          };
+        });
+      }
+    }
+
     return {
       id: store.id,
-      name: store.name,
-      description: store.description,
+      name: storeName,
+      description: storeDescription,
       status: store.status,
       activeCommentaryId: store.activeCommentaryId,
       pipelineStatus,
-      menuItems,
+      menuItems: translatedMenuItems,
       images,
     };
   }
