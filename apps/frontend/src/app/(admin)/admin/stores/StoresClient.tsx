@@ -10,6 +10,7 @@ import {
   type AdminStoreListItem,
   type AdminStoreStatus,
 } from '../../../../lib/api/admin-stores';
+import Link from 'next/link';
 
 const STATUS_LABELS: Record<string, string> = {
   all: 'Tất cả',
@@ -136,6 +137,9 @@ export default function StoresClient() {
                   <td className="px-4 py-3 text-sm text-gray-600">{new Date(s.createdAt).toLocaleDateString('vi-VN')}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-3">
+                      <Link href={`/admin/stores/${s.id}`} className="text-sm text-gray-700 hover:underline">
+                        Chi tiết
+                      </Link>
                       <button onClick={() => toggleStatus(s)} className="text-sm text-blue-600 hover:underline">
                         {s.status === 'active' ? 'Vô hiệu hóa' : 'Kích hoạt'}
                       </button>

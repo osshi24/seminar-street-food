@@ -27,6 +27,11 @@ export class AdminCatalogStoresController {
     return this.adminCatalogStoresService.findAll(query);
   }
 
+  @Get(':id')
+  async findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.adminCatalogStoresService.findOne(id);
+  }
+
   @Patch(':id/activate')
   async activate(@Param('id', ParseUUIDPipe) id: string) {
     return this.adminCatalogStoresService.activate(id);
