@@ -17,6 +17,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationRecipientType } from '../entities/notification.entity';
 import { StorageService } from '../storage/storage.service';
 import { UpdateStoreDto } from './dto/update-store.dto';
+import { UpdateStoreInfoDto } from './dto/update-store-info.dto';
 import { CreateMenuItemDto, UpdateMenuItemDto } from './dto/menu-item.dto';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -50,8 +51,8 @@ export class StoresService {
       where: { storeId: store.id, isInDraft: false },
     });
     const images = await this.storeImageRepo.find({
-      where: { storeId: store.id, isInDraft: false },
-      order: { orderIndex: 'ASC' },
+      where: { storeId: store.id },
+      order: { orderIndex: 'ASC', createdAt: 'DESC' },
     });
     const pendingDraft = await this.draftRepo.findOne({
       where: { storeId: store.id, status: DraftStatus.PENDING },
@@ -63,6 +64,18 @@ export class StoresService {
       images,
       hasPendingDraft: !!pendingDraft,
     };
+  }
+
+  async updateStoreInfo(ownerId: string, dto: UpdateStoreInfoDto): Promise<Store> {
+    const store = await this.storeRepo.findOne({ where: { ownerId } });
+    if (!store) throw new NotFoundException('Store not found');
+
+    if (dto.phone !== undefined) store.phone = dto.phone || null;
+    if (dto.address !== undefined) store.address = dto.address || null;
+    if (dto.openingHours !== undefined) store.openingHours = dto.openingHours || null;
+    if (dto.socialLinks !== undefined) store.socialLinks = dto.socialLinks ?? null;
+
+    return this.storeRepo.save(store);
   }
 
   async saveDraft(ownerId: string, dto: UpdateStoreDto): Promise<StoreContentDraft> {
@@ -251,7 +264,7 @@ export class StoresService {
     const image = await this.storeImageRepo.findOne({ where: { id: imageId } });
     if (!image || image.storeId !== store.id) throw new NotFoundException('Image not found');
 
-    image.isInDraft = true;
+    image.isInDraft = false;
     return this.storeImageRepo.save(image);
   }
 
