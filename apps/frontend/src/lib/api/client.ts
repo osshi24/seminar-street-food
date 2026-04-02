@@ -54,14 +54,17 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
     if (error.response?.status === 401 && !originalRequest._retry) {
-      // Admin request — redirect to admin login
-      if (getCookie('admin_access_token')) {
+      // Check if admin token
+      const adminToken = getCookie('admin_access_token');
+      if (adminToken) {
+        // Admin request — redirect to admin login (no refresh for admin)
         if (typeof window !== 'undefined') {
           window.location.href = '/admin/login';
         }
         return Promise.reject(error);
       }
 
+      // Store-owner token refresh logic
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });

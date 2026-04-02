@@ -54,7 +54,7 @@ export class AdminReportsController {
       .leftJoinAndSelect('rv.store', 's')
       .leftJoinAndSelect('cr.reason', 'rr')
       .leftJoinAndSelect('cr.reporter', 'rep')
-      .orderBy('cr.created_at', 'DESC');
+      .orderBy('cr.createdAt', 'DESC');
 
     if (query.status) {
       qb.andWhere('cr.status = :status', { status: query.status });

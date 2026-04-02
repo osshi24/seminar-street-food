@@ -1,4 +1,5 @@
 import type { ReportReason } from '../../types/report';
+import apiClient from './client';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
 
@@ -26,4 +27,55 @@ export async function submitReport(
     const body = await res.json().catch(() => ({}));
     throw Object.assign(new Error('Failed to submit report'), { status: res.status, body });
   }
+}
+
+// Admin functions
+export interface AdminReport {
+  id: string;
+  status: 'pending' | 'resolved' | 'dismissed';
+  createdAt: string;
+  resolvedAt?: string;
+  reason?: { id: number; labelVi: string } | null;
+  reporter?: { id: string; fullName: string } | null;
+  review?: {
+    id: string;
+    stars: number;
+    content: string | null;
+    isHidden: boolean;
+    customer?: { displayName: string } | null;
+    store?: { id: string; name: string } | null;
+  } | null;
+}
+
+export interface AdminReportsListResponse {
+  data: AdminReport[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export async function listAdminReports(params?: {
+  status?: string;
+  storeId?: string;
+  page?: number;
+  limit?: number;
+}): Promise<AdminReportsListResponse> {
+  const response = await apiClient.get('/admin/reports', { params });
+  return response.data;
+}
+
+export async function resolveReport(
+  id: string,
+  action: 'hide' | 'delete',
+): Promise<{ message: string }> {
+  const response = await apiClient.patch(`/admin/reports/${id}/resolve`, { action });
+  return response.data;
+}
+
+export async function dismissReport(id: string): Promise<{ message: string }> {
+  const response = await apiClient.patch(`/admin/reports/${id}/dismiss`);
+  return response.data;
 }
