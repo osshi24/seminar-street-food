@@ -165,19 +165,12 @@ export class StoresService {
     const store = await this.storeRepo.findOne({ where: { ownerId } });
     if (!store) throw new NotFoundException('Store not found');
 
-    const pending = await this.draftRepo.findOne({
-      where: { storeId: store.id, status: DraftStatus.PENDING },
-    });
-    if (pending) {
-      throw new ConflictException({ code: 'DRAFT_PENDING', message: 'Cannot edit while draft is pending' });
-    }
-
     const item = this.menuItemRepo.create({
       storeId: store.id,
       name: dto.name,
       description: dto.description ?? null,
       price: dto.price,
-      isInDraft: true,
+      isInDraft: false,
     });
     return this.menuItemRepo.save(item);
   }
@@ -194,7 +187,7 @@ export class StoresService {
     if (item.storeId !== store.id) throw new ForbiddenException('Access denied');
 
     const { tagIds, ...rest } = dto;
-    Object.assign(item, { ...rest, isInDraft: true });
+    Object.assign(item, { ...rest });
 
     if (tagIds !== undefined) {
       // Sync tags via raw query to avoid loading PreferenceTag repo here
@@ -222,12 +215,17 @@ export class StoresService {
     if (!item) throw new NotFoundException('Menu item not found');
     if (item.storeId !== store.id) throw new ForbiddenException('Access denied');
 
-    if (item.isInDraft) {
-      await this.menuItemRepo.delete({ id: itemId });
-    } else {
-      item.isInDraft = true;
-      await this.menuItemRepo.save(item);
+    if (item.imageS3Key) {
+      try {
+        await this.storageService.deleteObject(item.imageS3Key);
+      } catch (err) {
+        this.logger.warn(
+          `Failed deleting menu item image for ${item.id}: ${(err as Error).message}`,
+        );
+      }
     }
+
+    await this.menuItemRepo.delete({ id: itemId });
   }
 
   async generateMenuItemImageUploadUrl(
@@ -237,16 +235,6 @@ export class StoresService {
   ): Promise<{ presignedUrl: string; imageUrl: string }> {
     const store = await this.storeRepo.findOne({ where: { ownerId } });
     if (!store) throw new NotFoundException('Store not found');
-
-    const pending = await this.draftRepo.findOne({
-      where: { storeId: store.id, status: DraftStatus.PENDING },
-    });
-    if (pending) {
-      throw new ConflictException({
-        code: 'DRAFT_PENDING',
-        message: 'Cannot edit while draft is pending',
-      });
-    }
 
     const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
     if (!validTypes.includes(contentType)) {
@@ -285,7 +273,6 @@ export class StoresService {
 
     item.imageUrl = imageUrl;
     item.imageS3Key = s3Key;
-    item.isInDraft = true;
     await this.menuItemRepo.save(item);
 
     return { presignedUrl, imageUrl };
@@ -294,16 +281,6 @@ export class StoresService {
   async deleteMenuItemImage(ownerId: string, itemId: string): Promise<void> {
     const store = await this.storeRepo.findOne({ where: { ownerId } });
     if (!store) throw new NotFoundException('Store not found');
-
-    const pending = await this.draftRepo.findOne({
-      where: { storeId: store.id, status: DraftStatus.PENDING },
-    });
-    if (pending) {
-      throw new ConflictException({
-        code: 'DRAFT_PENDING',
-        message: 'Cannot edit while draft is pending',
-      });
-    }
 
     const item = await this.menuItemRepo.findOne({ where: { id: itemId } });
     if (!item) throw new NotFoundException('Menu item not found');
@@ -315,7 +292,6 @@ export class StoresService {
 
     item.imageUrl = null;
     item.imageS3Key = null;
-    item.isInDraft = true;
     await this.menuItemRepo.save(item);
   }
 
