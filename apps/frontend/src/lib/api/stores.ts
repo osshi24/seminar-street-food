@@ -63,6 +63,21 @@ export async function removeMenuItem(id: string) {
   return res.data;
 }
 
+// --- Menu item image (single) ---
+
+export async function generateMenuItemImageUploadUrl(menuItemId: string, contentType: string) {
+  const res = await apiClient.post<{ data: { presignedUrl: string; imageUrl: string } }>(
+    `/store-owner/store/menu-items/${menuItemId}/image`,
+    { contentType },
+  );
+  return res.data.data ?? res.data;
+}
+
+export async function deleteMenuItemImage(menuItemId: string) {
+  const res = await apiClient.delete(`/store-owner/store/menu-items/${menuItemId}/image`);
+  return res.data;
+}
+
 // --- Store info (phone, address, hours, social) ---
 
 export interface UpdateStoreInfoDto {
