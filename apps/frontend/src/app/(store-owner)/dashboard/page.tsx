@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getAccessToken } from '../../../lib/auth/session';
 import StatGrid, { type StatItem } from '../../../components/dashboard/StatGrid';
+import { getMyStore } from '../../../lib/api/stores';
+import { getActiveQr, type CreateQrResponse } from '../../../lib/api/qr';
 
 interface TokenPayload {
   sub: string;
@@ -23,6 +25,18 @@ function parseToken(token: string): TokenPayload | null {
 export default function DashboardPage() {
   const router = useRouter();
   const [accountId, setAccountId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [store, setStore] = useState<{
+    id: string;
+    status: 'active' | 'inactive' | string;
+    avgRating?: number;
+    reviewCount?: number;
+    menuItems?: unknown[];
+    hasPendingDraft?: boolean;
+  } | null>(null);
+  const [activeQr, setActiveQr] = useState<CreateQrResponse | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
 
   useEffect(() => {
     const token = getAccessToken();
@@ -34,43 +48,123 @@ export default function DashboardPage() {
     if (payload) {
       setAccountId(payload.sub);
     }
+
+    setIsLoading(true);
+    setLoadError(null);
+
+    getMyStore()
+      .then(async (res) => {
+        const s = (res?.data ?? res) as {
+          id: string;
+          status: 'active' | 'inactive' | string;
+          avgRating?: number;
+          reviewCount?: number;
+          menuItems?: unknown[];
+          hasPendingDraft?: boolean;
+        };
+        setStore(s);
+        setLastUpdatedAt(new Date());
+
+        if (s?.id) {
+          try {
+            const qr = await getActiveQr(s.id);
+            setActiveQr(qr);
+          } catch {
+            setActiveQr(null);
+          }
+        } else {
+          setActiveQr(null);
+        }
+      })
+      .catch((err) => {
+        setStore(null);
+        setActiveQr(null);
+        setLoadError((err as Error).message ?? 'Không thể tải dữ liệu dashboard.');
+      })
+      .finally(() => setIsLoading(false));
   }, [router]);
+
+  const menuCount = store?.menuItems?.length ?? null;
+  const avgRating =
+    typeof store?.avgRating === 'number'
+      ? store.avgRating
+      : typeof (store as { avgRating?: unknown } | null)?.avgRating === 'string'
+        ? Number((store as { avgRating?: string }).avgRating)
+        : null;
+  const reviewCount =
+    typeof store?.reviewCount === 'number'
+      ? store.reviewCount
+      : typeof (store as { reviewCount?: unknown } | null)?.reviewCount === 'string'
+        ? Number((store as { reviewCount?: string }).reviewCount)
+        : null;
+
+  const statusLabel =
+    store?.status === 'active'
+      ? 'Đang hoạt động'
+      : store?.status === 'inactive'
+        ? 'Chưa kích hoạt'
+        : store?.status
+          ? String(store.status)
+          : null;
 
   const stats: StatItem[] = [
     {
       label: 'Món trong menu',
-      value: 12,
+      value: isLoading ? '…' : menuCount ?? '—',
       icon: '🍽️',
       tone: 'blue',
       helperText: 'Cập nhật menu để khách dễ chọn món.',
     },
     {
       label: 'Điểm đánh giá',
-      value: '4.6',
+      value: isLoading ? '…' : avgRating !== null ? avgRating.toFixed(1) : '—',
       icon: '⭐',
       tone: 'amber',
       helperText: 'Duy trì chất lượng để tăng lượt quay lại.',
     },
     {
       label: 'Tổng đánh giá',
-      value: 38,
+      value: isLoading ? '…' : reviewCount ?? '—',
       icon: '💬',
       tone: 'purple',
       helperText: 'Xem phản hồi mới nhất ở mục Bình luận.',
     },
     {
       label: 'Trạng thái gian hàng',
-      value: 'Đang hoạt động',
-      icon: '✅',
+      value: isLoading ? '…' : statusLabel ?? '—',
+      icon: store?.status === 'active' ? '✅' : '⏳',
       tone: 'emerald',
-      helperText: 'Nếu có bản nháp, hãy gửi để Admin duyệt.',
+      helperText:
+        isLoading
+          ? 'Đang tải...'
+          : store?.hasPendingDraft
+            ? 'Bạn đang có bản nháp chờ Admin duyệt.'
+            : store?.status === 'inactive'
+              ? 'Gian hàng cần được Admin kích hoạt.'
+              : 'Không có bản nháp chờ duyệt.',
     },
     {
-      label: 'Ảnh đã tải lên',
-      value: 5,
-      icon: '📷',
+      label: 'QR Code',
+      value: isLoading ? '…' : activeQr ? 'Đã tạo' : 'Chưa tạo',
+      icon: '🔳',
       tone: 'rose',
-      helperText: 'Thêm ảnh rõ nét giúp tăng tin tưởng.',
+      helperText: isLoading ? (
+        'Đang tải...'
+      ) : activeQr ? (
+        <span className="break-words">
+          Tạo lúc {new Date(activeQr.createdAt).toLocaleString('vi-VN')}.{' '}
+          <Link href="/dashboard/qr" className="font-medium text-rose-700 hover:underline">
+            Quản lý QR
+          </Link>
+        </span>
+      ) : (
+        <span>
+          <Link href="/dashboard/qr" className="font-medium text-rose-700 hover:underline">
+            Tạo QR code
+          </Link>{' '}
+          để khách quét nhanh.
+        </span>
+      ),
     },
     {
       label: 'Tài khoản',
@@ -86,8 +180,14 @@ export default function DashboardPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Tổng quan</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Thống kê nhanh để bạn theo dõi tình trạng gian hàng. (Dữ liệu demo)
+          Thống kê nhanh để bạn theo dõi tình trạng gian hàng.
+          {lastUpdatedAt && (
+            <span className="ml-1">
+              Cập nhật lúc {lastUpdatedAt.toLocaleTimeString('vi-VN')}.
+            </span>
+          )}
         </p>
+        {loadError && <p className="mt-2 text-sm text-red-600">{loadError}</p>}
       </div>
 
       <StatGrid stats={stats} />
