@@ -54,6 +54,12 @@ export class AdminStoresController {
     return this.adminStoresService.reprocessAllCommentaries();
   }
 
+  @Post('reprocess-translations')
+  @HttpCode(HttpStatus.OK)
+  async reprocessAllStoreTranslations() {
+    return this.adminStoresService.reprocessAllStoreTranslations();
+  }
+
   @Patch(':id/reject')
   @HttpCode(HttpStatus.OK)
   async rejectDraft(
