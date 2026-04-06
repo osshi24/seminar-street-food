@@ -17,12 +17,12 @@ export async function getStoreCommentary(storeId: string, lang: string): Promise
   return res.data;
 }
 
-export async function getStoreDetail(storeId: string) {
-  const res = await apiClient.get(`/stores/${storeId}`);
+export async function getStoreDetail(storeId: string, lang = 'vi') {
+  const res = await apiClient.get(`/stores/${storeId}`, { params: { lang } });
   return res.data;
 }
 
-export async function listStores(params?: { q?: string; page?: number; limit?: number }) {
+export async function listStores(params?: { q?: string; page?: number; limit?: number; lang?: string }) {
   const res = await apiClient.get('/stores', { params });
   return res.data;
 }
