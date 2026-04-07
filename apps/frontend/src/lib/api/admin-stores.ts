@@ -52,8 +52,33 @@ export interface DeleteImpact {
   hasRelatedData: boolean;
 }
 
+export interface AdminStoreDetail {
+  id: string;
+  name: string;
+  status: AdminStoreStatus;
+  description: string | null;
+  phone: string | null;
+  address: string | null;
+  openingHours: string | null;
+  createdAt: string;
+  updatedAt: string;
+  owner: {
+    id: string;
+    email: string;
+    fullName: string;
+    phone: string;
+    status: string;
+  };
+  deleteImpact: DeleteImpact;
+}
+
 export async function getDeleteImpact(id: string): Promise<{ data: DeleteImpact }> {
   const res = await apiClient.get(`/admin/stores/${id}/delete-impact`);
+  return res.data;
+}
+
+export async function getAdminStore(id: string): Promise<{ data: AdminStoreDetail }> {
+  const res = await apiClient.get(`/admin/stores/${id}`);
   return res.data;
 }
 
