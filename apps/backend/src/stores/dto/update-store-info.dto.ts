@@ -15,16 +15,7 @@ class SocialLinksDto {
   tiktok?: string;
 }
 
-export class UpdateStoreDto {
-  @IsString()
-  @MaxLength(255)
-  name: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(1000)
-  description?: string;
-
+export class UpdateStoreInfoDto {
   @IsOptional()
   @IsString()
   @MaxLength(20)

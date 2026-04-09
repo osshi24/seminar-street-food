@@ -17,6 +17,7 @@ import { StoresService } from './stores.service';
 import { StoreOwnerJwtGuard } from '../auth/guards/store-owner-jwt.guard';
 import { StoreOwnerAccount } from '../entities/store-owner-account.entity';
 import { UpdateStoreDto } from './dto/update-store.dto';
+import { UpdateStoreInfoDto } from './dto/update-store-info.dto';
 import { CreateMenuItemDto, UpdateMenuItemDto } from './dto/menu-item.dto';
 
 @Controller('store-owner/store')
@@ -27,6 +28,14 @@ export class StoresController {
   @Get()
   async getMyStore(@Request() req: { user: StoreOwnerAccount }) {
     return this.storesService.getMyStore(req.user.id);
+  }
+
+  @Patch('info')
+  async updateStoreInfo(
+    @Request() req: { user: StoreOwnerAccount },
+    @Body() dto: UpdateStoreInfoDto,
+  ) {
+    return this.storesService.updateStoreInfo(req.user.id, dto);
   }
 
   @Put()

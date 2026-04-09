@@ -7,6 +7,7 @@ import { getPublicPins } from '../../../lib/api/map';
 import type { PublicPin } from '../../../lib/api/map';
 import type { RouteDisplay } from './components/MapView';
 import StoreBottomSheet from './components/StoreBottomSheet';
+import MapSearchOverlay from './components/MapSearchOverlay';
 import GpsAutoPlayController from '../../../components/gps/GpsAutoPlayController';
 import ShareLocationBtn from './components/ShareLocationBtn';
 import { fetchRoute, formatDistance, formatDuration } from '../../../lib/map/osrm';
@@ -37,6 +38,9 @@ export default function MapPage() {
   const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
   const [isRouting, setIsRouting] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
+
+  // Fly-to target (from search)
+  const [flyTo, setFlyTo] = useState<{ lat: number; lng: number } | null>(null);
 
   // Read shared location from URL on client
   const [sharedLocation, setSharedLocation] = useState<{ lat: number; lng: number } | undefined>();
@@ -118,16 +122,26 @@ export default function MapPage() {
         sharedLocation={sharedLocation}
         selectedPinId={selectedPin?.storeId ?? null}
         route={route}
+        flyTo={flyTo}
         onPinSelect={(pin) => setSelectedPin(pin)}
         onMapClick={() => setSelectedPin(null)}
       />
 
       {/* Top-left overlay */}
-      <div className="absolute top-3 left-3 z-[500] flex gap-2 items-center">
-        <div className="bg-white rounded-lg shadow px-3 py-1.5 text-sm font-medium text-gray-700">
-          🍜 {pins.length > 0 ? t('map.pinCount', { count: pins.length }) : t('map.title')}
+      <div className="absolute top-3 left-3 z-[500] flex flex-col gap-2">
+        <div className="flex gap-2 items-center">
+          <div className="bg-white rounded-lg shadow px-3 py-1.5 text-sm font-medium text-gray-700">
+            🍜 {pins.length > 0 ? t('map.pinCount', { count: pins.length }) : t('map.title')}
+          </div>
+          <ShareLocationBtn />
         </div>
-        <ShareLocationBtn />
+        <MapSearchOverlay
+          pins={pins}
+          onSelectPin={(pin) => {
+            setSelectedPin(pin);
+            setFlyTo({ lat: Number(pin.latitude), lng: Number(pin.longitude) });
+          }}
+        />
       </div>
 
       {/* GPS controller — floating top-right */}

@@ -62,3 +62,45 @@ export async function removeMenuItem(id: string) {
   const res = await apiClient.delete(`/store-owner/store/menu-items/${id}`);
   return res.data;
 }
+
+// --- Store info (phone, address, hours, social) ---
+
+export interface UpdateStoreInfoDto {
+  phone?: string;
+  address?: string;
+  openingHours?: string;
+  socialLinks?: { facebook?: string; instagram?: string; tiktok?: string };
+}
+
+export async function updateStoreInfo(dto: UpdateStoreInfoDto) {
+  const res = await apiClient.patch('/store-owner/store/info', dto);
+  return res.data;
+}
+
+// --- Images (MinIO upload) ---
+
+export interface StoreImageItem {
+  id: string;
+  url: string;
+  s3Key: string;
+  orderIndex: number;
+  isInDraft: boolean;
+}
+
+export async function generateImageUploadUrl(contentType: string) {
+  const res = await apiClient.post<{ data: { presignedUrl: string; s3Key: string; imageId: string } }>(
+    '/store-owner/store/images',
+    { contentType },
+  );
+  return res.data.data ?? res.data;
+}
+
+export async function confirmImageUpload(imageId: string) {
+  const res = await apiClient.patch(`/store-owner/store/images/${imageId}/confirm`);
+  return res.data;
+}
+
+export async function deleteStoreImage(imageId: string) {
+  const res = await apiClient.delete(`/store-owner/store/images/${imageId}`);
+  return res.data;
+}

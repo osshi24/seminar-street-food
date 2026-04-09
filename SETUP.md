@@ -55,10 +55,11 @@ docker compose ps
 
 Kết quả mong đợi:
 
-| Container          | Port  | Mô tả                        |
-| ------------------ | ----- | ----------------------------- |
-| `seminar_postgres` | 5432  | PostgreSQL 15 + PostGIS 3.4   |
-| `seminar_redis`    | 6379  | Redis 7                       |
+| Container          | Port       | Mô tả                       |
+| ------------------ | ---------- | --------------------------- |
+| `seminar_postgres` | 5432       | PostgreSQL 15 + PostGIS 3.4 |
+| `seminar_redis`    | 6379       | Redis 7                     |
+| `seminar_minio`    | 9000, 9001 | MinIO (S3 storage) + Console|
 
 ## Bước 4: Cấu hình biến môi trường
 
@@ -177,19 +178,11 @@ docker compose down -v
 
 ### MinIO (S3 storage cho upload ảnh)
 
-Nếu cần tính năng upload ảnh, thêm MinIO vào `docker-compose.yml` hoặc cài đặt riêng:
+MinIO đã có sẵn trong `docker-compose.yml`. Khi chạy `docker compose up -d`:
 
-```bash
-docker run -d \
-  --name seminar_minio \
-  -p 9000:9000 \
-  -p 9001:9001 \
-  -e MINIO_ROOT_USER=minioadmin \
-  -e MINIO_ROOT_PASSWORD=minioadmin \
-  minio/minio server /data --console-address ":9001"
-```
-
-Sau đó truy cập MinIO Console tại http://localhost:9001 để tạo bucket `seminar-media`.
+- **API**: <http://localhost:9000>
+- **Console**: <http://localhost:9001> (user: `minioadmin` / pass: `minioadmin`)
+- Bucket `seminar-media` được tự động tạo bởi container `minio-init`.
 
 ### Google OAuth
 
