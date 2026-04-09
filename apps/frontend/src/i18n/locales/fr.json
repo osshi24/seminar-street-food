@@ -1,0 +1,39 @@
+{
+  "nav": {
+    "stores": "Stands",
+    "map": "Carte"
+  },
+  "map": {
+    "loading": "Chargement de la carte...",
+    "title": "Carte Phố Ẩm Thực",
+    "pinCount": "{{count}} stands",
+    "directions": "Itinéraire",
+    "listenCommentary": "Écouter",
+    "viewDetails": "Voir les détails",
+    "close": "Fermer"
+  },
+  "stores": {
+    "title": "Phố Ẩm Thực",
+    "subtitle": "Découvrez les stands de street food",
+    "loading": "Chargement...",
+    "count": "{{count}} stands",
+    "filterLabel": "Filtrer par préférence :",
+    "clearFilter": "Effacer les filtres",
+    "viewGrid": "Vue grille",
+    "viewList": "Vue liste",
+    "emptyNoFilter": "Aucun stand trouvé",
+    "emptyWithFilter": "Aucun stand correspondant. Essayez de réduire les filtres ?"
+  },
+  "storeDetail": {
+    "commentaryTitle": "Écouter le commentaire de ce stand",
+    "noCommentary": "Aucun commentaire disponible",
+    "listen": "Écouter",
+    "pause": "Pause",
+    "resume": "Reprendre",
+    "stop": "Arrêter",
+    "menu": "Menu",
+    "reviews": "Avis",
+    "viewOnMap": "Voir sur la carte",
+    "inactive": "Ce stand est actuellement indisponible"
+  }
+}
