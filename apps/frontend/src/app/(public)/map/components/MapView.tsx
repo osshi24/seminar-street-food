@@ -137,6 +137,9 @@ export default function MapView({
       mapInstanceRef.current = null;
       markersRef.current.clear();
       pinsRef.current.clear();
+      boundaryLayerRef.current = null;
+      routeLayerRef.current = null;
+      userMarkerRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
