@@ -3,7 +3,7 @@ import {
   Post,
   Get,
   Param,
-  Req,
+  Request,
   Res,
   UseGuards,
   HttpCode,
@@ -12,10 +12,7 @@ import {
 import { Response } from 'express';
 import { QrService } from './qr.service';
 import { StoreOwnerJwtGuard } from '../auth/guards/store-owner-jwt.guard';
-
-interface AuthRequest extends Request {
-  user: { sub: string };
-}
+import { StoreOwnerAccount } from '../entities/store-owner-account.entity';
 
 @Controller('store-owner/stores/:storeId/qr')
 @UseGuards(StoreOwnerJwtGuard)
@@ -26,19 +23,19 @@ export class QrController {
   @HttpCode(HttpStatus.CREATED)
   async createQr(
     @Param('storeId') storeId: string,
-    @Req() req: AuthRequest,
+    @Request() req: { user: StoreOwnerAccount },
   ) {
-    const ownerId = req.user.sub;
+    const ownerId = req.user.id;
     return this.qrService.createQr(storeId, ownerId);
   }
 
   @Get('png')
   async downloadPng(
     @Param('storeId') storeId: string,
-    @Req() req: AuthRequest,
+    @Request() req: { user: StoreOwnerAccount },
     @Res() res: Response,
   ) {
-    const ownerId = req.user.sub;
+    const ownerId = req.user.id;
     const buffer = await this.qrService.getActivePng(storeId, ownerId);
     res.set({
       'Content-Type': 'image/png',
@@ -51,10 +48,10 @@ export class QrController {
   @Get('pdf')
   async downloadPdf(
     @Param('storeId') storeId: string,
-    @Req() req: AuthRequest,
+    @Request() req: { user: StoreOwnerAccount },
     @Res() res: Response,
   ) {
-    const ownerId = req.user.sub;
+    const ownerId = req.user.id;
     const buffer = await this.qrService.getActivePdf(storeId, ownerId);
     res.set({
       'Content-Type': 'application/pdf',
