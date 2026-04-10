@@ -12,6 +12,7 @@ import { StoreContentDraft } from './store-content-draft.entity';
 import { MenuItem } from './menu-item.entity';
 import { StoreImage } from './store-image.entity';
 import { Commentary } from '../../commentary/entities/commentary.entity';
+import { StoreOwnerAccount } from '../../entities/store-owner-account.entity';
 
 export enum StoreStatus {
   ACTIVE = 'active',
@@ -25,6 +26,10 @@ export class Store {
 
   @Column({ name: 'owner_id' })
   ownerId: string;
+
+  @ManyToOne(() => StoreOwnerAccount, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'owner_id' })
+  owner: StoreOwnerAccount;
 
   @Column({ length: 255 })
   name: string;

@@ -16,10 +16,13 @@ import { AdminAccount } from '../entities/admin-account.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationRecipientType } from '../entities/notification.entity';
 import { StorageService } from '../storage/storage.service';
+import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { UpdateStoreInfoDto } from './dto/update-store-info.dto';
 import { CreateMenuItemDto, UpdateMenuItemDto } from './dto/menu-item.dto';
 import { v4 as uuidv4 } from 'uuid';
+
+const MAX_STORES_PER_OWNER = 3;
 
 @Injectable()
 export class StoresService {
@@ -41,11 +44,84 @@ export class StoresService {
     private readonly dataSource: DataSource,
   ) {}
 
-  async getMyStore(ownerId: string) {
-    const store = await this.storeRepo.findOne({
+  // ─── Ownership helpers ────────────────────────────────────────
+
+  /** List all stores for an owner with summary stats */
+  async getMyStores(ownerId: string) {
+    const stores = await this.storeRepo.find({
       where: { ownerId },
+      order: { createdAt: 'ASC' },
     });
+
+    return Promise.all(stores.map(async (store) => {
+      const [menuItemCount, imageCount] = await Promise.all([
+        this.menuItemRepo.count({ where: { storeId: store.id } }),
+        this.storeImageRepo.count({ where: { storeId: store.id } }),
+      ]);
+      return {
+        ...store,
+        menuItemCount,
+        imageCount,
+        hasCommentary: !!store.activeCommentaryId,
+      };
+    }));
+  }
+
+  /** Fetch one store and verify ownership. Throws 404/403. */
+  private async resolveOwnedStore(ownerId: string, storeId: string): Promise<Store> {
+    const store = await this.storeRepo.findOne({ where: { id: storeId } });
     if (!store) throw new NotFoundException('Store not found');
+    if (store.ownerId !== ownerId) throw new ForbiddenException('Access denied');
+    return store;
+  }
+
+  // ─── Create store ─────────────────────────────────────────────
+
+  async createStore(ownerId: string, dto: CreateStoreDto): Promise<Store> {
+    const count = await this.storeRepo.count({ where: { ownerId } });
+    if (count >= MAX_STORES_PER_OWNER) {
+      throw new ConflictException({ code: 'STORE_LIMIT_EXCEEDED', message: `Maximum ${MAX_STORES_PER_OWNER} stores per owner` });
+    }
+
+    const store = this.storeRepo.create({
+      ownerId,
+      name: dto.name,
+      description: dto.description ?? null,
+      status: StoreStatus.INACTIVE,
+    });
+    return this.storeRepo.save(store);
+  }
+
+  /** Delete a store (only if inactive and owner has > 1 store) */
+  async deleteStore(ownerId: string, storeId: string): Promise<void> {
+    const store = await this.resolveOwnedStore(ownerId, storeId);
+
+    const count = await this.storeRepo.count({ where: { ownerId } });
+    if (count <= 1) {
+      throw new ConflictException({ code: 'LAST_STORE', message: 'Không thể xóa gian hàng duy nhất' });
+    }
+    if (store.status === StoreStatus.ACTIVE) {
+      throw new ConflictException({ code: 'STORE_ACTIVE', message: 'Không thể xóa gian hàng đang hoạt động. Vui lòng liên hệ Admin.' });
+    }
+
+    // Delete related data
+    await this.storeImageRepo.delete({ storeId });
+    await this.menuItemRepo.delete({ storeId });
+    await this.draftRepo.delete({ storeId });
+    await this.storeRepo.delete({ id: storeId });
+  }
+
+  /** Quick rename (no draft needed) for inactive stores */
+  async renameStore(ownerId: string, storeId: string, name: string): Promise<Store> {
+    const store = await this.resolveOwnedStore(ownerId, storeId);
+    store.name = name;
+    return this.storeRepo.save(store);
+  }
+
+  // ─── Store detail ─────────────────────────────────────────────
+
+  async getMyStore(ownerId: string, storeId: string) {
+    const store = await this.resolveOwnedStore(ownerId, storeId);
 
     const menuItems = await this.menuItemRepo.find({
       where: { storeId: store.id, isInDraft: false },
@@ -66,9 +142,8 @@ export class StoresService {
     };
   }
 
-  async updateStoreInfo(ownerId: string, dto: UpdateStoreInfoDto): Promise<Store> {
-    const store = await this.storeRepo.findOne({ where: { ownerId } });
-    if (!store) throw new NotFoundException('Store not found');
+  async updateStoreInfo(ownerId: string, storeId: string, dto: UpdateStoreInfoDto): Promise<Store> {
+    const store = await this.resolveOwnedStore(ownerId, storeId);
 
     if (dto.phone !== undefined) store.phone = dto.phone || null;
     if (dto.address !== undefined) store.address = dto.address || null;
@@ -78,9 +153,10 @@ export class StoresService {
     return this.storeRepo.save(store);
   }
 
-  async saveDraft(ownerId: string, dto: UpdateStoreDto): Promise<StoreContentDraft> {
-    const store = await this.storeRepo.findOne({ where: { ownerId } });
-    if (!store) throw new NotFoundException('Store not found');
+  // ─── Drafts ───────────────────────────────────────────────────
+
+  async saveDraft(ownerId: string, storeId: string, dto: UpdateStoreDto): Promise<StoreContentDraft> {
+    const store = await this.resolveOwnedStore(ownerId, storeId);
 
     const existing = await this.draftRepo.findOne({
       where: { storeId: store.id, status: DraftStatus.PENDING },
@@ -98,9 +174,8 @@ export class StoresService {
     return this.draftRepo.save(draft);
   }
 
-  async submitDraft(ownerId: string): Promise<StoreContentDraft> {
-    const store = await this.storeRepo.findOne({ where: { ownerId } });
-    if (!store) throw new NotFoundException('Store not found');
+  async submitDraft(ownerId: string, storeId: string): Promise<StoreContentDraft> {
+    const store = await this.resolveOwnedStore(ownerId, storeId);
 
     const draft = await this.draftRepo.findOne({
       where: { storeId: store.id, status: DraftStatus.PENDING },
@@ -121,9 +196,8 @@ export class StoresService {
     return draft;
   }
 
-  async revokeDraft(ownerId: string): Promise<void> {
-    const store = await this.storeRepo.findOne({ where: { ownerId } });
-    if (!store) throw new NotFoundException('Store not found');
+  async revokeDraft(ownerId: string, storeId: string): Promise<void> {
+    const store = await this.resolveOwnedStore(ownerId, storeId);
 
     await this.dataSource.transaction(async (manager) => {
       const draft = await manager.findOne(StoreContentDraft, {
@@ -140,9 +214,8 @@ export class StoresService {
     });
   }
 
-  async getMyDraft(ownerId: string): Promise<StoreContentDraft> {
-    const store = await this.storeRepo.findOne({ where: { ownerId } });
-    if (!store) throw new NotFoundException('Store not found');
+  async getMyDraft(ownerId: string, storeId: string): Promise<StoreContentDraft> {
+    const store = await this.resolveOwnedStore(ownerId, storeId);
 
     const draft = await this.draftRepo.findOne({
       where: [
@@ -155,15 +228,15 @@ export class StoresService {
     return draft;
   }
 
-  async getMenuItems(ownerId: string): Promise<MenuItem[]> {
-    const store = await this.storeRepo.findOne({ where: { ownerId } });
-    if (!store) throw new NotFoundException('Store not found');
-    return this.menuItemRepo.find({ where: { storeId: store.id } });
+  // ─── Menu items ───────────────────────────────────────────────
+
+  async getMenuItems(ownerId: string, storeId: string): Promise<MenuItem[]> {
+    await this.resolveOwnedStore(ownerId, storeId);
+    return this.menuItemRepo.find({ where: { storeId } });
   }
 
-  async addMenuItem(ownerId: string, dto: CreateMenuItemDto): Promise<MenuItem> {
-    const store = await this.storeRepo.findOne({ where: { ownerId } });
-    if (!store) throw new NotFoundException('Store not found');
+  async addMenuItem(ownerId: string, storeId: string, dto: CreateMenuItemDto): Promise<MenuItem> {
+    const store = await this.resolveOwnedStore(ownerId, storeId);
 
     const pending = await this.draftRepo.findOne({
       where: { storeId: store.id, status: DraftStatus.PENDING },
@@ -182,9 +255,8 @@ export class StoresService {
     return this.menuItemRepo.save(item);
   }
 
-  async updateMenuItem(ownerId: string, itemId: string, dto: UpdateMenuItemDto): Promise<MenuItem> {
-    const store = await this.storeRepo.findOne({ where: { ownerId } });
-    if (!store) throw new NotFoundException('Store not found');
+  async updateMenuItem(ownerId: string, storeId: string, itemId: string, dto: UpdateMenuItemDto): Promise<MenuItem> {
+    const store = await this.resolveOwnedStore(ownerId, storeId);
 
     const item = await this.menuItemRepo.findOne({
       where: { id: itemId },
@@ -197,7 +269,6 @@ export class StoresService {
     Object.assign(item, { ...rest, isInDraft: true });
 
     if (tagIds !== undefined) {
-      // Sync tags via raw query to avoid loading PreferenceTag repo here
       await this.dataSource.query(
         `DELETE FROM menu_item_tags WHERE menu_item_id = $1`,
         [itemId],
@@ -214,9 +285,8 @@ export class StoresService {
     return this.menuItemRepo.save(item);
   }
 
-  async removeMenuItem(ownerId: string, itemId: string): Promise<void> {
-    const store = await this.storeRepo.findOne({ where: { ownerId } });
-    if (!store) throw new NotFoundException('Store not found');
+  async removeMenuItem(ownerId: string, storeId: string, itemId: string): Promise<void> {
+    const store = await this.resolveOwnedStore(ownerId, storeId);
 
     const item = await this.menuItemRepo.findOne({ where: { id: itemId } });
     if (!item) throw new NotFoundException('Menu item not found');
@@ -230,9 +300,10 @@ export class StoresService {
     }
   }
 
-  async generateImageUploadUrl(ownerId: string, contentType: string): Promise<{ presignedUrl: string; s3Key: string; imageId: string }> {
-    const store = await this.storeRepo.findOne({ where: { ownerId } });
-    if (!store) throw new NotFoundException('Store not found');
+  // ─── Images ───────────────────────────────────────────────────
+
+  async generateImageUploadUrl(ownerId: string, storeId: string, contentType: string): Promise<{ presignedUrl: string; s3Key: string; imageId: string }> {
+    const store = await this.resolveOwnedStore(ownerId, storeId);
 
     const activeImages = await this.storeImageRepo.count({
       where: { storeId: store.id, isInDraft: false },
@@ -257,9 +328,8 @@ export class StoresService {
     return { presignedUrl, s3Key, imageId: saved.id };
   }
 
-  async confirmImageUpload(ownerId: string, imageId: string): Promise<StoreImage> {
-    const store = await this.storeRepo.findOne({ where: { ownerId } });
-    if (!store) throw new NotFoundException('Store not found');
+  async confirmImageUpload(ownerId: string, storeId: string, imageId: string): Promise<StoreImage> {
+    const store = await this.resolveOwnedStore(ownerId, storeId);
 
     const image = await this.storeImageRepo.findOne({ where: { id: imageId } });
     if (!image || image.storeId !== store.id) throw new NotFoundException('Image not found');
@@ -268,9 +338,8 @@ export class StoresService {
     return this.storeImageRepo.save(image);
   }
 
-  async deleteImage(ownerId: string, imageId: string): Promise<void> {
-    const store = await this.storeRepo.findOne({ where: { ownerId } });
-    if (!store) throw new NotFoundException('Store not found');
+  async deleteImage(ownerId: string, storeId: string, imageId: string): Promise<void> {
+    const store = await this.resolveOwnedStore(ownerId, storeId);
 
     const image = await this.storeImageRepo.findOne({ where: { id: imageId } });
     if (!image) throw new NotFoundException('Image not found');

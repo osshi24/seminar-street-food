@@ -1,6 +1,7 @@
 import {
   Injectable,
   NotFoundException,
+  ForbiddenException,
   ConflictException,
   BadRequestException,
   Logger,
@@ -30,14 +31,14 @@ export class LocationService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
-  private async resolveStoreId(ownerId: string): Promise<string> {
-    const store = await this.storeRepo.findOne({ where: { ownerId } });
-    if (!store) throw new NotFoundException('Store not found for this account');
-    return store.id;
+  private async verifyStoreOwnership(ownerId: string, storeId: string): Promise<void> {
+    const store = await this.storeRepo.findOne({ where: { id: storeId } });
+    if (!store) throw new NotFoundException('Store not found');
+    if (store.ownerId !== ownerId) throw new ForbiddenException('Access denied');
   }
 
-  async getMyLocation(ownerId: string) {
-    const storeId = await this.resolveStoreId(ownerId);
+  async getMyLocation(ownerId: string, storeId: string) {
+    await this.verifyStoreOwnership(ownerId, storeId);
     const [approved, pending] = await Promise.all([
       this.pinRepo.findOne({
         where: { storeId, status: LocationPinStatus.APPROVED },
@@ -50,9 +51,9 @@ export class LocationService {
     return { approved, pending };
   }
 
-  async submitLocation(ownerId: string, dto: SubmitLocationDto): Promise<LocationPin> {
-    const storeId = await this.resolveStoreId(ownerId);
-    // Check for existing pending
+  async submitLocation(ownerId: string, storeId: string, dto: SubmitLocationDto): Promise<LocationPin> {
+    await this.verifyStoreOwnership(ownerId, storeId);
+
     const existingPending = await this.pinRepo.findOne({
       where: { storeId, status: LocationPinStatus.PENDING },
     });
@@ -60,14 +61,12 @@ export class LocationService {
       throw new ConflictException({ code: 'PENDING_EXISTS', message: 'A pending location already exists' });
     }
 
-    // Boundary check — may throw NO_ACTIVE_BOUNDARY
     let withinBoundary: boolean;
     try {
       withinBoundary = await this.boundaryCheckService.isWithinBoundary(dto.lat, dto.lng);
     } catch (err: unknown) {
       const e = err as Error & { code?: string };
       if (e.code === 'NO_ACTIVE_BOUNDARY') {
-        // No boundary configured — skip boundary check (allow submission)
         withinBoundary = true;
       } else {
         throw err;
@@ -89,7 +88,6 @@ export class LocationService {
     });
     const saved = await this.pinRepo.save(pin);
 
-    // Notify all admins
     try {
       const admins = await this.adminRepo.find();
       for (const admin of admins) {
@@ -108,8 +106,8 @@ export class LocationService {
     return saved;
   }
 
-  async revokePending(ownerId: string): Promise<void> {
-    const storeId = await this.resolveStoreId(ownerId);
+  async revokePending(ownerId: string, storeId: string): Promise<void> {
+    await this.verifyStoreOwnership(ownerId, storeId);
     const pending = await this.pinRepo.findOne({
       where: { storeId, status: LocationPinStatus.PENDING },
     });

@@ -1,21 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import ReviewList from '../../../../components/reviews/ReviewList';
-import { getMyStore } from '../../../../lib/api/stores';
+import { useActiveStore } from '../../../../contexts/ActiveStoreContext';
 import { getAccessToken } from '../../../../lib/auth/session';
 
 export default function StoreOwnerReviewsPage() {
-  const [storeId, setStoreId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    getMyStore()
-      .then((res) => setStoreId(res.data?.id ?? null))
-      .catch(() => setStoreId(null))
-      .finally(() => setLoading(false));
-  }, []);
-
+  const { activeStoreId, loading } = useActiveStore();
+  const storeId = activeStoreId;
   const token = getAccessToken();
 
   if (loading) {

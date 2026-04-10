@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import CoordinateForm from './components/CoordinateForm';
 import { getMyLocation, submitLocation, revokePending, LocationPin } from '../../../../lib/api/location';
+import { useActiveStore } from '../../../../contexts/ActiveStoreContext';
 import { getBoundary } from '../../../../lib/api/admin-location';
 
 const LocationMapPicker = dynamic(
@@ -19,6 +20,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function LocationPage() {
+  const { activeStoreId } = useActiveStore();
   const [approved, setApproved] = useState<LocationPin | null>(null);
   const [pending, setPending] = useState<LocationPin | null>(null);
   const [lat, setLat] = useState('');
@@ -34,10 +36,11 @@ export default function LocationPage() {
   };
 
   const loadData = useCallback(async () => {
+    if (!activeStoreId) return;
     setLoading(true);
     try {
       const [locationData, boundaryData] = await Promise.all([
-        getMyLocation(),
+        getMyLocation(activeStoreId),
         getBoundary().catch(() => null),
       ]);
       setApproved(locationData.approved);
@@ -54,7 +57,7 @@ export default function LocationPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeStoreId]);
 
   useEffect(() => {
     void loadData();
@@ -75,7 +78,8 @@ export default function LocationPage() {
 
     setSubmitting(true);
     try {
-      const pin = await submitLocation(latNum, lngNum);
+      if (!activeStoreId) return;
+      const pin = await submitLocation(activeStoreId, latNum, lngNum);
       setPending(pin);
       showToast('success', 'Đã gửi vị trí để duyệt');
     } catch (err: unknown) {
@@ -96,7 +100,8 @@ export default function LocationPage() {
   const handleRevoke = async () => {
     if (!confirm('Bạn có chắc muốn thu hồi vị trí đang chờ duyệt?')) return;
     try {
-      await revokePending();
+      if (!activeStoreId) return;
+      await revokePending(activeStoreId);
       setPending(null);
       showToast('success', 'Đã thu hồi vị trí');
     } catch {
