@@ -7,6 +7,8 @@ import { listAdminStores, type AdminStoreListItem } from '../../../../lib/api/ad
 import {
   createAnnouncement,
   listAnnouncements,
+  sendAnnouncement,
+  updateAnnouncementDraft,
   type Announcement,
   type RecipientMode,
 } from '../../../../lib/api/admin-announcements';
@@ -18,6 +20,7 @@ const MODE_LABELS: Record<RecipientMode, string> = {
 };
 
 export default function AdminAnnouncementsPage() {
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [mode, setMode] = useState<RecipientMode>('single_store');
@@ -79,19 +82,71 @@ export default function AdminAnnouncementsPage() {
         action,
       };
       if (mode !== 'all_stores') payload.storeIds = storeIds;
-      const res = await createAnnouncement(payload);
-      const a = res.data;
-      if (action === 'save_draft') {
-        setSuccess('Đã lưu nháp.');
+      let a: Announcement;
+      if (editingId) {
+        // Update draft first
+        const updated = await updateAnnouncementDraft(editingId, {
+          title: payload.title,
+          body: payload.body,
+          recipientMode: payload.recipientMode,
+          storeIds: payload.storeIds,
+        });
+        a = updated.data;
+        if (action === 'send') {
+          const sent = await sendAnnouncement(editingId);
+          a = sent.data;
+        }
       } else {
+        const res = await createAnnouncement(payload);
+        a = res.data;
+      }
+
+      if (action === 'save_draft') setSuccess(editingId ? 'Đã cập nhật nháp.' : 'Đã lưu nháp.');
+      else {
         setSuccess(
           `Đã gửi. Người nhận: ${a.recipientCount}.` +
             (a.failedEmailDetails?.length ? ` Email lỗi: ${a.failedEmailDetails.length}.` : ''),
         );
       }
+
+      // reset form after success
+      setEditingId(null);
+      setTitle('');
+      setBody('');
+      setMode('single_store');
       await loadHistory();
     } catch (e: unknown) {
       setError((e as any)?.response?.data?.message ?? 'Thao tác thất bại.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const startEdit = (h: Announcement) => {
+    setEditingId(h.id);
+    setTitle(h.title ?? '');
+    setBody(h.body ?? '');
+    setMode(h.recipientMode);
+    setStoreIds(h.storeIds ?? []);
+    setError(null);
+    setSuccess(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const quickSendDraft = async (h: Announcement) => {
+    setSubmitting(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const sent = await sendAnnouncement(h.id);
+      const a = sent.data;
+      setSuccess(
+        `Đã gửi. Người nhận: ${a.recipientCount}.` +
+          (a.failedEmailDetails?.length ? ` Email lỗi: ${a.failedEmailDetails.length}.` : ''),
+      );
+      await loadHistory();
+    } catch (e: unknown) {
+      setError((e as any)?.response?.data?.message ?? 'Gửi nháp thất bại.');
     } finally {
       setSubmitting(false);
     }
@@ -118,6 +173,24 @@ export default function AdminAnnouncementsPage() {
         {/* Form */}
         <div className="rounded-xl border bg-white p-5">
           <div className="space-y-4">
+            {editingId && (
+              <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                Đang chỉnh sửa nháp. ID: <span className="font-mono">{editingId.slice(0, 8)}</span>
+                <button
+                  onClick={() => {
+                    setEditingId(null);
+                    setTitle('');
+                    setBody('');
+                    setMode('single_store');
+                    setStoreIds([]);
+                  }}
+                  className="ml-3 text-blue-700 underline"
+                  type="button"
+                >
+                  Hủy chỉnh sửa
+                </button>
+              </div>
+            )}
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Tiêu đề</label>
               <input
@@ -228,6 +301,26 @@ export default function AdminAnnouncementsPage() {
                       </>
                     ) : null}
                   </div>
+                  {h.status === 'draft' && (
+                    <div className="mt-2 flex gap-3">
+                      <button
+                        onClick={() => startEdit(h)}
+                        className="text-xs font-medium text-blue-600 hover:underline disabled:opacity-50"
+                        disabled={submitting}
+                        type="button"
+                      >
+                        Sửa nháp
+                      </button>
+                      <button
+                        onClick={() => quickSendDraft(h)}
+                        className="text-xs font-medium text-green-700 hover:underline disabled:opacity-50"
+                        disabled={submitting}
+                        type="button"
+                      >
+                        Gửi nháp
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
