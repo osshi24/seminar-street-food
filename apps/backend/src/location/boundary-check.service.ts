@@ -30,14 +30,24 @@ export class BoundaryCheckService {
 
     const result = await this.dataSource.query<{ is_within: boolean }[]>(
       `
-      SELECT ST_Contains(
-        (SELECT polygon_geom FROM food_street_boundaries WHERE is_active = true AND polygon_geom IS NOT NULL LIMIT 1),
-        ST_SetSRID(ST_MakePoint($1, $2), 4326)
+      SELECT EXISTS (
+        SELECT 1
+        FROM food_street_boundaries b
+        WHERE b.is_active = true
+          AND b.polygon_geom IS NOT NULL
+          AND ST_Contains(b.polygon_geom, ST_SetSRID(ST_MakePoint($1, $2), 4326))
       ) AS "is_within"
       `,
       [lng, lat],
     );
 
     return result[0]?.is_within ?? false;
+  }
+
+  async listActiveBoundaries(): Promise<FoodStreetBoundary[]> {
+    return this.boundaryRepo.find({
+      where: { isActive: true },
+      order: { updatedAt: 'DESC' },
+    });
   }
 }

@@ -3,8 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import CoordinateForm from './components/CoordinateForm';
-import { getMyLocation, submitLocation, revokePending, LocationPin } from '../../../../lib/api/location';
-import { getBoundary } from '../../../../lib/api/admin-location';
+import { getMyLocation, submitLocation, revokePending, LocationPin, listActiveBoundaries } from '../../../../lib/api/location';
 
 const LocationMapPicker = dynamic(
   () => import('./components/LocationMapPicker'),
@@ -36,13 +35,13 @@ export default function LocationPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [locationData, boundaryData] = await Promise.all([
+      const [locationData, boundaries] = await Promise.all([
         getMyLocation(),
-        getBoundary().catch(() => null),
+        listActiveBoundaries().catch(() => []),
       ]);
       setApproved(locationData.approved);
       setPending(locationData.pending);
-      if (boundaryData) setBoundary(boundaryData.polygonCoordinates);
+      if (boundaries.length > 0) setBoundary(boundaries[0].polygonCoordinates);
 
       // Set form coordinates to approved pin if exists
       if (locationData.approved) {

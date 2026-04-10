@@ -41,4 +41,9 @@ export class LocationController {
   async revokePending(@Request() req: StoreOwnerRequest) {
     await this.locationService.revokePending(req.user.id);
   }
+
+  @Get('boundaries')
+  async listActiveBoundaries() {
+    return this.locationService.listActiveBoundaries();
+  }
 }

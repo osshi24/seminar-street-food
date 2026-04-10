@@ -55,12 +55,29 @@ export async function deletePin(id: string) {
   await apiClient.delete(`/admin/location-pins/${id}`);
 }
 
-export async function getBoundary(): Promise<Boundary | null> {
-  const res = await apiClient.get<{ data: Boundary | null }>('/admin/boundaries');
+export async function listBoundaries(): Promise<Boundary[]> {
+  const res = await apiClient.get<{ data: Boundary[] }>('/admin/boundaries');
+  return res.data.data ?? [];
+}
+
+export async function getBoundaryById(id: string): Promise<Boundary> {
+  const res = await apiClient.get<{ data: Boundary }>(`/admin/boundaries/${id}`);
   return res.data.data;
 }
 
-export async function updateBoundary(body: { name?: string; coordinates: { lat: number; lng: number }[] }) {
-  const res = await apiClient.put<{ data: Boundary }>('/admin/boundaries', body);
+export async function createBoundary(body: { name?: string; coordinates: { lat: number; lng: number }[]; isActive?: boolean }) {
+  const res = await apiClient.post<{ data: Boundary }>('/admin/boundaries', body);
   return res.data.data;
+}
+
+export async function updateBoundaryById(
+  id: string,
+  body: { name?: string; coordinates?: { lat: number; lng: number }[]; isActive?: boolean },
+) {
+  const res = await apiClient.put<{ data: Boundary }>(`/admin/boundaries/${id}`, body);
+  return res.data.data;
+}
+
+export async function deleteBoundaryById(id: string): Promise<void> {
+  await apiClient.delete(`/admin/boundaries/${id}`);
 }

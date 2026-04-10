@@ -25,3 +25,14 @@ export async function submitLocation(lat: number, lng: number): Promise<Location
 export async function revokePending(): Promise<void> {
   await apiClient.delete('/store-owner/location/pending');
 }
+
+export interface ActiveBoundary {
+  id: string;
+  name: string;
+  polygonCoordinates: { lat: number; lng: number }[];
+}
+
+export async function listActiveBoundaries(): Promise<ActiveBoundary[]> {
+  const res = await apiClient.get<{ data: ActiveBoundary[] }>('/store-owner/location/boundaries');
+  return res.data.data ?? [];
+}
