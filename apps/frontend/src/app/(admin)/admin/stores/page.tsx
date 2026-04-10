@@ -1,10 +1,11 @@
 import { Suspense } from 'react';
-import RecommendationsClient from './RecommendationsClient';
+import StoresClient from './StoresClient';
 
-export default function RecommendationsPage() {
+export default function AdminStoresPage() {
   return (
     <Suspense fallback={<div className="py-12 text-center text-gray-500">Đang tải...</div>}>
-      <RecommendationsClient />
+      <StoresClient />
     </Suspense>
   );
 }
+
