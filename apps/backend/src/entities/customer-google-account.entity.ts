@@ -24,6 +24,9 @@ export class CustomerGoogleAccount {
   @Column({ name: 'avatar_url', nullable: true, type: 'text' })
   avatarUrl: string | null;
 
+  @Column({ name: 'avatar_key', nullable: true, type: 'text' })
+  avatarKey: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

@@ -53,6 +53,17 @@ export class StorageService {
     );
   }
 
+  async putObject(key: string, body: Buffer, contentType: string): Promise<void> {
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: body,
+        ContentType: contentType,
+      }),
+    );
+  }
+
   getPublicUrl(key: string): string {
     return `${this.endpoint}/${this.bucket}/${key}`;
   }
