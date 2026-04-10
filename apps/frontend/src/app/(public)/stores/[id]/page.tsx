@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers';
 import { getStoreDetail } from '../../../../lib/api/commentary';
 import StoreDetailView from '../../../../components/stores/StoreDetailView';
 import ReviewList from '../../../../components/reviews/ReviewList';
@@ -8,6 +9,9 @@ interface StoreDetailPageProps {
 }
 
 export default async function StoreDetailPage({ params }: StoreDetailPageProps) {
+  const cookieStore = cookies();
+  const lang = cookieStore.get('phat_lang')?.value || 'vi';
+
   let store: {
     data: {
       id: string;
@@ -22,7 +26,7 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
   } | null = null;
 
   try {
-    store = await getStoreDetail(params.id);
+    store = await getStoreDetail(params.id, lang);
   } catch {
     return (
       <main className="min-h-screen bg-gray-50 flex items-center justify-center">

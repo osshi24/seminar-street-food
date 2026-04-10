@@ -18,13 +18,17 @@ export class PublicStoresController {
     @Query('q') q?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('lang') lang?: string,
   ) {
-    return this.publicStoresService.listStores(q, page ? parseInt(page) : 1, limit ? parseInt(limit) : 20);
+    return this.publicStoresService.listStores(q, page ? parseInt(page) : 1, limit ? parseInt(limit) : 20, lang || 'vi');
   }
 
   @Get(':id')
-  async getStoreDetail(@Param('id', ParseUUIDPipe) id: string) {
-    return this.publicStoresService.getStoreDetail(id);
+  async getStoreDetail(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('lang') lang?: string,
+  ) {
+    return this.publicStoresService.getStoreDetail(id, lang || 'vi');
   }
 
   @Get(':id/commentary')

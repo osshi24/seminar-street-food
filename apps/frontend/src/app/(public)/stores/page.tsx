@@ -10,6 +10,7 @@ import TagSelector from '../../../components/recommendation/TagSelector';
 import { listStores } from '../../../lib/api/commentary';
 import { fetchTags } from '../../../lib/api/tags';
 import { fetchRecommendations } from '../../../lib/api/recommendations';
+import { useLang } from '../../../contexts/LanguageContext';
 import type { TagGroup } from '../../../lib/api/tags';
 
 interface StoreItem {
@@ -24,6 +25,7 @@ interface StoreItem {
 
 function StoresContent() {
   const { t } = useTranslation();
+  const { lang } = useLang();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -70,7 +72,7 @@ function StoresContent() {
         setStores(storeList);
         setTotal(storeList.length);
       } else {
-        const res = await listStores({ q, page, limit: 20 });
+        const res = await listStores({ q, page, limit: 20, lang });
         const data = res.data as { data: StoreItem[]; total: number };
         setStores(data.data ?? []);
         setTotal(data.total ?? 0);
@@ -81,7 +83,7 @@ function StoresContent() {
     } finally {
       setLoading(false);
     }
-  }, [selectedTagIds, q, page]);
+  }, [selectedTagIds, q, page, lang]);
 
   useEffect(() => {
     loadStores();

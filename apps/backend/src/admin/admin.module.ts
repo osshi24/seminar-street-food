@@ -19,6 +19,7 @@ import { Review } from '../entities/review.entity';
 import { CommentReport } from '../entities/comment-report.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { COMMENTARY_QUEUE } from '../commentary/commentary.constants';
+import { STORE_TRANSLATION_QUEUE } from '../stores/store-translation.processor';
 import { DuplicateDetectionService } from '../location/duplicate-detection.service';
 import { AdminTagsModule } from './tags/admin-tags.module';
 
@@ -37,6 +38,7 @@ import { AdminTagsModule } from './tags/admin-tags.module';
       CommentReport,
     ]),
     BullModule.registerQueue({ name: COMMENTARY_QUEUE }),
+    BullModule.registerQueue({ name: STORE_TRANSLATION_QUEUE }),
     NotificationsModule,
     AdminTagsModule,
   ],
