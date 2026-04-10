@@ -40,20 +40,20 @@ export class AdminAnnouncementsService {
   async create(dto: CreateAdminAnnouncementDto, adminId: string) {
     this.validateRecipient(dto.recipientMode, dto.storeIds);
 
-    const announcement = await this.announcementRepo.save(
+    let announcement = await this.announcementRepo.save(
       this.announcementRepo.create({
         adminId,
         title: dto.title,
         body: dto.body,
         recipientMode: dto.recipientMode,
         storeIds: dto.recipientMode === AdminAnnouncementRecipientMode.ALL_STORES ? null : dto.storeIds ?? null,
-        status: dto.action === 'send' ? AdminAnnouncementStatus.SENT : AdminAnnouncementStatus.DRAFT,
-        sentAt: dto.action === 'send' ? new Date() : null,
+        status: AdminAnnouncementStatus.DRAFT,
+        sentAt: null,
       }),
     );
 
     if (dto.action === 'send') {
-      await this.sendAnnouncement(announcement.id, adminId);
+      announcement = await this.sendAnnouncement(announcement.id, adminId);
     }
 
     return announcement;
