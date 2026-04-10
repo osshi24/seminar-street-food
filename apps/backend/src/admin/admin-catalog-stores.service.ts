@@ -119,6 +119,53 @@ export class AdminCatalogStoresService {
     };
   }
 
+  async findOne(storeId: string) {
+    const qb = this.storeRepo.createQueryBuilder('store');
+    qb.leftJoin(StoreOwnerAccount, 'owner', 'owner.id = store.owner_id');
+    qb.where('store.id = :storeId', { storeId });
+    qb.select([
+      'store.id AS id',
+      'store.name AS name',
+      'store.status AS status',
+      'store.description AS description',
+      'store.phone AS phone',
+      'store.address AS address',
+      'store.opening_hours AS "openingHours"',
+      'store.created_at AS "createdAt"',
+      'store.updated_at AS "updatedAt"',
+      'owner.id AS "ownerId"',
+      'owner.email AS "ownerEmail"',
+      'owner.full_name AS "ownerFullName"',
+      'owner.phone AS "ownerPhone"',
+      'owner.status AS "ownerStatus"',
+    ]);
+
+    const row = await qb.getRawOne();
+    if (!row) throw new NotFoundException({ code: 'STORE_NOT_FOUND', message: 'Store not found' });
+
+    const impact = await this.getDeleteImpact(storeId);
+
+    return {
+      id: row.id,
+      name: row.name,
+      status: row.status,
+      description: row.description,
+      phone: row.phone,
+      address: row.address,
+      openingHours: row.openingHours,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      owner: {
+        id: row.ownerId,
+        email: row.ownerEmail,
+        fullName: row.ownerFullName,
+        phone: row.ownerPhone,
+        status: row.ownerStatus,
+      },
+      deleteImpact: impact,
+    };
+  }
+
   async remove(storeId: string, confirmed: boolean) {
     const store = await this.storeRepo.findOne({ where: { id: storeId } });
     if (!store) throw new NotFoundException({ code: 'STORE_NOT_FOUND', message: 'Store not found' });
