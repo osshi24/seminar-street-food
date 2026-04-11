@@ -15,6 +15,7 @@ describe('AdminCatalogStoresService', () => {
   const reportRepo = { createQueryBuilder: jest.fn() };
   const draftRepo = { findOne: jest.fn() };
   const pinRepo = { count: jest.fn() };
+  const storeImageRepo = { createQueryBuilder: jest.fn() };
 
   function makeService() {
     return new AdminCatalogStoresService(
@@ -24,6 +25,7 @@ describe('AdminCatalogStoresService', () => {
       reportRepo as any,
       draftRepo as any,
       pinRepo as any,
+      storeImageRepo as any,
     );
   }
 

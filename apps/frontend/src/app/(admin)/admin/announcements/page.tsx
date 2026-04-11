@@ -153,178 +153,231 @@ export default function AdminAnnouncementsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-6">
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-gray-800">Gửi thông báo</h1>
-        <p className="mt-1 text-sm text-gray-500">Soạn và gửi thông báo tới chủ gian hàng.</p>
-      </div>
-
-      {(error || success) && (
-        <div
-          className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
-            error ? 'border-red-200 bg-red-50 text-red-700' : 'border-green-200 bg-green-50 text-green-800'
-          }`}
-        >
-          {error ?? success}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-slate-900">📨 Gửi thông báo</h1>
+          <p className="mt-2 text-lg text-slate-600">Soạn và gửi thông báo tới các chủ gian hàng một cách hiệu quả</p>
         </div>
-      )}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-        {/* Form */}
-        <div className="rounded-xl border bg-white p-5">
-          <div className="space-y-4">
-            {editingId && (
-              <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-                Đang chỉnh sửa nháp. ID: <span className="font-mono">{editingId.slice(0, 8)}</span>
+        {/* Alert */}
+        {(error || success) && (
+          <div
+            className={`mb-6 rounded-xl border-2 px-5 py-4 text-base font-medium animate-in fade-in slide-in-from-top-2 ${
+              error
+                ? 'border-red-200 bg-red-50 text-red-700'
+                : 'border-green-200 bg-green-50 text-green-700'
+            }`}
+          >
+            {error ? '❌ ' : '✓ '}
+            {error ?? success}
+          </div>
+        )}
+
+        <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
+          {/* Main Form */}
+          <div className="space-y-6">
+            {/* Card: Compose */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm hover:shadow-md transition-shadow">
+              {editingId && (
+                <div className="mb-6 rounded-xl border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 px-5 py-4 flex items-center justify-between">
+                  <div className="space-y-1">
+                    <p className="text-sm font-bold text-blue-900">✎ Đang chỉnh sửa nháp</p>
+                    <p className="text-xs text-blue-700">ID: <span className="font-mono bg-blue-100 px-2 py-1 rounded">{editingId.slice(0, 12)}</span></p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setEditingId(null);
+                      setTitle('');
+                      setBody('');
+                      setMode('single_store');
+                      setStoreIds([]);
+                    }}
+                    className="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
+                    type="button"
+                  >
+                    Hủy
+                  </button>
+                </div>
+              )}
+
+              {/* Title Field */}
+              <div className="mb-6">
+                <label className="mb-2.5 block text-sm font-bold text-slate-900">Tiêu đề</label>
+                <input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  maxLength={100}
+                  className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-base text-slate-900 placeholder-slate-400 transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none"
+                  placeholder="Ví dụ: Thông báo bảo trì hệ thống..."
+                />
+                <div className="mt-1.5 flex justify-between">
+                  <p className="text-xs text-slate-500">Tối đa 100 ký tự</p>
+                  <p className={`text-xs font-medium ${title.length > 90 ? 'text-amber-600' : 'text-slate-500'}`}>
+                    {title.length}/100
+                  </p>
+                </div>
+              </div>
+
+              {/* Content Field */}
+              <div className="mb-6">
+                <label className="mb-2.5 block text-sm font-bold text-slate-900">Nội dung</label>
+                <textarea
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  rows={8}
+                  className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-base text-slate-900 placeholder-slate-400 transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none resize-none"
+                  placeholder="Nhập nội dung thông báo chi tiết ở đây..."
+                />
+                <div className="mt-1.5 flex justify-between">
+                  <p className="text-xs text-slate-500">Không giới hạn ký tự</p>
+                  <p className="text-xs text-slate-500 font-medium">{body.length} ký tự</p>
+                </div>
+              </div>
+
+              {/* Recipient Section */}
+              <div className="mb-8 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 p-6 border border-slate-200">
+                <label className="mb-4 block text-sm font-bold text-slate-900">👥 Đối tượng nhận</label>
+                {storesLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="space-y-3 text-center">
+                      <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600"></div>
+                      <p className="text-sm text-slate-600">Đang tải danh sách gian hàng...</p>
+                    </div>
+                  </div>
+                ) : (
+                  <AnnouncementRecipientPicker
+                    mode={mode}
+                    stores={stores}
+                    storeIds={storeIds}
+                    onModeChange={(m) => {
+                      setMode(m);
+                      if (m === 'single_store' && storeIds.length > 1) setStoreIds(storeIds.slice(0, 1));
+                    }}
+                    onStoreIdsChange={setStoreIds}
+                  />
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-200">
                 <button
-                  onClick={() => {
-                    setEditingId(null);
-                    setTitle('');
-                    setBody('');
-                    setMode('single_store');
-                    setStoreIds([]);
-                  }}
-                  className="ml-3 text-blue-700 underline"
-                  type="button"
+                  onClick={() => handleSubmit('save_draft')}
+                  disabled={submitting || !canSubmit}
+                  className="px-5 py-3 rounded-xl border-2 border-slate-300 bg-white text-slate-700 font-semibold hover:bg-slate-50 hover:border-slate-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Hủy chỉnh sửa
+                  {submitting ? '⏳ Đang xử lý...' : '📝 Lưu nháp'}
                 </button>
+                <button
+                  onClick={() => handleSubmit('send')}
+                  disabled={submitting || !canSubmit}
+                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {submitting ? '⏳ Đang gửi...' : '✈️ Gửi ngay'}
+                </button>
+                <div className="ml-auto flex items-center gap-3">
+                  <div className="h-8 w-px bg-slate-300"></div>
+                  <div className="text-sm">
+                    <p className="text-xs text-slate-600">Chế độ</p>
+                    <p className="font-bold text-slate-900">{MODE_LABELS[mode]}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sidebar: History */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition-shadow h-fit lg:sticky lg:top-6">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                📋 Lịch sử
+              </h2>
+              <button
+                onClick={loadHistory}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50"
+                disabled={historyLoading}
+              >
+                🔄 Tải lại
+              </button>
+            </div>
+
+            {historyLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-16 rounded-lg bg-slate-100 animate-pulse" />
+                ))}
+              </div>
+            ) : history.length === 0 ? (
+              <div className="py-12 text-center">
+                <p className="text-3xl mb-2">📭</p>
+                <p className="text-sm text-slate-500">Chưa có thông báo nào</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {history.map((h) => (
+                  <div
+                    key={h.id}
+                    className={`rounded-xl p-4 border-2 transition-all hover:shadow-md ${
+                      h.status === 'sent'
+                        ? 'border-green-200 bg-green-50'
+                        : 'border-amber-200 bg-amber-50'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <h3 className="font-bold text-sm text-slate-900 line-clamp-2">{h.title}</h3>
+                      <span
+                        className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap ${
+                          h.status === 'sent'
+                            ? 'bg-green-200 text-green-900'
+                            : 'bg-amber-200 text-amber-900'
+                        }`}
+                      >
+                        {h.status === 'sent' ? '✓ Đã gửi' : '◐ Nháp'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-700 line-clamp-2 mb-3">{h.body}</p>
+                    <div className="space-y-1 mb-3 text-xs text-slate-600">
+                      <div className="flex justify-between">
+                        <span>📬 Người nhận:</span>
+                        <span className="font-bold">{h.recipientCount ?? 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>📅 Ngày:</span>
+                        <span className="font-mono text-xs">{new Date(h.createdAt).toLocaleDateString('vi-VN')}</span>
+                      </div>
+                      {h.failedEmailDetails?.length ? (
+                        <div className="flex justify-between text-red-600">
+                          <span>❌ Email lỗi:</span>
+                          <span className="font-bold">{h.failedEmailDetails.length}</span>
+                        </div>
+                      ) : null}
+                    </div>
+                    {h.status === 'draft' && (
+                      <div className="border-t border-amber-200 pt-3 flex gap-2">
+                        <button
+                          onClick={() => startEdit(h)}
+                          className="flex-1 px-2 py-2 rounded-lg bg-blue-100 text-blue-700 text-xs font-bold hover:bg-blue-200 transition-colors disabled:opacity-50"
+                          disabled={submitting}
+                          type="button"
+                        >
+                          ✎ Sửa
+                        </button>
+                        <button
+                          onClick={() => quickSendDraft(h)}
+                          className="flex-1 px-2 py-2 rounded-lg bg-green-100 text-green-700 text-xs font-bold hover:bg-green-200 transition-colors disabled:opacity-50"
+                          disabled={submitting}
+                          type="button"
+                        >
+                          ✈️ Gửi
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Tiêu đề</label>
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                placeholder="Ví dụ: Thông báo bảo trì hệ thống"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Nội dung</label>
-              <textarea
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                rows={6}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                placeholder="Nhập nội dung thông báo..."
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">Đối tượng nhận</label>
-              {storesLoading ? (
-                <p className="text-sm text-gray-500">Đang tải danh sách gian hàng...</p>
-              ) : (
-                <AnnouncementRecipientPicker
-                  mode={mode}
-                  stores={stores}
-                  storeIds={storeIds}
-                  onModeChange={(m) => {
-                    setMode(m);
-                    if (m === 'single_store' && storeIds.length > 1) setStoreIds(storeIds.slice(0, 1));
-                  }}
-                  onStoreIdsChange={setStoreIds}
-                />
-              )}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 pt-2">
-              <button
-                onClick={() => handleSubmit('save_draft')}
-                disabled={submitting || !canSubmit}
-                className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                {submitting ? 'Đang xử lý...' : 'Lưu nháp'}
-              </button>
-              <button
-                onClick={() => handleSubmit('send')}
-                disabled={submitting || !canSubmit}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-              >
-                {submitting ? 'Đang gửi...' : 'Gửi'}
-              </button>
-              <span className="text-xs text-gray-500">
-                Mode: <span className="font-medium">{MODE_LABELS[mode]}</span>
-              </span>
-            </div>
           </div>
-        </div>
-
-        {/* History */}
-        <div className="rounded-xl border bg-white p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-800">Lịch sử</h2>
-            <button
-              onClick={loadHistory}
-              className="text-xs font-medium text-blue-600 hover:underline disabled:opacity-50"
-              disabled={historyLoading}
-            >
-              Tải lại
-            </button>
-          </div>
-
-          {historyLoading ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-12 rounded bg-gray-100 animate-pulse" />
-              ))}
-            </div>
-          ) : history.length === 0 ? (
-            <p className="py-8 text-center text-sm text-gray-500">Chưa có thông báo nào.</p>
-          ) : (
-            <div className="space-y-3">
-              {history.map((h) => (
-                <div key={h.id} className="rounded-lg border px-3 py-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-gray-900">{h.title}</p>
-                      <p className="mt-1 line-clamp-2 text-xs text-gray-600">{h.body}</p>
-                    </div>
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
-                        h.status === 'sent' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'
-                      }`}
-                    >
-                      {h.status === 'sent' ? 'Đã gửi' : 'Nháp'}
-                    </span>
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-gray-500">
-                    <span>Recipients: {h.recipientCount ?? 0}</span>
-                    <span>•</span>
-                    <span>{new Date(h.createdAt).toLocaleString('vi-VN')}</span>
-                    {h.failedEmailDetails?.length ? (
-                      <>
-                        <span>•</span>
-                        <span className="text-red-600">Email lỗi: {h.failedEmailDetails.length}</span>
-                      </>
-                    ) : null}
-                  </div>
-                  {h.status === 'draft' && (
-                    <div className="mt-2 flex gap-3">
-                      <button
-                        onClick={() => startEdit(h)}
-                        className="text-xs font-medium text-blue-600 hover:underline disabled:opacity-50"
-                        disabled={submitting}
-                        type="button"
-                      >
-                        Sửa nháp
-                      </button>
-                      <button
-                        onClick={() => quickSendDraft(h)}
-                        className="text-xs font-medium text-green-700 hover:underline disabled:opacity-50"
-                        disabled={submitting}
-                        type="button"
-                      >
-                        Gửi nháp
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>

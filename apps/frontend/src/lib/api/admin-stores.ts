@@ -12,6 +12,7 @@ export interface AdminStoreListItem {
     fullName: string;
   };
   createdAt: string;
+  thumbnailUrl?: string | null;
 }
 
 export interface ListAdminStoresParams {
@@ -19,6 +20,10 @@ export interface ListAdminStoresParams {
   limit?: number;
   status?: AdminStoreStatus;
   search?: string;
+  sortBy?: 'name' | 'createdAt';
+  sortOrder?: 'asc' | 'desc';
+  createdFrom?: string;
+  createdTo?: string;
 }
 
 export async function listAdminStores(params?: ListAdminStoresParams): Promise<{
@@ -69,6 +74,7 @@ export interface AdminStoreDetail {
     phone: string;
     status: string;
   };
+  images?: Array<{ id: string; url: string; orderIndex: number }>;
   deleteImpact: DeleteImpact;
 }
 

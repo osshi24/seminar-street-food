@@ -7,6 +7,7 @@ import { Review } from '../entities/review.entity';
 import { CommentReport } from '../entities/comment-report.entity';
 import { StoreContentDraft, DraftStatus } from '../stores/entities/store-content-draft.entity';
 import { LocationPin } from '../location/entities/location-pin.entity';
+import { StoreImage } from '../stores/entities/store-image.entity';
 import { ListAdminStoresQueryDto } from './dto/list-admin-stores-query.dto';
 
 @Injectable()
@@ -20,11 +21,14 @@ export class AdminCatalogStoresService {
     @InjectRepository(StoreContentDraft)
     private readonly draftRepo: Repository<StoreContentDraft>,
     @InjectRepository(LocationPin) private readonly pinRepo: Repository<LocationPin>,
+    @InjectRepository(StoreImage) private readonly storeImageRepo: Repository<StoreImage>,
   ) {}
 
   async findAll(query: ListAdminStoresQueryDto) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
+    const sortBy = query.sortBy ?? 'createdAt';
+    const sortOrder = (query.sortOrder ?? 'desc').toUpperCase() as 'ASC' | 'DESC';
 
     const qb = this.storeRepo.createQueryBuilder('store');
     qb.leftJoin(StoreOwnerAccount, 'owner', 'owner.id = store.owner_id');
@@ -38,7 +42,26 @@ export class AdminCatalogStoresService {
       qb.andWhere('(store.name ILIKE :s OR owner.email ILIKE :s OR owner.full_name ILIKE :s)', { s });
     }
 
-    qb.orderBy('store.created_at', 'DESC')
+    if (query.createdFrom) {
+      qb.andWhere('store.created_at >= :createdFrom', { createdFrom: query.createdFrom });
+    }
+
+    if (query.createdTo) {
+      const to = new Date(query.createdTo);
+      to.setHours(23, 59, 59, 999);
+      qb.andWhere('store.created_at <= :createdTo', { createdTo: to.toISOString() });
+    }
+
+    // Scalar subquery to get first thumbnail image
+    const subquery = this.storeImageRepo
+      .createQueryBuilder('img')
+      .select('img.url')
+      .where('img.store_id = store.id')
+      .orderBy('img.order_index', 'ASC')
+      .limit(1);
+
+    const orderField = sortBy === 'name' ? 'store.name' : 'store.created_at';
+    qb.orderBy(orderField, sortOrder)
       .skip((page - 1) * limit)
       .take(limit);
 
@@ -50,7 +73,10 @@ export class AdminCatalogStoresService {
       'owner.id AS "ownerId"',
       'owner.email AS "ownerEmail"',
       'owner.full_name AS "ownerFullName"',
+      `(${subquery.getQuery()}) AS "thumbnailUrl"`,
     ]);
+
+    qb.setParameters(subquery.getParameters());
 
     const [itemsRaw, total] = await Promise.all([qb.getRawMany(), qb.getCount()]);
 
@@ -64,6 +90,7 @@ export class AdminCatalogStoresService {
         fullName: r.ownerFullName,
       },
       createdAt: r.createdAt,
+      thumbnailUrl: r.thumbnailUrl || null,
     }));
 
     return { items, total, page, limit };
@@ -143,6 +170,12 @@ export class AdminCatalogStoresService {
     const row = await qb.getRawOne();
     if (!row) throw new NotFoundException({ code: 'STORE_NOT_FOUND', message: 'Store not found' });
 
+    // Fetch images
+    const images = await this.storeImageRepo.find({
+      where: { storeId },
+      order: { orderIndex: 'ASC' },
+    });
+
     const impact = await this.getDeleteImpact(storeId);
 
     return {
@@ -162,6 +195,7 @@ export class AdminCatalogStoresService {
         phone: row.ownerPhone,
         status: row.ownerStatus,
       },
+      images: images.map((img) => ({ id: img.id, url: img.url, orderIndex: img.orderIndex })),
       deleteImpact: impact,
     };
   }
