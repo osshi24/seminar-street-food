@@ -70,6 +70,7 @@ export interface AdminStoreDetail {
     phone: string;
     status: string;
   };
+  images?: Array<{ id: string; url: string; orderIndex: number }>;
   deleteImpact: DeleteImpact;
 }
 

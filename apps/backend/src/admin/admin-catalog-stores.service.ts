@@ -157,6 +157,12 @@ export class AdminCatalogStoresService {
     const row = await qb.getRawOne();
     if (!row) throw new NotFoundException({ code: 'STORE_NOT_FOUND', message: 'Store not found' });
 
+    // Fetch images
+    const images = await this.storeImageRepo.find({
+      where: { storeId },
+      order: { orderIndex: 'ASC' },
+    });
+
     const impact = await this.getDeleteImpact(storeId);
 
     return {
@@ -176,6 +182,7 @@ export class AdminCatalogStoresService {
         phone: row.ownerPhone,
         status: row.ownerStatus,
       },
+      images: images.map((img) => ({ id: img.id, url: img.url, orderIndex: img.orderIndex })),
       deleteImpact: impact,
     };
   }
