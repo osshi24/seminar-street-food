@@ -54,6 +54,11 @@ export default function DashboardQrPage() {
   }
 
   const isInactive = store.status === 'inactive';
+  const displayQrImageUrl = qrData?.qrImageUrl
+    ? (qrData.qrImageUrl.startsWith('data:')
+      ? qrData.qrImageUrl
+      : `${qrData.qrImageUrl}${qrData.qrImageUrl.includes('?') ? '&' : '?'}v=${encodeURIComponent(qrData.token)}`)
+    : null;
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-6">
@@ -85,7 +90,7 @@ export default function DashboardQrPage() {
         {qrData && (
           <div className="space-y-4 rounded-lg border border-gray-100 bg-white p-4 shadow-sm">
             <QRCodeDisplay
-              qrImageUrl={qrData.qrImageUrl}
+              qrImageUrl={displayQrImageUrl}
               storeName={store.name}
             />
             <div className="text-xs text-gray-400">
