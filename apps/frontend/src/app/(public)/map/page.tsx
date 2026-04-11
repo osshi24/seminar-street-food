@@ -9,6 +9,12 @@ import type { RouteDisplay } from './components/MapView';
 import StoreBottomSheet from './components/StoreBottomSheet';
 import MapSearchOverlay from './components/MapSearchOverlay';
 import GpsAutoPlayController from '../../../components/gps/GpsAutoPlayController';
+import DevFakeGps, { installFakeGpsFromStorage } from '../../../components/gps/DevFakeGps';
+
+// Install fake GPS override BEFORE any hooks run
+if (typeof window !== 'undefined') {
+  installFakeGpsFromStorage();
+}
 import ShareLocationBtn from './components/ShareLocationBtn';
 import { fetchRoute, formatDistance, formatDuration } from '../../../lib/map/osrm';
 
@@ -41,6 +47,8 @@ export default function MapPage() {
   const [isNavigating, setIsNavigating] = useState(false);
   const [arrived, setArrived] = useState(false);
   const [navDest, setNavDest] = useState<{ lat: number; lng: number } | null>(null);
+  // Track stores user manually dismissed — don't re-open bottom sheet for these
+  const dismissedStoresRef = useRef<Set<string>>(new Set());
 
   // Fly-to target (from search)
   const [flyTo, setFlyTo] = useState<{ lat: number; lng: number } | null>(null);
@@ -204,8 +212,17 @@ export default function MapPage() {
       </div>
 
       {/* GPS controller — floating top-right */}
-      <div className="absolute top-3 right-3 z-[500]">
-        <GpsAutoPlayController />
+      <div className="absolute top-3 right-3 z-[500] flex flex-col items-end gap-2">
+        <GpsAutoPlayController
+          onNearStore={(storeId) => {
+            if (dismissedStoresRef.current.has(storeId)) return;
+            const pin = pins.find((p) => p.storeId === storeId);
+            if (pin && selectedPin?.storeId !== storeId) {
+              setSelectedPin(pin);
+            }
+          }}
+        />
+        <DevFakeGps />
       </div>
 
       {/* Route info / Navigation panel — bottom center */}
@@ -312,7 +329,10 @@ export default function MapPage() {
       {/* Bottom sheet */}
       <StoreBottomSheet
         pin={selectedPin}
-        onClose={() => setSelectedPin(null)}
+        onClose={() => {
+          if (selectedPin) dismissedStoresRef.current.add(selectedPin.storeId);
+          setSelectedPin(null);
+        }}
         onDirections={handleDirections}
         isRouting={isRouting}
       />

@@ -10,85 +10,98 @@ export function useAutoPlay(
   onMarkPlayed: (storeId: string) => void,
 ) {
   const [bannerVisible, setBannerVisible] = useState(false);
-  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
   const [currentStoreName, setCurrentStoreName] = useState<string | null>(null);
-  const pendingAudioRef = useRef<HTMLAudioElement | null>(null);
-  const lastTriggeredRef = useRef<string | null>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const pendingTextRef = useRef<string | null>(null);
+  const pendingStoreRef = useRef<NearbyStore | null>(null);
+  // Use ref to always read latest session without stale closure
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
+  const playingStoreIdRef = useRef<string | null>(null);
+
+  const speakText = useCallback((text: string, storeName: string, storeId: string) => {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'vi-VN';
+    utterance.rate = 0.95;
+
+    utterance.onstart = () => {
+      setIsSpeaking(true);
+      setCurrentStoreName(storeName);
+      playingStoreIdRef.current = storeId;
+    };
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      setCurrentStoreName(null);
+      playingStoreIdRef.current = null;
+    };
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      setCurrentStoreName(null);
+      playingStoreIdRef.current = null;
+    };
+
+    window.speechSynthesis.speak(utterance);
+    onMarkPlayed(storeId);
+    setBannerVisible(false);
+  }, [onMarkPlayed]);
 
   const tryPlay = useCallback(
     async (store: NearbyStore) => {
-      if (session.get(store.storeId) === true) return;
-      if (lastTriggeredRef.current === store.storeId) return;
-      lastTriggeredRef.current = store.storeId;
+      if (sessionRef.current.get(store.storeId) === true) return;
+      if (window.speechSynthesis?.speaking) return;
+      if (playingStoreIdRef.current === store.storeId) return;
 
       try {
         const commentary = await getStoreCommentary(store.storeId, 'vi');
-        const audioUrl = commentary.data?.audioUrl;
-        if (!audioUrl) return;
+        const text = commentary.data?.translatedText;
+        if (!text) return;
 
-        const audio = new Audio(audioUrl);
-        pendingAudioRef.current = audio;
+        // Double-check session after async call
+        if (sessionRef.current.get(store.storeId) === true) return;
 
-        audio.onended = () => {
-          setCurrentAudio(null);
-          setCurrentStoreName(null);
-        };
+        pendingTextRef.current = text;
+        pendingStoreRef.current = store;
 
         try {
-          await audio.play();
-          onMarkPlayed(store.storeId);
-          setCurrentAudio(audio);
-          setCurrentStoreName(store.storeName);
-          setBannerVisible(false);
-        } catch (err) {
-          if (err instanceof DOMException && err.name === 'NotAllowedError') {
-            setBannerVisible(true);
-          }
+          speakText(text, store.storeName, store.storeId);
+        } catch {
+          setBannerVisible(true);
         }
       } catch {
-        lastTriggeredRef.current = null;
+        // silent
       }
     },
-    [session, onMarkPlayed],
+    [speakText],
   );
 
-  const triggerManualPlay = useCallback(async () => {
-    const audio = pendingAudioRef.current;
-    const store = nearestStore;
-    if (!audio || !store) return;
-
-    try {
-      await audio.play();
-      onMarkPlayed(store.storeId);
-      setCurrentAudio(audio);
-      setCurrentStoreName(store.storeName);
-      setBannerVisible(false);
-    } catch {
-      setBannerVisible(false);
-    }
-  }, [nearestStore, onMarkPlayed]);
+  const triggerManualPlay = useCallback(() => {
+    const text = pendingTextRef.current;
+    const store = pendingStoreRef.current;
+    if (!text || !store) return;
+    speakText(text, store.storeName, store.storeId);
+  }, [speakText]);
 
   const stopAudio = useCallback(() => {
-    if (currentAudio) {
-      currentAudio.pause();
-      setCurrentAudio(null);
-      setCurrentStoreName(null);
-    }
-  }, [currentAudio]);
+    window.speechSynthesis?.cancel();
+    setIsSpeaking(false);
+    setCurrentStoreName(null);
+    playingStoreIdRef.current = null;
+  }, []);
 
   const skipAudio = useCallback(() => {
-    if (currentAudio) {
-      currentAudio.pause();
-      currentAudio.currentTime = 0;
-      setCurrentAudio(null);
-      setCurrentStoreName(null);
-    }
-  }, [currentAudio]);
+    window.speechSynthesis?.cancel();
+    setIsSpeaking(false);
+    setCurrentStoreName(null);
+    playingStoreIdRef.current = null;
+  }, []);
 
   return {
     bannerVisible,
     setBannerVisible,
-    currentAudio,
+    currentAudio: isSpeaking ? ({} as HTMLAudioElement) : null,
     currentStoreName,
     triggerManualPlay,
     stopAudio,

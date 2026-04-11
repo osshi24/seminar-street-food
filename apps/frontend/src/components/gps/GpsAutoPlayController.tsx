@@ -10,7 +10,11 @@ import GpsStatusBar from './GpsStatusBar';
 import AutoplayBanner from './AutoplayBanner';
 import AudioControls from './AudioControls';
 
-export default function GpsAutoPlayController() {
+interface GpsAutoPlayControllerProps {
+  onNearStore?: (storeId: string) => void;
+}
+
+export default function GpsAutoPlayController({ onNearStore }: GpsAutoPlayControllerProps = {}) {
   const { position, gpsStatus } = useGeolocation();
   const { nearestStore } = useProximityDetection(position);
 
@@ -29,12 +33,13 @@ export default function GpsAutoPlayController() {
     tryPlay,
   } = useAutoPlay(nearestStore, session, onMarkPlayed);
 
-  // Trigger auto-play when nearest store changes
+  // Trigger auto-play + notify parent when nearest store changes
   useEffect(() => {
     if (nearestStore && gpsStatus === 'granted') {
       tryPlay(nearestStore);
+      onNearStore?.(nearestStore.storeId);
     }
-  }, [nearestStore, gpsStatus, tryPlay]);
+  }, [nearestStore, gpsStatus, tryPlay, onNearStore]);
 
   return (
     <div className="space-y-2">
