@@ -7,6 +7,7 @@ import { Review } from '../entities/review.entity';
 import { CommentReport } from '../entities/comment-report.entity';
 import { StoreContentDraft, DraftStatus } from '../stores/entities/store-content-draft.entity';
 import { LocationPin } from '../location/entities/location-pin.entity';
+import { StoreImage } from '../stores/entities/store-image.entity';
 import { ListAdminStoresQueryDto } from './dto/list-admin-stores-query.dto';
 
 @Injectable()
@@ -20,6 +21,7 @@ export class AdminCatalogStoresService {
     @InjectRepository(StoreContentDraft)
     private readonly draftRepo: Repository<StoreContentDraft>,
     @InjectRepository(LocationPin) private readonly pinRepo: Repository<LocationPin>,
+    @InjectRepository(StoreImage) private readonly storeImageRepo: Repository<StoreImage>,
   ) {}
 
   async findAll(query: ListAdminStoresQueryDto) {
@@ -38,6 +40,14 @@ export class AdminCatalogStoresService {
       qb.andWhere('(store.name ILIKE :s OR owner.email ILIKE :s OR owner.full_name ILIKE :s)', { s });
     }
 
+    // Scalar subquery to get first thumbnail image
+    const subquery = this.storeImageRepo
+      .createQueryBuilder('img')
+      .select('img.url')
+      .where('img.store_id = store.id')
+      .orderBy('img.order_index', 'ASC')
+      .limit(1);
+
     qb.orderBy('store.created_at', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
@@ -50,7 +60,10 @@ export class AdminCatalogStoresService {
       'owner.id AS "ownerId"',
       'owner.email AS "ownerEmail"',
       'owner.full_name AS "ownerFullName"',
+      `(${subquery.getQuery()}) AS "thumbnailUrl"`,
     ]);
+
+    qb.setParameters(subquery.getParameters());
 
     const [itemsRaw, total] = await Promise.all([qb.getRawMany(), qb.getCount()]);
 
@@ -64,6 +77,7 @@ export class AdminCatalogStoresService {
         fullName: r.ownerFullName,
       },
       createdAt: r.createdAt,
+      thumbnailUrl: r.thumbnailUrl || null,
     }));
 
     return { items, total, page, limit };

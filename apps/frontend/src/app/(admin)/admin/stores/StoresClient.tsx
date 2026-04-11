@@ -11,6 +11,7 @@ import {
   type AdminStoreStatus,
 } from '../../../../lib/api/admin-stores';
 import Link from 'next/link';
+import Image from 'next/image';
 
 const STATUS_LABELS: Record<string, string> = {
   all: 'Tất cả',
@@ -18,9 +19,17 @@ const STATUS_LABELS: Record<string, string> = {
   inactive: 'Vô hiệu hóa',
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  active: 'bg-green-100 text-green-800',
-  inactive: 'bg-gray-100 text-gray-800',
+const STATUS_COLORS: Record<string, { bg: string; text: string; badge: string }> = {
+  active: {
+    bg: 'border-green-200 bg-green-50',
+    text: 'text-green-900',
+    badge: 'bg-green-500',
+  },
+  inactive: {
+    bg: 'border-slate-200 bg-slate-50',
+    text: 'text-slate-900',
+    badge: 'bg-slate-400',
+  },
 };
 
 export default function StoresClient() {
@@ -74,107 +83,207 @@ export default function StoresClient() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-6">
-      <h1 className="mb-6 text-xl font-bold text-gray-800">Quản lý gian hàng</h1>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-slate-900">Quản lý gian hàng</h1>
+          <p className="mt-2 text-sm text-slate-600">Quản lý danh sách gian hàng, kích hoạt/vô hiệu hóa, xem chi tiết</p>
+        </div>
 
-      <div className="mb-4 flex gap-2">
-        {Object.entries(STATUS_LABELS).map(([status, label]) => (
-          <button
-            key={status}
-            onClick={() => setParam('status', status === 'all' ? '' : status)}
-            className={`rounded-full px-4 py-1.5 text-sm font-medium ${
-              currentStatus === status || (status === 'all' && currentStatus === 'all')
-                ? 'bg-blue-600 text-white'
-                : 'bg-white border text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+        {/* Filters */}
+        <div className="mb-8 space-y-4">
+          {/* Status Filters */}
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(STATUS_LABELS).map(([status, label]) => (
+              <button
+                key={status}
+                onClick={() => setParam('status', status === 'all' ? '' : status)}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                  currentStatus === status || (status === 'all' && currentStatus === 'all')
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
 
-      <div className="mb-4">
-        <input
-          type="text"
-          defaultValue={currentSearch}
-          placeholder="Tìm theo tên gian hàng / email chủ / tên chủ..."
-          className="w-full max-w-md rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-          onChange={(e) => {
-            const value = e.target.value;
-            setTimeout(() => setParam('search', value), 300);
-          }}
-        />
-      </div>
+          {/* Search */}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              defaultValue={currentSearch}
+              placeholder="Tìm theo tên gian hàng, email chủ, hoặc tên chủ..."
+              className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-900 placeholder-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 md:max-w-md"
+              onChange={(e) => {
+                const value = e.target.value;
+                setTimeout(() => setParam('search', value), 300);
+              }}
+            />
+          </div>
+        </div>
 
-      {loading ? (
-        <p className="py-12 text-center text-gray-500">Đang tải...</p>
-      ) : items.length === 0 ? (
-        <p className="py-12 text-center text-gray-500">Không tìm thấy kết quả</p>
-      ) : (
-        <div className="overflow-hidden rounded-md border bg-white">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Gian hàng</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Chủ gian hàng</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Email</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Trạng thái</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Ngày tạo</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Hành động</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {items.map((s) => (
-                <tr key={s.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{s.name}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{s.owner.fullName || '—'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{s.owner.email || '—'}</td>
-                  <td className="px-4 py-3">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[s.status]}`}>
-                      {STATUS_LABELS[s.status]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{new Date(s.createdAt).toLocaleDateString('vi-VN')}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-3">
-                      <Link href={`/admin/stores/${s.id}`} className="text-sm text-gray-700 hover:underline">
+        {/* Content */}
+        {loading ? (
+          <div className="flex h-96 items-center justify-center">
+            <div className="space-y-3 text-center">
+              <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600"></div>
+              <p className="text-sm text-slate-600">Đang tải gian hàng...</p>
+            </div>
+          </div>
+        ) : items.length === 0 ? (
+          <div className="rounded-xl border-2 border-dashed border-slate-300 bg-white px-8 py-16 text-center">
+            <svg
+              className="mx-auto h-12 w-12 text-slate-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+            </svg>
+            <p className="mt-4 text-sm font-medium text-slate-900">Không tìm thấy gian hàng</p>
+            <p className="mt-2 text-xs text-slate-600">Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
+          </div>
+        ) : (
+          <>
+            {/* Store Grid */}
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {items.map((store) => (
+                <div
+                  key={store.id}
+                  className={`group overflow-hidden rounded-xl border-2 transition-all duration-200 hover:shadow-lg ${STATUS_COLORS[store.status].bg}`}
+                >
+                  {/* Image Container */}
+                  <div className="relative h-40 w-full overflow-hidden bg-slate-200">
+                    {store.thumbnailUrl ? (
+                      <>
+                        <Image
+                          src={store.thumbnailUrl}
+                          alt={store.name}
+                          fill
+                          className="object-cover group-hover:scale-110 transition-transform duration-300"
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+                        />
+                      </>
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-300 to-slate-400">
+                        <svg
+                          className="h-12 w-12 text-slate-500"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.5}
+                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                          />
+                        </svg>
+                      </div>
+                    )}
+
+                    {/* Status Badge */}
+                    <div className={`absolute top-2 right-2 rounded-full px-3 py-1 text-xs font-semibold text-white ${STATUS_COLORS[store.status].badge}`}>
+                      {STATUS_LABELS[store.status]}
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex flex-col bg-white p-4">
+                    {/* Store Name & Owner */}
+                    <h3 className="line-clamp-2 font-semibold text-slate-900 text-sm mb-1">
+                      {store.name}
+                    </h3>
+                    <p className="text-xs text-slate-600 mb-3">
+                      <span className="font-medium">Chủ:</span> {store.owner.fullName || '—'}
+                    </p>
+
+                    {/* Email */}
+                    <p className="text-xs text-slate-500 font-mono truncate mb-3">
+                      {store.owner.email}
+                    </p>
+
+                    {/* Created Date */}
+                    <p className="text-xs text-slate-500 mb-4">
+                      📅 {new Date(store.createdAt).toLocaleDateString('vi-VN')}
+                    </p>
+
+                    {/* Actions */}
+                    <div className="flex gap-2 flex-wrap">
+                      <Link
+                        href={`/admin/stores/${store.id}`}
+                        className="flex-1 rounded-lg bg-blue-600 px-3 py-2 text-center text-xs font-medium text-white hover:bg-blue-700 transition-colors"
+                      >
                         Chi tiết
                       </Link>
-                      <button onClick={() => toggleStatus(s)} className="text-sm text-blue-600 hover:underline">
-                        {s.status === 'active' ? 'Vô hiệu hóa' : 'Kích hoạt'}
+                      <button
+                        onClick={() => toggleStatus(store)}
+                        className="flex-1 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-center text-xs font-medium text-amber-700 hover:bg-amber-100 transition-colors"
+                        title={store.status === 'active' ? 'Vô hiệu hóa' : 'Kích hoạt'}
+                      >
+                        {store.status === 'active' ? '⊘ Off' : '✓ On'}
                       </button>
                       <button
-                        onClick={() => setDeleteDialog({ open: true, store: s })}
-                        className="text-sm text-red-600 hover:underline"
+                        onClick={() => setDeleteDialog({ open: true, store })}
+                        className="flex-1 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-center text-xs font-medium text-red-700 hover:bg-red-100 transition-colors"
+                        title="Xóa"
                       >
-                        Xóa
+                        🗑️ Xóa
                       </button>
                     </div>
-                  </td>
-                </tr>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            </div>
 
-      {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-center gap-2">
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <button
-              key={p}
-              onClick={() => setParam('page', String(p))}
-              className={`rounded px-3 py-1.5 text-sm ${
-                p === currentPage
-                  ? 'bg-blue-600 text-white'
-                  : 'border bg-white text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              {p}
-            </button>
-          ))}
-        </div>
-      )}
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-8 flex items-center justify-center gap-2">
+                <button
+                  onClick={() => setParam('page', String(Math.max(1, currentPage - 1)))}
+                  disabled={currentPage === 1}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  ← Trước
+                </button>
+
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const pageNum = currentPage <= 3 ? i + 1 : currentPage - 2 + i;
+                  if (pageNum > totalPages) return null;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setParam('page', String(pageNum))}
+                      className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                        pageNum === currentPage
+                          ? 'bg-blue-600 text-white'
+                          : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+
+                <button
+                  onClick={() => setParam('page', String(Math.min(totalPages, currentPage + 1)))}
+                  disabled={currentPage === totalPages}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Sau →
+                </button>
+
+                <span className="ml-4 text-sm text-slate-600">
+                  Trang {currentPage} / {totalPages}
+                </span>
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       {deleteDialog.open && deleteDialog.store && (
         <DeleteStoreConfirmDialog

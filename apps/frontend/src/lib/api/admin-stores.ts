@@ -12,6 +12,7 @@ export interface AdminStoreListItem {
     fullName: string;
   };
   createdAt: string;
+  thumbnailUrl?: string | null;
 }
 
 export interface ListAdminStoresParams {
