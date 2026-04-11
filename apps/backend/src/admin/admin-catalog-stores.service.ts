@@ -27,6 +27,8 @@ export class AdminCatalogStoresService {
   async findAll(query: ListAdminStoresQueryDto) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
+    const sortBy = query.sortBy ?? 'createdAt';
+    const sortOrder = (query.sortOrder ?? 'desc').toUpperCase() as 'ASC' | 'DESC';
 
     const qb = this.storeRepo.createQueryBuilder('store');
     qb.leftJoin(StoreOwnerAccount, 'owner', 'owner.id = store.owner_id');
@@ -40,6 +42,16 @@ export class AdminCatalogStoresService {
       qb.andWhere('(store.name ILIKE :s OR owner.email ILIKE :s OR owner.full_name ILIKE :s)', { s });
     }
 
+    if (query.createdFrom) {
+      qb.andWhere('store.created_at >= :createdFrom', { createdFrom: query.createdFrom });
+    }
+
+    if (query.createdTo) {
+      const to = new Date(query.createdTo);
+      to.setHours(23, 59, 59, 999);
+      qb.andWhere('store.created_at <= :createdTo', { createdTo: to.toISOString() });
+    }
+
     // Scalar subquery to get first thumbnail image
     const subquery = this.storeImageRepo
       .createQueryBuilder('img')
@@ -48,7 +60,8 @@ export class AdminCatalogStoresService {
       .orderBy('img.order_index', 'ASC')
       .limit(1);
 
-    qb.orderBy('store.created_at', 'DESC')
+    const orderField = sortBy === 'name' ? 'store.name' : 'store.created_at';
+    qb.orderBy(orderField, sortOrder)
       .skip((page - 1) * limit)
       .take(limit);
 

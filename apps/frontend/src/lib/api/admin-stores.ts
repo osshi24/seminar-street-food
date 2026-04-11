@@ -20,6 +20,10 @@ export interface ListAdminStoresParams {
   limit?: number;
   status?: AdminStoreStatus;
   search?: string;
+  sortBy?: 'name' | 'createdAt';
+  sortOrder?: 'asc' | 'desc';
+  createdFrom?: string;
+  createdTo?: string;
 }
 
 export async function listAdminStores(params?: ListAdminStoresParams): Promise<{

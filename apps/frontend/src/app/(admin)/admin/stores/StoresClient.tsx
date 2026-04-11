@@ -32,6 +32,13 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; badge: string }>
   },
 };
 
+const SORT_OPTIONS = [
+  { value: 'createdAt|desc', label: 'Mới nhất' },
+  { value: 'createdAt|asc', label: 'Cũ nhất' },
+  { value: 'name|asc', label: 'A → Z' },
+  { value: 'name|desc', label: 'Z → A' },
+];
+
 export default function StoresClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -40,10 +47,14 @@ export default function StoresClient() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; store?: AdminStoreListItem }>({ open: false });
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   const currentStatus = (searchParams.get('status') || 'all') as AdminStoreStatus | 'all';
   const currentSearch = searchParams.get('search') || '';
   const currentPage = parseInt(searchParams.get('page') || '1');
+  const currentSort = searchParams.get('sort') || 'createdAt|desc';
+  const currentDateFrom = searchParams.get('dateFrom') || '';
+  const currentDateTo = searchParams.get('dateTo') || '';
   const limit = 20;
 
   const totalPages = useMemo(() => Math.ceil(total / limit), [total, limit]);
@@ -56,21 +67,32 @@ export default function StoresClient() {
     router.push(`/admin/stores?${params.toString()}`);
   }
 
+  function clearAllFilters() {
+    router.push('/admin/stores');
+  }
+
+  const hasActiveFilters = currentSearch || currentStatus !== 'all' || currentDateFrom || currentDateTo || currentSort !== 'createdAt|desc';
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      const [sortBy, sortOrder] = currentSort.split('|') as [string, 'asc' | 'desc'];
       const res = await listAdminStores({
         status: currentStatus !== 'all' ? currentStatus : undefined,
         search: currentSearch || undefined,
         page: currentPage,
         limit,
+        sortBy: (sortBy || 'createdAt') as any,
+        sortOrder: sortOrder || 'desc',
+        createdFrom: currentDateFrom || undefined,
+        createdTo: currentDateTo || undefined,
       });
       setItems(res.data.items ?? []);
       setTotal(res.data.total ?? 0);
     } finally {
       setLoading(false);
     }
-  }, [currentStatus, currentSearch, currentPage]);
+  }, [currentStatus, currentSearch, currentPage, currentSort, currentDateFrom, currentDateTo]);
 
   useEffect(() => {
     load();
@@ -91,15 +113,36 @@ export default function StoresClient() {
           <p className="mt-2 text-sm text-slate-600">Quản lý danh sách gian hàng, kích hoạt/vô hiệu hóa, xem chi tiết</p>
         </div>
 
-        {/* Filters */}
-        <div className="mb-8 space-y-4">
-          {/* Status Filters */}
+        {/* Filters Section */}
+        <div className="mb-8 space-y-4 bg-white rounded-xl shadow-sm p-5 border border-slate-200">
+          {/* Search Bar */}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              defaultValue={currentSearch}
+              placeholder="🔍 Tìm theo tên gian hàng, email chủ, hoặc tên chủ..."
+              className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              onChange={(e) => {
+                const value = e.target.value;
+                setTimeout(() => setParam('search', value), 300);
+              }}
+            />
+            <button
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className="px-4 py-2.5 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2"
+            >
+              {showAdvancedFilters ? '▼' : '▶'} Bộ lọc
+            </button>
+          </div>
+
+          {/* Status Filter */}
           <div className="flex flex-wrap gap-2">
+            <span className="text-xs font-bold text-slate-600 self-center">Trạng thái:</span>
             {Object.entries(STATUS_LABELS).map(([status, label]) => (
               <button
                 key={status}
                 onClick={() => setParam('status', status === 'all' ? '' : status)}
-                className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                className={`rounded-full px-4 py-1.5 text-xs font-medium transition-all ${
                   currentStatus === status || (status === 'all' && currentStatus === 'all')
                     ? 'bg-blue-600 text-white shadow-md'
                     : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
@@ -110,19 +153,63 @@ export default function StoresClient() {
             ))}
           </div>
 
-          {/* Search */}
-          <div className="flex gap-2">
-            <input
-              type="text"
-              defaultValue={currentSearch}
-              placeholder="Tìm theo tên gian hàng, email chủ, hoặc tên chủ..."
-              className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-900 placeholder-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 md:max-w-md"
-              onChange={(e) => {
-                const value = e.target.value;
-                setTimeout(() => setParam('search', value), 300);
-              }}
-            />
-          </div>
+          {/* Advanced Filters */}
+          {showAdvancedFilters && (
+            <div className="pt-4 border-t border-slate-200 space-y-4">
+              {/* Sort */}
+              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                <span className="text-xs font-bold text-slate-600 whitespace-nowrap">Sắp xếp:</span>
+                <select
+                  value={currentSort}
+                  onChange={(e) => setParam('sort', e.target.value)}
+                  className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                >
+                  {SORT_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Date Range */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-2">Từ ngày:</label>
+                  <input
+                    type="date"
+                    value={currentDateFrom}
+                    onChange={(e) => setParam('dateFrom', e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-2">Đến ngày:</label>
+                  <input
+                    type="date"
+                    value={currentDateTo}
+                    onChange={(e) => setParam('dateTo', e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Active Filters & Clear Button */}
+          {hasActiveFilters && (
+            <div className="flex items-center justify-between pt-3 border-t border-slate-200">
+              <div className="text-xs text-slate-600">
+                <span className="font-semibold text-blue-600">{total}</span> kết quả tìm được
+              </div>
+              <button
+                onClick={clearAllFilters}
+                className="text-xs font-medium text-red-600 hover:text-red-700 hover:underline"
+              >
+                ✕ Xóa tất cả bộ lọc
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Content */}
