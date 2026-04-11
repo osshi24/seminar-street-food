@@ -14,7 +14,8 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationRecipientType } from '../entities/notification.entity';
 import { ApproveLocationDto } from './dto/approve-location.dto';
 import { RejectLocationDto } from './dto/reject-location.dto';
-import { UpdateBoundaryDto } from './dto/update-boundary.dto';
+import { CreateBoundaryDto } from './dto/create-boundary.dto';
+import { UpdateBoundaryV2Dto } from './dto/update-boundary-v2.dto';
 
 @Injectable()
 export class AdminLocationService {
@@ -202,39 +203,69 @@ export class AdminLocationService {
     void adminId;
   }
 
-  async getBoundary() {
-    return this.boundaryRepo.findOne({ where: { isActive: true } });
+  // Boundary management moved to create/update-by-id APIs (supports multiple active boundaries)
+
+  async listBoundaries(): Promise<FoodStreetBoundary[]> {
+    return this.boundaryRepo.find({ order: { updatedAt: 'DESC' } });
   }
 
-  async updateBoundary(adminId: string, dto: UpdateBoundaryDto) {
-    // Build WKT polygon string
-    const coordStr = dto.coordinates
-      .map((c) => `${c.lng} ${c.lat}`)
-      .join(', ');
-    // Close the polygon (first = last)
+  async getBoundaryById(id: string): Promise<FoodStreetBoundary> {
+    const b = await this.boundaryRepo.findOne({ where: { id } });
+    if (!b) throw new NotFoundException({ code: 'BOUNDARY_NOT_FOUND', message: 'Boundary not found' });
+    return b;
+  }
+
+  async createBoundary(adminId: string, dto: CreateBoundaryDto): Promise<FoodStreetBoundary> {
+    const coordStr = dto.coordinates.map((c) => `${c.lng} ${c.lat}`).join(', ');
     const firstCoord = `${dto.coordinates[0].lng} ${dto.coordinates[0].lat}`;
     const wkt = `POLYGON((${coordStr}, ${firstCoord}))`;
 
     return this.dataSource.transaction(async (manager) => {
-      // Deactivate existing boundary
-      await manager.update(FoodStreetBoundary, { isActive: true }, { isActive: false });
-
-      // Create new boundary with computed polygon_geom
       const newBoundary = manager.create(FoodStreetBoundary, {
         name: dto.name ?? 'Ranh giới phố ẩm thực',
         polygonCoordinates: dto.coordinates,
-        isActive: true,
+        isActive: dto.isActive ?? true,
         createdBy: adminId,
       });
       const saved = await manager.save(FoodStreetBoundary, newBoundary);
-
-      // Update polygon_geom via raw SQL
       await manager.query(
         `UPDATE food_street_boundaries SET polygon_geom = ST_GeomFromText($1, 4326) WHERE id = $2`,
         [wkt, saved.id],
       );
-
       return saved;
     });
+  }
+
+  async updateBoundaryById(adminId: string, id: string, dto: UpdateBoundaryV2Dto): Promise<FoodStreetBoundary> {
+    const existing = await this.boundaryRepo.findOne({ where: { id } });
+    if (!existing) throw new NotFoundException({ code: 'BOUNDARY_NOT_FOUND', message: 'Boundary not found' });
+
+    return this.dataSource.transaction(async (manager) => {
+      if (typeof dto.name === 'string') existing.name = dto.name;
+      if (typeof dto.isActive === 'boolean') existing.isActive = dto.isActive;
+      if (dto.coordinates) existing.polygonCoordinates = dto.coordinates;
+
+      const saved = await manager.save(FoodStreetBoundary, existing);
+
+      if (dto.coordinates) {
+        const coordStr = dto.coordinates.map((c) => `${c.lng} ${c.lat}`).join(', ');
+        const firstCoord = `${dto.coordinates[0].lng} ${dto.coordinates[0].lat}`;
+        const wkt = `POLYGON((${coordStr}, ${firstCoord}))`;
+        await manager.query(
+          `UPDATE food_street_boundaries SET polygon_geom = ST_GeomFromText($1, 4326) WHERE id = $2`,
+          [wkt, saved.id],
+        );
+      }
+
+      void adminId;
+      return saved;
+    });
+  }
+
+  async deleteBoundary(adminId: string, id: string): Promise<void> {
+    const existing = await this.boundaryRepo.findOne({ where: { id } });
+    if (!existing) throw new NotFoundException({ code: 'BOUNDARY_NOT_FOUND', message: 'Boundary not found' });
+    await this.boundaryRepo.delete(id);
+    void adminId;
   }
 }

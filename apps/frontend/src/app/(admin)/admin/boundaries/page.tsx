@@ -1,14 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { getBoundary, updateBoundary, Boundary } from '../../../../lib/api/admin-location';
+import Link from 'next/link';
+import dynamic from 'next/dynamic';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Boundary, deleteBoundaryById, listBoundaries, updateBoundaryById } from '../../../../lib/api/admin-location';
+
+const BoundariesOverviewMap = dynamic(() => import('./BoundariesOverviewMap'), {
+  ssr: false,
+  loading: () => <div className="h-[480px] w-full animate-pulse rounded-lg bg-gray-100" />,
+});
 
 export default function AdminBoundariesPage() {
-  const [boundary, setBoundary] = useState<Boundary | null>(null);
-  const [coordsText, setCoordsText] = useState('');
-  const [name, setName] = useState('Ranh giới phố ẩm thực');
+  const [rows, setRows] = useState<Boundary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 
   const showToast = (type: 'success' | 'error', msg: string) => {
@@ -16,103 +22,161 @@ export default function AdminBoundariesPage() {
     setTimeout(() => setToast(null), 4000);
   };
 
-  useEffect(() => {
-    getBoundary()
-      .then((b) => {
-        setBoundary(b);
-        if (b) {
-          setName(b.name);
-          setCoordsText(JSON.stringify(b.polygonCoordinates, null, 2));
-        } else {
-          setCoordsText(JSON.stringify(
-            [
-              { lat: 10.762500, lng: 106.660100 },
-              { lat: 10.763200, lng: 106.661500 },
-              { lat: 10.762800, lng: 106.662300 },
-              { lat: 10.761900, lng: 106.661200 },
-            ],
-            null,
-            2,
-          ));
-        }
-      })
-      .catch(() => showToast('error', 'Không tải được ranh giới'))
-      .finally(() => setLoading(false));
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await listBoundaries();
+      setRows(data);
+    } catch {
+      showToast('error', 'Không tải được danh sách ranh giới');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const handleSave = async () => {
-    let coordinates: { lat: number; lng: number }[];
-    try {
-      coordinates = JSON.parse(coordsText) as { lat: number; lng: number }[];
-      if (!Array.isArray(coordinates) || coordinates.length < 3) {
-        showToast('error', 'Cần ít nhất 3 điểm tọa độ');
-        return;
-      }
-    } catch {
-      showToast('error', 'JSON tọa độ không hợp lệ');
-      return;
-    }
+  useEffect(() => { void load(); }, [load]);
 
-    setSaving(true);
+  const filtered = useMemo(() => {
+    if (filter === 'active') return rows.filter((r) => r.isActive);
+    if (filter === 'inactive') return rows.filter((r) => !r.isActive);
+    return rows;
+  }, [rows, filter]);
+
+  const handleToggle = async (b: Boundary) => {
     try {
-      const updated = await updateBoundary({ name, coordinates });
-      setBoundary(updated);
-      showToast('success', 'Đã cập nhật ranh giới');
+      await updateBoundaryById(b.id, { isActive: !b.isActive });
+      showToast('success', b.isActive ? 'Đã tắt ranh giới' : 'Đã bật ranh giới');
+      await load();
     } catch {
-      showToast('error', 'Lưu thất bại');
-    } finally {
-      setSaving(false);
+      showToast('error', 'Cập nhật trạng thái thất bại');
+    }
+  };
+
+  const handleDelete = async (b: Boundary) => {
+    if (!confirm(`Xóa ranh giới "${b.name}"?`)) return;
+    try {
+      await deleteBoundaryById(b.id);
+      showToast('success', 'Đã xóa ranh giới');
+      await load();
+    } catch {
+      showToast('error', 'Xóa thất bại');
     }
   };
 
   if (loading) return <div className="p-6 text-gray-400">Đang tải...</div>;
 
   return (
-    <div className="p-6 max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Cấu hình ranh giới phố ẩm thực</h1>
-      <p className="text-gray-500 text-sm mb-6">
-        Nhập danh sách tọa độ (JSON) để xác định ranh giới. Tối thiểu 3 điểm.
-      </p>
-
-      {boundary ? (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-xs text-green-700">
-          Ranh giới hiện tại: <strong>{boundary.name}</strong> ({boundary.polygonCoordinates.length} điểm)
+    <div className="mx-auto max-w-5xl px-6 py-6">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-gray-800">Quản lý ranh giới</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Nhiều ranh giới có thể cùng bật và đều có hiệu lực.
+          </p>
         </div>
-      ) : (
-        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-xs text-yellow-700">
-          Chưa có ranh giới nào. Store Owner sẽ không thể gửi vị trí cho đến khi bạn cấu hình.
+        <Link
+          href="/admin/boundaries/new"
+          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        >
+          + Tạo ranh giới
+        </Link>
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5">
+          <button
+            type="button"
+            onClick={() => setViewMode('list')}
+            className={`rounded-md px-3 py-1.5 text-sm ${viewMode === 'list' ? 'bg-slate-800 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
+          >
+            Danh sách
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('map')}
+            className={`rounded-md px-3 py-1.5 text-sm ${viewMode === 'map' ? 'bg-slate-800 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
+          >
+            Bản đồ
+          </button>
+        </div>
+        <select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value as typeof filter)}
+          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+        >
+          <option value="all">Tất cả</option>
+          <option value="active">Đang bật</option>
+          <option value="inactive">Đang tắt</option>
+        </select>
+        <button
+          onClick={() => void load()}
+          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+        >
+          Tải lại
+        </button>
+      </div>
+
+      {viewMode === 'map' && (
+        <div className="mb-6 rounded-lg border bg-white p-3">
+          <p className="mb-2 text-xs text-gray-500">
+            Mỗi màu là một ranh giới. Ranh giới tắt vẫn hiển thị (ghi chú trong tooltip).
+          </p>
+          <BoundariesOverviewMap boundaries={filtered} height={520} />
         </div>
       )}
 
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">Tên ranh giới</label>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-        />
+      {viewMode === 'list' && (
+      <div className="rounded-lg border bg-white overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Tên</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Số điểm</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Trạng thái</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Hành động</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {filtered.map((b) => (
+              <tr key={b.id} className="hover:bg-gray-50">
+                <td className="px-4 py-3 text-sm font-medium text-gray-900">{b.name}</td>
+                <td className="px-4 py-3 text-sm text-gray-600">{b.polygonCoordinates?.length ?? 0}</td>
+                <td className="px-4 py-3 text-sm">
+                  {b.isActive ? (
+                    <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs text-green-700">
+                      Bật
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                      Tắt
+                    </span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex flex-wrap gap-x-3 gap-y-1">
+                    <Link href={`/admin/boundaries/${b.id}/view`} className="text-sm text-slate-700 hover:underline">
+                      Xem chi tiết
+                    </Link>
+                    <Link href={`/admin/boundaries/${b.id}`} className="text-sm text-blue-600 hover:underline">
+                      Sửa
+                    </Link>
+                    <button onClick={() => void handleToggle(b)} className="text-sm text-orange-600 hover:underline">
+                      {b.isActive ? 'Tắt' : 'Bật'}
+                    </button>
+                    <button onClick={() => void handleDelete(b)} className="text-sm text-red-500 hover:underline">
+                      Xóa
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {filtered.length === 0 && (
+          <p className="py-10 text-center text-sm text-gray-400">Chưa có ranh giới nào.</p>
+        )}
       </div>
-
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Tọa độ (JSON Array of {'{lat, lng}'})
-        </label>
-        <textarea
-          value={coordsText}
-          onChange={(e) => setCoordsText(e.target.value)}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono min-h-[240px] resize-y"
-          spellCheck={false}
-        />
-      </div>
-
-      <button
-        onClick={handleSave}
-        disabled={saving}
-        className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-lg transition"
-      >
-        {saving ? 'Đang lưu...' : 'Lưu ranh giới'}
-      </button>
+      )}
 
       {toast && (
         <div

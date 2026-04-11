@@ -9,12 +9,14 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { AdminTagsService } from './admin-tags.service';
 import { CreateTagDto } from './dto/create-tag.dto';
 import { UpdateTagDto } from './dto/update-tag.dto';
 import { AdminJwtGuard } from '../../auth/guards/admin-jwt.guard';
+import { ListAdminTagsQueryDto } from './dto/list-admin-tags-query.dto';
 
 @Controller('admin/tags')
 @UseGuards(AdminJwtGuard)
@@ -22,8 +24,8 @@ export class AdminTagsController {
   constructor(private readonly adminTagsService: AdminTagsService) {}
 
   @Get()
-  async findAll() {
-    return this.adminTagsService.findAll();
+  async findAll(@Query() query: ListAdminTagsQueryDto) {
+    return this.adminTagsService.findAll(query);
   }
 
   @Post()

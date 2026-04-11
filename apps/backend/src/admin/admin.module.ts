@@ -29,6 +29,7 @@ import { AdminAnnouncement } from './entities/admin-announcement.entity';
 import { AdminCatalogStoresService } from './admin-catalog-stores.service';
 import { AdminCatalogStoresController } from './admin-catalog-stores.controller';
 import { MailModule } from '../mail/mail.module';
+import { AdminCustomersModule } from './customers/admin-customers.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { MailModule } from '../mail/mail.module';
     NotificationsModule,
     MailModule,
     AdminTagsModule,
+    AdminCustomersModule,
   ],
   providers: [
     AdminStoresService,

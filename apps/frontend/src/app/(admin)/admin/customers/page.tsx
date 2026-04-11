@@ -2,22 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import apiClient from '../../../../lib/api/client';
-import TagFormDialog from './TagFormDialog';
+import CustomerFormDialog from './CustomerFormDialog';
 
-type GroupType = 'dish_type' | 'flavor' | 'allergen';
-
-const GROUP_LABELS: Record<GroupType, string> = {
-  dish_type: 'Loại món ăn',
-  flavor: 'Khẩu vị',
-  allergen: 'Dị ứng thực phẩm',
-};
-
-interface TagRow {
-  id: number;
-  nameVi: string;
-  nameEn: string;
-  groupType: GroupType;
-  usageCount: number;
+interface CustomerRow {
+  id: string;
+  googleId: string;
+  email: string;
+  displayName: string;
+  avatarUrl: string | null;
+  createdAt: string;
+  reviewCount: number;
 }
 
 interface ListMeta {
@@ -27,15 +21,14 @@ interface ListMeta {
   totalPages: number;
 }
 
-export default function AdminTagsPage() {
-  const [tags, setTags] = useState<TagRow[]>([]);
+export default function AdminCustomersPage() {
+  const [rows, setRows] = useState<CustomerRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dialog, setDialog] = useState<{ open: boolean; tag?: TagRow }>({ open: false });
+  const [dialog, setDialog] = useState<{ open: boolean; customer?: CustomerRow }>({ open: false });
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const [keyword, setKeyword] = useState('');
-  const [groupType, setGroupType] = useState<GroupType | ''>('');
-  const [inUse, setInUse] = useState<'all' | 'in_use' | 'not_in_use'>('all');
+  const [hasAvatar, setHasAvatar] = useState<'all' | 'yes' | 'no'>('all');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
   const [meta, setMeta] = useState<ListMeta>({ page: 1, limit: 20, total: 0, totalPages: 0 });
@@ -48,27 +41,20 @@ export default function AdminTagsPage() {
     params.set('limit', String(limit));
     const k = debouncedKeyword.trim();
     if (k) params.set('keyword', k);
-    if (groupType) params.set('groupType', groupType);
-    if (inUse === 'in_use') params.set('inUse', 'true');
-    if (inUse === 'not_in_use') params.set('inUse', 'false');
+    if (hasAvatar === 'yes') params.set('hasAvatar', 'true');
+    if (hasAvatar === 'no') params.set('hasAvatar', 'false');
     return params;
-  }, [page, limit, debouncedKeyword, groupType, inUse]);
+  }, [page, limit, debouncedKeyword, hasAvatar]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await apiClient.get<{ data: { data: TagRow[]; meta: ListMeta } | TagRow[] }>('/admin/tags', {
+      const res = await apiClient.get<{ data: { data: CustomerRow[]; meta: ListMeta } }>('/admin/customers', {
         params: Object.fromEntries(queryParams.entries()),
       });
       const payload = res.data.data;
-      if (Array.isArray(payload)) {
-        // Backward-compatible: if API returns an array (legacy)
-        setTags(payload);
-        setMeta({ page, limit, total: payload.length, totalPages: 1 });
-      } else {
-        setTags(payload?.data ?? []);
-        setMeta(payload?.meta ?? { page, limit, total: 0, totalPages: 0 });
-      }
+      setRows(payload?.data ?? []);
+      setMeta(payload?.meta ?? { page, limit, total: 0, totalPages: 0 });
     } finally {
       setLoading(false);
     }
@@ -76,27 +62,27 @@ export default function AdminTagsPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const handleDelete = async (tag: TagRow) => {
+  const handleDelete = async (c: CustomerRow) => {
     setDeleteError(null);
-    if (!confirm(`Xóa nhãn "${tag.nameVi}"?`)) return;
+    if (!confirm(`Xóa khách hàng "${c.displayName}"?`)) return;
     try {
-      await apiClient.delete(`/admin/tags/${tag.id}`);
+      await apiClient.delete(`/admin/customers/${c.id}`);
       await load();
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
-      setDeleteError(e.response?.data?.message ?? 'Không thể xóa nhãn này.');
+      setDeleteError(e.response?.data?.message ?? 'Không thể xóa khách hàng này.');
     }
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-6">
+    <div className="mx-auto max-w-6xl px-6 py-6">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-800">Quản lý nhãn sở thích</h1>
+        <h1 className="text-xl font-bold text-gray-800">Quản lý khách hàng</h1>
         <button
           onClick={() => setDialog({ open: true })}
           className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
         >
-          + Thêm nhãn mới
+          + Thêm khách hàng
         </button>
       </div>
 
@@ -106,35 +92,25 @@ export default function AdminTagsPage() {
             <input
               value={keyword}
               onChange={(e) => { setPage(1); setKeyword(e.target.value); }}
-              placeholder="Tìm theo tên VI/EN..."
+              placeholder="Tìm theo email / tên hiển thị..."
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
             />
           </div>
           <div className="flex gap-2">
             <select
-              value={groupType}
-              onChange={(e) => { setPage(1); setGroupType(e.target.value as GroupType | ''); }}
+              value={hasAvatar}
+              onChange={(e) => { setPage(1); setHasAvatar(e.target.value as 'all' | 'yes' | 'no'); }}
               className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
             >
-              <option value="">Tất cả nhóm</option>
-              {(Object.entries(GROUP_LABELS) as [GroupType, string][]).map(([val, label]) => (
-                <option key={val} value={val}>{label}</option>
-              ))}
-            </select>
-            <select
-              value={inUse}
-              onChange={(e) => { setPage(1); setInUse(e.target.value as 'all' | 'in_use' | 'not_in_use'); }}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-            >
-              <option value="all">Tất cả</option>
-              <option value="in_use">Đang dùng</option>
-              <option value="not_in_use">Chưa dùng</option>
+              <option value="all">Tất cả avatar</option>
+              <option value="yes">Có avatar</option>
+              <option value="no">Chưa có avatar</option>
             </select>
           </div>
         </div>
         <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
           <span>
-            Tổng: <span className="font-medium text-gray-700">{meta.total}</span> nhãn
+            Tổng: <span className="font-medium text-gray-700">{meta.total}</span> khách hàng
           </span>
           <div className="flex items-center gap-2">
             <span>Hiển thị</span>
@@ -160,47 +136,55 @@ export default function AdminTagsPage() {
 
       {loading ? (
         <div className="animate-pulse space-y-2">
-          {[1,2,3].map(i => <div key={i} className="h-12 rounded bg-gray-100" />)}
+          {[1, 2, 3].map((i) => <div key={i} className="h-12 rounded bg-gray-100" />)}
         </div>
       ) : (
         <div className="rounded-lg border bg-white overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">ID</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Tên VI</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Tên EN</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Nhóm</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Đang dùng</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Avatar</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Tên</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Email</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Đánh giá</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Ngày tạo</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Hành động</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {tags.map((tag) => (
-                <tr key={tag.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm text-gray-500">{tag.id}</td>
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{tag.nameVi}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{tag.nameEn}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{GROUP_LABELS[tag.groupType]}</td>
+              {rows.map((c) => (
+                <tr key={c.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3">
+                    <div className="h-9 w-9 overflow-hidden rounded-full border bg-gray-50">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        alt={c.displayName}
+                        src={c.avatarUrl ?? '/images/default-avatar.png'}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                    <div className="flex flex-col">
+                      <span>{c.displayName}</span>
+                      <span className="text-xs text-gray-400">{c.googleId.startsWith('manual:') ? 'Manual' : 'Google'}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{c.email}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{c.reviewCount}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">
-                    {tag.usageCount > 0 ? (
-                      <span className="inline-block rounded-full bg-orange-50 px-2 py-0.5 text-xs text-orange-600">
-                        {tag.usageCount} món
-                      </span>
-                    ) : (
-                      <span className="text-gray-400">—</span>
-                    )}
+                    {new Date(c.createdAt).toLocaleString()}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
                       <button
-                        onClick={() => setDialog({ open: true, tag })}
+                        onClick={() => setDialog({ open: true, customer: c })}
                         className="text-sm text-blue-600 hover:underline"
                       >
                         Sửa
                       </button>
                       <button
-                        onClick={() => handleDelete(tag)}
+                        onClick={() => handleDelete(c)}
                         className="text-sm text-red-500 hover:underline"
                       >
                         Xóa
@@ -211,8 +195,8 @@ export default function AdminTagsPage() {
               ))}
             </tbody>
           </table>
-          {tags.length === 0 && (
-            <p className="py-10 text-center text-sm text-gray-400">Chưa có nhãn nào.</p>
+          {rows.length === 0 && (
+            <p className="py-10 text-center text-sm text-gray-400">Chưa có khách hàng nào.</p>
           )}
           <div className="flex items-center justify-between border-t bg-gray-50 px-4 py-3">
             <div className="text-xs text-gray-600">
@@ -231,7 +215,7 @@ export default function AdminTagsPage() {
               </button>
               <button
                 onClick={() => setPage((p) => p + 1)}
-                disabled={loading || tags.length === 0 || (meta.totalPages > 0 && meta.page >= meta.totalPages)}
+                disabled={loading || rows.length === 0 || (meta.totalPages > 0 && meta.page >= meta.totalPages)}
                 className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               >
                 Sau
@@ -242,8 +226,8 @@ export default function AdminTagsPage() {
       )}
 
       {dialog.open && (
-        <TagFormDialog
-          initial={dialog.tag}
+        <CustomerFormDialog
+          initial={dialog.customer}
           onClose={() => setDialog({ open: false })}
           onSaved={() => { setDialog({ open: false }); load(); }}
         />
@@ -260,3 +244,4 @@ function useDebouncedValue<T>(value: T, delayMs: number) {
   }, [value, delayMs]);
   return debounced;
 }
+

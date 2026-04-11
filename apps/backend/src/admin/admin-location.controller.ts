@@ -12,12 +12,14 @@ import {
   HttpCode,
   HttpStatus,
   ParseUUIDPipe,
+  Post,
 } from '@nestjs/common';
 import { AdminLocationService } from './admin-location.service';
 import { AdminJwtGuard } from '../auth/guards/admin-jwt.guard';
 import { ApproveLocationDto } from './dto/approve-location.dto';
 import { RejectLocationDto } from './dto/reject-location.dto';
-import { UpdateBoundaryDto } from './dto/update-boundary.dto';
+import { CreateBoundaryDto } from './dto/create-boundary.dto';
+import { UpdateBoundaryV2Dto } from './dto/update-boundary-v2.dto';
 import { AdminAccount } from '../entities/admin-account.entity';
 
 interface AdminRequest {
@@ -77,15 +79,32 @@ export class AdminLocationController {
   }
 
   @Get('boundaries')
-  async getBoundary() {
-    return this.adminLocationService.getBoundary();
+  async listBoundaries() {
+    return this.adminLocationService.listBoundaries();
   }
 
-  @Put('boundaries')
+  @Get('boundaries/:id')
+  async getBoundary(@Param('id', ParseUUIDPipe) id: string) {
+    return this.adminLocationService.getBoundaryById(id);
+  }
+
+  @Post('boundaries')
+  async createBoundary(@Request() req: AdminRequest, @Body() dto: CreateBoundaryDto) {
+    return this.adminLocationService.createBoundary(req.user.id, dto);
+  }
+
+  @Put('boundaries/:id')
   async updateBoundary(
     @Request() req: AdminRequest,
-    @Body() dto: UpdateBoundaryDto,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateBoundaryV2Dto,
   ) {
-    return this.adminLocationService.updateBoundary(req.user.id, dto);
+    return this.adminLocationService.updateBoundaryById(req.user.id, id, dto);
+  }
+
+  @Delete('boundaries/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteBoundary(@Request() req: AdminRequest, @Param('id', ParseUUIDPipe) id: string) {
+    await this.adminLocationService.deleteBoundary(req.user.id, id);
   }
 }

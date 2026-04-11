@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import CoordinateForm from './components/CoordinateForm';
-import { getMyLocation, submitLocation, revokePending, LocationPin } from '../../../../lib/api/location';
+import { getMyLocation, submitLocation, revokePending, LocationPin, listActiveBoundaries } from '../../../../lib/api/location';
 import { useActiveStore } from '../../../../contexts/ActiveStoreContext';
 import { getBoundary } from '../../../../lib/api/admin-location';
 
@@ -39,13 +39,13 @@ export default function LocationPage() {
     if (!activeStoreId) return;
     setLoading(true);
     try {
-      const [locationData, boundaryData] = await Promise.all([
-        getMyLocation(activeStoreId),
-        getBoundary().catch(() => null),
+      const [locationData, boundaries] = await Promise.all([
+        getMyLocation(),
+        listActiveBoundaries().catch(() => []),
       ]);
       setApproved(locationData.approved);
       setPending(locationData.pending);
-      if (boundaryData) setBoundary(boundaryData.polygonCoordinates);
+      if (boundaries.length > 0) setBoundary(boundaries[0].polygonCoordinates);
 
       // Set form coordinates to approved pin if exists
       if (locationData.approved) {

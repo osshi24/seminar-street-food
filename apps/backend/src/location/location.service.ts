@@ -15,6 +15,7 @@ import { SubmitLocationDto } from './dto/submit-location.dto';
 import { BoundaryCheckService } from './boundary-check.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationRecipientType } from '../entities/notification.entity';
+import { FoodStreetBoundary } from '../admin/entities/food-street-boundary.entity';
 
 @Injectable()
 export class LocationService {
@@ -115,5 +116,14 @@ export class LocationService {
       throw new NotFoundException({ code: 'NO_PENDING_FOUND', message: 'No pending location pin found' });
     }
     await this.pinRepo.delete(pending.id);
+  }
+
+  async listActiveBoundaries(): Promise<Array<Pick<FoodStreetBoundary, 'id' | 'name' | 'polygonCoordinates'>>> {
+    const boundaries = await this.boundaryCheckService.listActiveBoundaries();
+    return boundaries.map((b) => ({
+      id: b.id,
+      name: b.name,
+      polygonCoordinates: b.polygonCoordinates,
+    }));
   }
 }

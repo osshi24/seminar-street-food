@@ -50,4 +50,9 @@ export class LocationController {
   ) {
     await this.locationService.revokePending(req.user.id, storeId);
   }
+
+  @Get('boundaries')
+  async listActiveBoundaries() {
+    return this.locationService.listActiveBoundaries();
+  }
 }
