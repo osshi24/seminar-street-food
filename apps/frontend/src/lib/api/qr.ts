@@ -29,7 +29,12 @@ export async function createQr(storeId: string): Promise<CreateQrResponse> {
     const err = await res.json().catch(() => ({}));
     throw new Error((err as { message?: string }).message ?? 'Không thể tạo QR code.');
   }
-  return res.json() as Promise<CreateQrResponse>;
+
+  const payload = await res.json() as CreateQrResponse | { data: CreateQrResponse };
+  if (payload && typeof payload === 'object' && 'data' in payload) {
+    return payload.data;
+  }
+  return payload;
 }
 
 export async function downloadQrPng(storeId: string): Promise<Blob> {
