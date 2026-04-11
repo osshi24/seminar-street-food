@@ -16,6 +16,12 @@ interface MapViewProps {
   selectedPinId?: string | null;
   route?: RouteDisplay | null;
   flyTo?: { lat: number; lng: number } | null;
+  /** When true, use watchPosition to track user and follow camera */
+  tracking?: boolean;
+  /** Called when user is within 50m of destination */
+  onArrived?: () => void;
+  /** Called with updated user position during tracking */
+  onUserPositionUpdate?: (lat: number, lng: number) => void;
   onPinSelect: (pin: PublicPin) => void;
   onMapClick: () => void;
 }
@@ -55,6 +61,9 @@ export default function MapView({
   selectedPinId,
   route,
   flyTo,
+  tracking = false,
+  onArrived,
+  onUserPositionUpdate,
   onPinSelect,
   onMapClick,
 }: MapViewProps) {
@@ -113,19 +122,57 @@ export default function MapView({
     });
 
     // "Locate me" button
+    // "My location" button — prominent, Google Maps style
+    let locateMarker: ReturnType<typeof L.marker> | null = null;
     const LocateControl = L.Control.extend({
       onAdd() {
         const btn = L.DomUtil.create('button', '');
-        btn.innerHTML = '📍';
-        btn.title = 'Định vị tôi';
+        btn.title = 'Vị trí của tôi';
         btn.style.cssText =
-          'background:white;border:2px solid #ccc;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:16px;line-height:1;';
+          'background:white;width:40px;height:40px;border:none;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,0.2);cursor:pointer;display:flex;align-items:center;justify-content:center;';
+        btn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/><circle cx="12" cy="12" r="8"/></svg>';
+
         L.DomEvent.on(btn, 'click', (e) => {
           L.DomEvent.stopPropagation(e);
           if (!navigator.geolocation) return;
-          navigator.geolocation.getCurrentPosition((pos) => {
-            map.flyTo([pos.coords.latitude, pos.coords.longitude], 17);
-          });
+
+          // Loading state
+          btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5"><circle cx="12" cy="12" r="10" opacity="0.25"/><path d="M4 12a8 8 0 018-8" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.8s" repeatCount="indefinite"/></path></svg>';
+
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const lat = pos.coords.latitude;
+              const lng = pos.coords.longitude;
+              map.flyTo([lat, lng], 17);
+
+              // Show/update blue dot at user location
+              const userIcon = L.divIcon({
+                html:
+                  '<div style="position:relative;width:20px;height:20px">' +
+                  '<div style="position:absolute;inset:0;border-radius:50%;background:rgba(37,99,235,0.3);animation:pulse-ring 1.5s ease-out infinite"></div>' +
+                  '<div style="position:absolute;top:4px;left:4px;width:12px;height:12px;border-radius:50%;background:#2563eb;border:2px solid white;box-shadow:0 0 4px rgba(0,0,0,0.3)"></div>' +
+                  '</div>',
+                className: '',
+                iconSize: [20, 20],
+                iconAnchor: [10, 10],
+              });
+              if (locateMarker) {
+                locateMarker.setLatLng([lat, lng]);
+              } else {
+                locateMarker = L.marker([lat, lng], { icon: userIcon, zIndexOffset: 900 }).addTo(map);
+              }
+
+              // Restore icon
+              btn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/><circle cx="12" cy="12" r="8"/></svg>';
+            },
+            () => {
+              btn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/><circle cx="12" cy="12" r="8"/></svg>';
+              setTimeout(() => {
+                btn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/><circle cx="12" cy="12" r="8"/></svg>';
+              }, 2000);
+            },
+            { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 },
+          );
         });
         return btn;
       },
@@ -281,6 +328,49 @@ export default function MapView({
     // Fit map to show entire route
     map.fitBounds(polyline.getBounds(), { padding: [60, 60] });
   }, [route]);
+
+  // Real-time GPS tracking (navigation mode)
+  useEffect(() => {
+    if (!tracking || !route) return;
+    const map = mapInstanceRef.current;
+    if (!map || !navigator.geolocation) return;
+
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const L = require('leaflet') as typeof import('leaflet');
+    const destLat = route.coordinates[route.coordinates.length - 1][0];
+    const destLng = route.coordinates[route.coordinates.length - 1][1];
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+
+        // Update user marker position
+        if (userMarkerRef.current) {
+          userMarkerRef.current.setLatLng([lat, lng]);
+        }
+
+        // Follow camera — keep user centered
+        map.setView([lat, lng], Math.max(map.getZoom(), 16), { animate: true });
+
+        // Notify parent
+        onUserPositionUpdate?.(lat, lng);
+
+        // Check arrival (within 50m)
+        const dist = map.distance([lat, lng], [destLat, destLng]);
+        if (dist < 50) {
+          onArrived?.();
+        }
+      },
+      () => {}, // silent error
+      { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 },
+    );
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tracking, !!route]);
 
   return (
     <>

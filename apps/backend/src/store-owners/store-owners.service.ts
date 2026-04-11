@@ -33,7 +33,7 @@ export class StoreOwnersService {
 
     const qb = this.storeOwnerRepo
       .createQueryBuilder('soa')
-      .leftJoinAndSelect('soa.store', 'store');
+      .leftJoinAndSelect('soa.stores', 'store');
 
     if (status) {
       qb.andWhere('soa.status = :status', { status });
@@ -41,7 +41,7 @@ export class StoreOwnersService {
 
     if (search) {
       qb.andWhere(
-        '(soa.fullName ILIKE :search OR soa.email ILIKE :search OR store.name ILIKE :search)',
+        '(soa.fullName ILIKE :search OR soa.email ILIKE :search OR stores.name ILIKE :search)',
         { search: `%${search}%` },
       );
     }
@@ -66,7 +66,7 @@ export class StoreOwnersService {
   async findOne(id: string): Promise<StoreOwnerAccount> {
     const account = await this.storeOwnerRepo.findOne({
       where: { id },
-      relations: ['store'],
+      relations: ['stores'],
     });
     if (!account) {
       throw new NotFoundException('Store owner not found');

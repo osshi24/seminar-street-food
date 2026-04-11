@@ -1,5 +1,12 @@
 import apiClient from './client';
 
+// ─── DTOs ──────────────────────────────────────────────────────
+
+export interface CreateStoreDto {
+  name: string;
+  description?: string;
+}
+
 export interface UpdateStoreDto {
   name: string;
   description?: string;
@@ -18,66 +25,12 @@ export interface UpdateMenuItemDto {
   tagIds?: number[];
 }
 
-export async function getMyStore() {
-  const res = await apiClient.get('/store-owner/store');
-  return res.data;
-}
-
-export async function saveDraft(dto: UpdateStoreDto) {
-  const res = await apiClient.put('/store-owner/store', dto);
-  return res.data;
-}
-
-export async function submitDraft() {
-  const res = await apiClient.post('/store-owner/store/submit');
-  return res.data;
-}
-
-export async function revokeDraft() {
-  const res = await apiClient.delete('/store-owner/store/draft');
-  return res.data;
-}
-
-export async function getMyDraft() {
-  const res = await apiClient.get('/store-owner/store/draft');
-  return res.data;
-}
-
-export async function getMenuItems() {
-  const res = await apiClient.get('/store-owner/store/menu-items');
-  return res.data;
-}
-
-export async function addMenuItem(dto: CreateMenuItemDto) {
-  const res = await apiClient.post('/store-owner/store/menu-items', dto);
-  return res.data;
-}
-
-export async function updateMenuItem(id: string, dto: UpdateMenuItemDto) {
-  const res = await apiClient.put(`/store-owner/store/menu-items/${id}`, dto);
-  return res.data;
-}
-
-export async function removeMenuItem(id: string) {
-  const res = await apiClient.delete(`/store-owner/store/menu-items/${id}`);
-  return res.data;
-}
-
-// --- Store info (phone, address, hours, social) ---
-
 export interface UpdateStoreInfoDto {
   phone?: string;
   address?: string;
   openingHours?: string;
   socialLinks?: { facebook?: string; instagram?: string; tiktok?: string };
 }
-
-export async function updateStoreInfo(dto: UpdateStoreInfoDto) {
-  const res = await apiClient.patch('/store-owner/store/info', dto);
-  return res.data;
-}
-
-// --- Images (MinIO upload) ---
 
 export interface StoreImageItem {
   id: string;
@@ -87,20 +40,100 @@ export interface StoreImageItem {
   isInDraft: boolean;
 }
 
-export async function generateImageUploadUrl(contentType: string) {
+// ─── Store list & create ───────────────────────────────────────
+
+export async function getMyStores() {
+  const res = await apiClient.get('/store-owner/stores');
+  return res.data;
+}
+
+export async function createStore(dto: CreateStoreDto) {
+  const res = await apiClient.post('/store-owner/stores', dto);
+  return res.data;
+}
+
+export async function deleteStore(storeId: string) {
+  const res = await apiClient.delete(`/store-owner/stores/${storeId}`);
+  return res.data;
+}
+
+export async function renameStore(storeId: string, name: string) {
+  const res = await apiClient.patch(`/store-owner/stores/${storeId}/rename`, { name });
+  return res.data;
+}
+
+// ─── Store detail ──────────────────────────────────────────────
+
+export async function getMyStore(storeId: string) {
+  const res = await apiClient.get(`/store-owner/stores/${storeId}`);
+  return res.data;
+}
+
+export async function updateStoreInfo(storeId: string, dto: UpdateStoreInfoDto) {
+  const res = await apiClient.patch(`/store-owner/stores/${storeId}/info`, dto);
+  return res.data;
+}
+
+// ─── Drafts ────────────────────────────────────────────────────
+
+export async function saveDraft(storeId: string, dto: UpdateStoreDto) {
+  const res = await apiClient.put(`/store-owner/stores/${storeId}`, dto);
+  return res.data;
+}
+
+export async function submitDraft(storeId: string) {
+  const res = await apiClient.post(`/store-owner/stores/${storeId}/submit`);
+  return res.data;
+}
+
+export async function revokeDraft(storeId: string) {
+  const res = await apiClient.delete(`/store-owner/stores/${storeId}/draft`);
+  return res.data;
+}
+
+export async function getMyDraft(storeId: string) {
+  const res = await apiClient.get(`/store-owner/stores/${storeId}/draft`);
+  return res.data;
+}
+
+// ─── Menu items ────────────────────────────────────────────────
+
+export async function getMenuItems(storeId: string) {
+  const res = await apiClient.get(`/store-owner/stores/${storeId}/menu-items`);
+  return res.data;
+}
+
+export async function addMenuItem(storeId: string, dto: CreateMenuItemDto) {
+  const res = await apiClient.post(`/store-owner/stores/${storeId}/menu-items`, dto);
+  return res.data;
+}
+
+export async function updateMenuItem(storeId: string, id: string, dto: UpdateMenuItemDto) {
+  const res = await apiClient.put(`/store-owner/stores/${storeId}/menu-items/${id}`, dto);
+  return res.data;
+}
+
+export async function removeMenuItem(storeId: string, id: string) {
+  const res = await apiClient.delete(`/store-owner/stores/${storeId}/menu-items/${id}`);
+  return res.data;
+}
+
+// ─── Images (MinIO upload) ─────────────────────────────────────
+
+export async function generateImageUploadUrl(storeId: string, contentType: string) {
   const res = await apiClient.post<{ data: { presignedUrl: string; s3Key: string; imageId: string } }>(
-    '/store-owner/store/images',
+    `/store-owner/stores/${storeId}/images`,
     { contentType },
   );
   return res.data.data ?? res.data;
 }
 
-export async function confirmImageUpload(imageId: string) {
-  const res = await apiClient.patch(`/store-owner/store/images/${imageId}/confirm`);
+export async function confirmImageUpload(storeId: string, imageId: string) {
+  const res = await apiClient.patch(`/store-owner/stores/${storeId}/images/${imageId}/confirm`);
   return res.data;
 }
 
-export async function deleteStoreImage(imageId: string) {
-  const res = await apiClient.delete(`/store-owner/store/images/${imageId}`);
+export async function deleteStoreImage(storeId: string, imageId: string) {
+  const res = await apiClient.delete(`/store-owner/stores/${storeId}/images/${imageId}`);
   return res.data;
 }

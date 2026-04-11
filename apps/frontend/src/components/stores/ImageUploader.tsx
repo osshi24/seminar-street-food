@@ -10,11 +10,12 @@ import {
 } from '../../lib/api/stores';
 
 interface ImageUploaderProps {
+  storeId: string;
   images: StoreImageItem[];
   onImagesChange: () => void;
 }
 
-export default function ImageUploader({ images, onImagesChange }: ImageUploaderProps) {
+export default function ImageUploader({ storeId, images, onImagesChange }: ImageUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -39,7 +40,7 @@ export default function ImageUploader({ images, onImagesChange }: ImageUploaderP
 
     try {
       // 1. Get presigned URL from backend
-      const { presignedUrl, imageId } = await generateImageUploadUrl(file.type);
+      const { presignedUrl, imageId } = await generateImageUploadUrl(storeId, file.type);
 
       // 2. Upload directly to MinIO
       const uploadRes = await fetch(presignedUrl, {
@@ -50,7 +51,7 @@ export default function ImageUploader({ images, onImagesChange }: ImageUploaderP
       if (!uploadRes.ok) throw new Error('Upload failed');
 
       // 3. Confirm upload
-      await confirmImageUpload(imageId);
+      await confirmImageUpload(storeId, imageId);
 
       onImagesChange();
     } catch (err) {
@@ -65,7 +66,7 @@ export default function ImageUploader({ images, onImagesChange }: ImageUploaderP
     if (!confirm('Xóa ảnh này?')) return;
     setDeletingId(imageId);
     try {
-      await deleteStoreImage(imageId);
+      await deleteStoreImage(storeId, imageId);
       onImagesChange();
     } catch {
       setError('Xóa ảnh thất bại');

@@ -14,12 +14,13 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 interface StoreEditFormProps {
+  storeId: string;
   initialName: string;
   initialDescription?: string | null;
   onSuccess: () => void;
 }
 
-export default function StoreEditForm({ initialName, initialDescription, onSuccess }: StoreEditFormProps) {
+export default function StoreEditForm({ storeId, initialName, initialDescription, onSuccess }: StoreEditFormProps) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [mode, setMode] = useState<'draft' | 'submit' | null>(null);
 
@@ -33,9 +34,9 @@ export default function StoreEditForm({ initialName, initialDescription, onSucce
   const onSubmit = async (data: FormData, submit = false) => {
     setServerError(null);
     try {
-      await saveDraft({ name: data.name, description: data.description });
+      await saveDraft(storeId, { name: data.name, description: data.description });
       if (submit) {
-        await submitDraft();
+        await submitDraft(storeId);
       }
       onSuccess();
     } catch (err: unknown) {

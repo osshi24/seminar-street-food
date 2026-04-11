@@ -10,20 +10,20 @@ export interface LocationPin {
   reviewedAt: string | null;
 }
 
-export async function getMyLocation(): Promise<{ approved: LocationPin | null; pending: LocationPin | null }> {
+export async function getMyLocation(storeId: string): Promise<{ approved: LocationPin | null; pending: LocationPin | null }> {
   const res = await apiClient.get<{ data: { approved: LocationPin | null; pending: LocationPin | null } }>(
-    '/store-owner/location',
+    `/store-owner/stores/${storeId}/location`,
   );
   return res.data.data;
 }
 
-export async function submitLocation(lat: number, lng: number): Promise<LocationPin> {
-  const res = await apiClient.post<{ data: LocationPin }>('/store-owner/location', { lat, lng });
+export async function submitLocation(storeId: string, lat: number, lng: number): Promise<LocationPin> {
+  const res = await apiClient.post<{ data: LocationPin }>(`/store-owner/stores/${storeId}/location`, { lat, lng });
   return res.data.data;
 }
 
-export async function revokePending(): Promise<void> {
-  await apiClient.delete('/store-owner/location/pending');
+export async function revokePending(storeId: string): Promise<void> {
+  await apiClient.delete(`/store-owner/stores/${storeId}/location/pending`);
 }
 
 export interface ActiveBoundary {

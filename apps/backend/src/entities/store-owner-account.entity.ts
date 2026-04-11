@@ -4,7 +4,7 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  OneToOne,
+  OneToMany,
 } from 'typeorm';
 
 export enum StoreOwnerStatus {
@@ -53,6 +53,6 @@ export class StoreOwnerAccount {
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
 
-  @OneToOne('Store', 'owner')
-  store: unknown;
+  @OneToMany('Store', 'owner')
+  stores: unknown[];
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getMenuItems, addMenuItem, removeMenuItem, updateMenuItem } from '../../../../../lib/api/stores';
+import { useActiveStore } from '../../../../../contexts/ActiveStoreContext';
 import { fetchTags } from '../../../../../lib/api/tags';
 import type { TagGroup } from '../../../../../lib/api/tags';
 
@@ -17,6 +18,7 @@ interface MenuItemData {
 const GROUP_LABELS = { dish_type: 'Loại món', flavor: 'Khẩu vị', allergen: 'Dị ứng' };
 
 export default function MenuPage() {
+  const { activeStoreId } = useActiveStore();
   const [items, setItems] = useState<MenuItemData[]>([]);
   const [tagGroups, setTagGroups] = useState<TagGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,9 +29,10 @@ export default function MenuPage() {
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
 
   async function load() {
+    if (!activeStoreId) return;
     setLoading(true);
     try {
-      const res = await getMenuItems();
+      const res = await getMenuItems(activeStoreId);
       setItems(res.data || []);
     } finally {
       setLoading(false);
@@ -39,13 +42,14 @@ export default function MenuPage() {
   useEffect(() => {
     load();
     fetchTags().then((d) => setTagGroups(d.groups)).catch(() => {});
-  }, []);
+  }, [activeStoreId]);
 
   async function handleAdd() {
     if (!form.name || !form.price) return;
     setSubmitting(true);
     try {
-      await addMenuItem({ name: form.name, description: form.description || undefined, price: Number(form.price) });
+      if (!activeStoreId) return;
+      await addMenuItem(activeStoreId, { name: form.name, description: form.description || undefined, price: Number(form.price) });
       setForm({ name: '', description: '', price: '' });
       setShowForm(false);
       load();
@@ -56,7 +60,8 @@ export default function MenuPage() {
 
   async function handleRemove(id: string) {
     if (!confirm('Xóa món ăn này?')) return;
-    await removeMenuItem(id);
+    if (!activeStoreId) return;
+    await removeMenuItem(activeStoreId, id);
     load();
   }
 
@@ -66,7 +71,8 @@ export default function MenuPage() {
   }
 
   async function saveTags(itemId: string) {
-    await updateMenuItem(itemId, { tagIds: selectedTagIds });
+    if (!activeStoreId) return;
+    await updateMenuItem(activeStoreId, itemId, { tagIds: selectedTagIds });
     setEditingTagsFor(null);
     load();
   }

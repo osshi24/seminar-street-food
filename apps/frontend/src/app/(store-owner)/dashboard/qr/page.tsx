@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getMyStore } from '../../../../lib/api/stores';
+import { useActiveStore } from '../../../../contexts/ActiveStoreContext';
 import { createQr } from '../../../../lib/api/qr';
 import type { CreateQrResponse } from '../../../../lib/api/qr';
 import QRCodeDisplay from '../../../../components/qr/QRCodeDisplay';
@@ -14,25 +14,20 @@ interface StoreInfo {
 }
 
 export default function DashboardQrPage() {
-  const [store, setStore] = useState<StoreInfo | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { activeStoreId, activeStore, loading: storeLoading } = useActiveStore();
   const [qrData, setQrData] = useState<CreateQrResponse | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    getMyStore()
-      .then((res) => setStore(res.data))
-      .catch(() => setStore(null))
-      .finally(() => setLoading(false));
-  }, []);
+  const loading = storeLoading;
+  const store = activeStore ? { id: activeStore.id, name: activeStore.name, status: activeStore.status } : null;
 
   const handleCreate = async () => {
-    if (!store) return;
+    if (!activeStoreId) return;
     setCreating(true);
     setError(null);
     try {
-      const data = await createQr(store.id);
+      const data = await createQr(activeStoreId);
       setQrData(data);
     } catch (e) {
       setError((e as Error).message);
