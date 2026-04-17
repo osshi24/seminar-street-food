@@ -92,6 +92,29 @@ export class StoresController {
     await this.storesService.removeMenuItem(req.user.id, id);
   }
 
+  // Menu item image (single)
+  @Post('menu-items/:id/image')
+  async generateMenuItemImageUploadUrl(
+    @Request() req: { user: StoreOwnerAccount },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: { contentType: string },
+  ) {
+    return this.storesService.generateMenuItemImageUploadUrl(
+      req.user.id,
+      id,
+      body.contentType,
+    );
+  }
+
+  @Delete('menu-items/:id/image')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteMenuItemImage(
+    @Request() req: { user: StoreOwnerAccount },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    await this.storesService.deleteMenuItemImage(req.user.id, id);
+  }
+
   // Images
   @Post('images')
   async generateImageUploadUrl(

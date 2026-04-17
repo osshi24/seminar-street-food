@@ -12,6 +12,7 @@ interface MenuItem {
   name: string;
   description?: string | null;
   price: number;
+  imageUrl?: string | null;
   tags?: { id: number; nameVi: string }[];
 }
 
@@ -119,6 +120,15 @@ export default function StoreDetailView({
             {menuItems.map((item) => (
               <li key={item.id} className="rounded-lg border bg-white p-3">
                 <div className="flex items-start justify-between gap-3">
+                  {item.imageUrl && (
+                    <div className="flex-shrink-0">
+                      <img
+                        src={item.imageUrl}
+                        alt={item.name}
+                        className="h-14 w-14 rounded-md object-cover border"
+                      />
+                    </div>
+                  )}
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-gray-800">{item.name}</p>
                     {item.description && (
