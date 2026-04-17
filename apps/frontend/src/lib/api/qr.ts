@@ -32,6 +32,21 @@ export async function createQr(storeId: string): Promise<CreateQrResponse> {
   return res.json() as Promise<CreateQrResponse>;
 }
 
+export async function getActiveQr(storeId: string): Promise<CreateQrResponse | null> {
+  const res = await fetch(`${API_URL}/store-owner/stores/${storeId}/qr`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+    credentials: 'include',
+  });
+
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { message?: string }).message ?? 'Không thể tải QR code.');
+  }
+
+  return res.json() as Promise<CreateQrResponse>;
+}
+
 export async function downloadQrPng(storeId: string): Promise<Blob> {
   const res = await fetch(`${API_URL}/store-owner/stores/${storeId}/qr/png`, {
     headers: { Authorization: `Bearer ${getToken()}` },
