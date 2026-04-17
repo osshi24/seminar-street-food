@@ -9,15 +9,14 @@ import {
   deactivateStoreOwner,
   reactivateStoreOwner,
 } from '../../../../../lib/api/store-owners';
-import DeactivateWarningModal from '../../../../../components/auth/DeactivateWarningModal';
+import StoreOwnerDetailHeader from '../../../../../components/admin/store-owners/StoreOwnerDetailHeader';
+import StoreOwnerInfoSection from '../../../../../components/admin/store-owners/StoreOwnerInfoSection';
+import StoreOwnerTimeline from '../../../../../components/admin/store-owners/StoreOwnerTimeline';
+import ApprovalModal from '../../../../../components/admin/store-owners/ApprovalModal';
+import RejectionModal from '../../../../../components/admin/store-owners/RejectionModal';
+import DeactivateModal from '../../../../../components/admin/store-owners/DeactivateModal';
 import type { StoreOwner } from '../../../../../types/store-owner';
-
-const STATUS_LABELS: Record<string, string> = {
-  pending: 'Chờ duyệt',
-  active: 'Đang hoạt động',
-  inactive: 'Vô hiệu hóa',
-  rejected: 'Đã từ chối',
-};
+import type { TimelineEvent } from '../../../../../components/admin/store-owners/StoreOwnerTimeline';
 
 export default function StoreOwnerDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -25,11 +24,15 @@ export default function StoreOwnerDetailPage() {
   const [storeOwner, setStoreOwner] = useState<StoreOwner | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Modals
+  const [modals, setModals] = useState({
+    approval: false,
+    rejection: false,
+    deactivate: false,
+  });
   const [rejectReason, setRejectReason] = useState('');
-  const [rejectError, setRejectError] = useState<string | null>(null);
-  const [showDeactivateWarning, setShowDeactivateWarning] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
     loadStoreOwner();
@@ -45,8 +48,8 @@ export default function StoreOwnerDetailPage() {
     }
   }
 
-  function showToast(message: string) {
-    setToast(message);
+  function showToast(message: string, type: 'success' | 'error' = 'success') {
+    setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   }
 
@@ -55,41 +58,40 @@ export default function StoreOwnerDetailPage() {
     try {
       const result = await approveStoreOwner(id);
       setStoreOwner(result.data as StoreOwner);
-      showToast('Đã phê duyệt tài khoản thành công');
+      setModals({ ...modals, approval: false });
+      showToast('✓ Đã phê duyệt tài khoản thành công', 'success');
+    } catch (error) {
+      showToast('Lỗi khi phê duyệt tài khoản', 'error');
     } finally {
       setActionLoading(false);
     }
   }
 
   async function handleReject() {
-    if (rejectReason.trim().length < 10) {
-      setRejectError('Lý do phải có ít nhất 10 ký tự');
-      return;
-    }
     setActionLoading(true);
     try {
       const result = await rejectStoreOwner(id, rejectReason.trim());
       setStoreOwner(result.data as StoreOwner);
-      setShowRejectModal(false);
+      setModals({ ...modals, rejection: false });
       setRejectReason('');
-      showToast('Đã từ chối tài khoản');
+      showToast('✓ Đã từ chối tài khoản', 'success');
+    } catch (error) {
+      showToast('Lỗi khi từ chối tài khoản', 'error');
     } finally {
       setActionLoading(false);
     }
   }
 
-  async function handleDeactivate(confirmed = false) {
+  async function handleDeactivate() {
     setActionLoading(true);
     try {
-      const result = await deactivateStoreOwner(id, confirmed);
-      const data = result.data as { hasPendingContent?: boolean } | StoreOwner;
-      if ('hasPendingContent' in data && data.hasPendingContent) {
-        setShowDeactivateWarning(true);
-      } else {
-        setStoreOwner(data as StoreOwner);
-        setShowDeactivateWarning(false);
-        showToast('Đã vô hiệu hóa tài khoản');
-      }
+      const result = await deactivateStoreOwner(id, true);
+      const data = result.data as StoreOwner;
+      setStoreOwner(data);
+      setModals({ ...modals, deactivate: false });
+      showToast('✓ Đã vô hiệu hóa tài khoản', 'success');
+    } catch (error) {
+      showToast('Lỗi khi vô hiệu hóa tài khoản', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -100,157 +102,244 @@ export default function StoreOwnerDetailPage() {
     try {
       const result = await reactivateStoreOwner(id);
       setStoreOwner(result.data as StoreOwner);
-      showToast('Đã kích hoạt lại tài khoản');
+      showToast('✓ Đã kích hoạt lại tài khoản', 'success');
+    } catch (error) {
+      showToast('Lỗi khi kích hoạt lại tài khoản', 'error');
     } finally {
       setActionLoading(false);
     }
   }
 
-  if (loading) return <div className="flex justify-center py-12">Đang tải...</div>;
-  if (!storeOwner) return <div className="p-6 text-red-600">Không tìm thấy tài khoản</div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!storeOwner) {
+    return (
+      <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-red-700">
+        <p className="font-medium">❌ Không tìm thấy tài khoản</p>
+      </div>
+    );
+  }
+
+  const timelineEvents: TimelineEvent[] = [
+    {
+      icon: '📝',
+      label: 'Đã đăng ký',
+      description: 'Yêu cầu tạo tài khoản được gửi',
+      timestamp: storeOwner.createdAt,
+      color: 'blue',
+    },
+    ...(storeOwner.status === 'active' || storeOwner.status === 'rejected'
+      ? [
+          {
+            icon: storeOwner.status === 'active' ? '✅' : '❌',
+            label: storeOwner.status === 'active' ? 'Đã phê duyệt' : 'Đã từ chối',
+            description:
+              storeOwner.status === 'active' ? 'Tài khoản được kích hoạt' : 'Yêu cầu bị từ chối',
+            timestamp: storeOwner.updatedAt,
+            color: (storeOwner.status === 'active' ? 'green' : 'red') as 'green' | 'red',
+          },
+        ]
+      : []),
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="space-y-6">
+      {/* Toast */}
       {toast && (
-        <div className="fixed top-4 right-4 z-50 rounded-md bg-green-600 px-4 py-2 text-white shadow-lg">
-          {toast}
+        <div
+          className={`fixed top-4 right-4 z-50 rounded-lg px-4 py-3 text-white shadow-lg ${
+            toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
+          }`}
+        >
+          {toast.message}
         </div>
       )}
 
-      {showDeactivateWarning && (
-        <DeactivateWarningModal
-          onConfirm={() => handleDeactivate(true)}
-          onCancel={() => setShowDeactivateWarning(false)}
-          isLoading={actionLoading}
-        />
-      )}
+      {/* Header */}
+      <StoreOwnerDetailHeader
+        owner={storeOwner}
+        onBack={() => router.push('/admin/store-owners')}
+      />
 
-      <header className="border-b bg-white px-6 py-4">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => router.push('/admin/store-owners')}
-            className="text-sm text-blue-600 hover:underline"
-          >
-            ← Quay lại danh sách
-          </button>
-          <h1 className="text-xl font-bold">Chi tiết Store Owner</h1>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-2xl px-6 py-8">
-        <div className="rounded-lg bg-white p-6 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">{storeOwner.fullName}</h2>
-            <span className="rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700">
-              {STATUS_LABELS[storeOwner.status]}
-            </span>
-          </div>
-
-          <dl className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <dt className="text-gray-500">Email</dt>
-              <dd className="font-medium">{storeOwner.email}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">Điện thoại</dt>
-              <dd className="font-medium">{storeOwner.phone}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">Tên gian hàng</dt>
-              <dd className="font-medium">{storeOwner.store?.name || '—'}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">Ngày đăng ký</dt>
-              <dd className="font-medium">
-                {new Date(storeOwner.createdAt).toLocaleDateString('vi-VN')}
-              </dd>
-            </div>
-            {storeOwner.registrationReason && (
-              <div className="col-span-2">
-                <dt className="text-gray-500">Lý do đăng ký</dt>
-                <dd className="mt-1 text-gray-800">{storeOwner.registrationReason}</dd>
-              </div>
-            )}
-          </dl>
-
-          {/* Actions */}
-          <div className="flex gap-3 pt-2 border-t">
-            {storeOwner.status === 'pending' && (
-              <>
-                <button
-                  onClick={handleApprove}
-                  disabled={actionLoading}
-                  className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
-                >
-                  Phê duyệt
-                </button>
-                <button
-                  onClick={() => setShowRejectModal(true)}
-                  disabled={actionLoading}
-                  className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-                >
-                  Từ chối
-                </button>
-              </>
-            )}
-            {storeOwner.status === 'active' && (
-              <button
-                onClick={() => handleDeactivate(false)}
-                disabled={actionLoading}
-                className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-              >
-                Vô hiệu hóa
-              </button>
-            )}
-            {storeOwner.status === 'inactive' && (
-              <button
-                onClick={handleReactivate}
-                disabled={actionLoading}
-                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-              >
-                Kích hoạt lại
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Reject modal */}
-        {showRejectModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-              <h3 className="text-lg font-semibold">Từ chối tài khoản</h3>
-              <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700">
-                  Lý do từ chối <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  rows={4}
-                  value={rejectReason}
-                  onChange={(e) => { setRejectReason(e.target.value); setRejectError(null); }}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none"
-                  placeholder="Vui lòng nhập lý do từ chối (ít nhất 10 ký tự)..."
-                />
-                {rejectError && <p className="mt-1 text-xs text-red-600">{rejectError}</p>}
-              </div>
-              <div className="mt-4 flex justify-end gap-3">
-                <button
-                  onClick={() => { setShowRejectModal(false); setRejectReason(''); setRejectError(null); }}
-                  className="rounded-md border px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  Hủy
-                </button>
-                <button
-                  onClick={handleReject}
-                  disabled={actionLoading}
-                  className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-                >
-                  Xác nhận từ chối
-                </button>
-              </div>
-            </div>
-          </div>
+      {/* Action Buttons */}
+      <div className="flex flex-wrap gap-3">
+        {storeOwner.status === 'pending' && (
+          <>
+            <button
+              onClick={() => setModals({ ...modals, approval: true })}
+              disabled={actionLoading}
+              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-2"
+            >
+              ✓ Phê duyệt
+            </button>
+            <button
+              onClick={() => setModals({ ...modals, rejection: true })}
+              disabled={actionLoading}
+              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
+            >
+              ✕ Từ chối
+            </button>
+          </>
         )}
-      </main>
+        {storeOwner.status === 'active' && (
+          <button
+            onClick={() => setModals({ ...modals, deactivate: true })}
+            disabled={actionLoading}
+            className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50 flex items-center gap-2"
+          >
+            ⛔ Vô hiệu hóa
+          </button>
+        )}
+        {storeOwner.status === 'inactive' && (
+          <button
+            onClick={handleReactivate}
+            disabled={actionLoading}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+          >
+            {actionLoading && <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>}
+            🔄 Kích hoạt lại
+          </button>
+        )}
+      </div>
+
+      {/* Personal Information */}
+      <StoreOwnerInfoSection title="Thông tin cá nhân" icon="👤">
+        <div className="grid grid-cols-2 gap-6">
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-600">
+              Họ và tên
+            </label>
+            <p className="mt-1 text-gray-900">{storeOwner.fullName}</p>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-600">
+              Email
+            </label>
+            <p className="mt-1 text-gray-900">{storeOwner.email}</p>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-600">
+              Số điện thoại
+            </label>
+            <p className="mt-1 text-gray-900">{storeOwner.phone || '—'}</p>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-600">
+              Trạng thái
+            </label>
+            <div className="mt-1">
+              <span
+                className={`rounded-full px-3 py-1 text-sm font-medium ${
+                  storeOwner.status === 'pending'
+                    ? 'bg-amber-100 text-amber-800'
+                    : storeOwner.status === 'active'
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : storeOwner.status === 'inactive'
+                        ? 'bg-slate-100 text-slate-800'
+                        : 'bg-red-100 text-red-800'
+                }`}
+              >
+                {storeOwner.status === 'pending'
+                  ? '⏳ Chờ duyệt'
+                  : storeOwner.status === 'active'
+                    ? '✅ Đang hoạt động'
+                    : storeOwner.status === 'inactive'
+                      ? '⛔ Vô hiệu hóa'
+                      : '❌ Đã từ chối'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </StoreOwnerInfoSection>
+
+      {/* Store Information */}
+      {storeOwner.store && (
+        <StoreOwnerInfoSection title="Thông tin gian hàng" icon="🏪">
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-gray-600">
+                Tên gian hàng
+              </label>
+              <p className="mt-1 text-gray-900">{storeOwner.store.name}</p>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-gray-600">
+                Địa chỉ
+              </label>
+              <p className="mt-1 text-gray-900">{storeOwner.store.address || '—'}</p>
+            </div>
+            <div className="col-span-2">
+              <a
+                href={`/admin/stores/${storeOwner.store.id}`}
+                className="text-blue-600 hover:underline font-medium text-sm"
+              >
+                → Xem chi tiết gian hàng
+              </a>
+            </div>
+          </div>
+        </StoreOwnerInfoSection>
+      )}
+
+      {/* Registration Details */}
+      <StoreOwnerInfoSection title="Thông tin đăng ký" icon="📋">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-600 mb-1">
+              Ngày đăng ký
+            </label>
+            <p className="text-gray-900">
+              {new Date(storeOwner.createdAt).toLocaleDateString('vi-VN')} lúc{' '}
+              {new Date(storeOwner.createdAt).toLocaleTimeString('vi-VN')}
+            </p>
+          </div>
+          {storeOwner.registrationReason && (
+            <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-blue-700 mb-2">
+                Lý do đăng ký
+              </label>
+              <p className="text-blue-900">{storeOwner.registrationReason}</p>
+            </div>
+          )}
+        </div>
+      </StoreOwnerInfoSection>
+
+      {/* Timeline */}
+      <StoreOwnerTimeline events={timelineEvents} />
+
+      {/* Modals */}
+      <ApprovalModal
+        isOpen={modals.approval}
+        isLoading={actionLoading}
+        storeOwnerName={storeOwner.fullName}
+        onApprove={handleApprove}
+        onCancel={() => setModals({ ...modals, approval: false })}
+      />
+
+      <RejectionModal
+        isOpen={modals.rejection}
+        isLoading={actionLoading}
+        storeOwnerName={storeOwner.fullName}
+        onReject={handleReject}
+        onCancel={() => {
+          setModals({ ...modals, rejection: false });
+          setRejectReason('');
+        }}
+      />
+
+      <DeactivateModal
+        isOpen={modals.deactivate}
+        isLoading={actionLoading}
+        storeOwnerName={storeOwner.fullName}
+        storeName={storeOwner.store?.name}
+        onConfirm={handleDeactivate}
+        onCancel={() => setModals({ ...modals, deactivate: false })}
+      />
     </div>
   );
 }
