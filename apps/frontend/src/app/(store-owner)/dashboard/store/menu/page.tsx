@@ -17,7 +17,6 @@ interface MenuItemData {
   description?: string | null;
   price: number;
   imageUrl?: string | null;
-  isInDraft: boolean;
   tags?: { id: number; nameVi: string }[];
 }
 
@@ -243,9 +242,6 @@ export default function MenuPage() {
                   <p className="text-sm font-semibold text-red-600">
                     {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.price)}
                   </p>
-                  {item.isInDraft && (
-                    <span className="text-xs text-yellow-600 bg-yellow-50 px-1 rounded">Chờ duyệt</span>
-                  )}
                   {item.tags && item.tags.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {item.tags.map((t) => (
