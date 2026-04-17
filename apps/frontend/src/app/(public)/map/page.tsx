@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslation } from 'react-i18next';
 import { getPublicPins } from '../../../lib/api/map';
@@ -9,7 +9,6 @@ import type { RouteDisplay } from './components/MapView';
 import StoreBottomSheet from './components/StoreBottomSheet';
 import MapSearchOverlay from './components/MapSearchOverlay';
 import GpsAutoPlayController from '../../../components/gps/GpsAutoPlayController';
-import ShareLocationBtn from './components/ShareLocationBtn';
 import { fetchRoute, formatDistance, formatDuration } from '../../../lib/map/osrm';
 
 const MapView = dynamic(() => import('./components/MapView'), {
@@ -27,23 +26,40 @@ interface RouteInfo {
   storeName: string;
 }
 
+interface BoundaryQrData {
+  id: string;
+  name: string;
+  coordinates: { lat: number; lng: number }[];
+}
+
+function boundaryCenter(coords: { lat: number; lng: number }[]) {
+  return {
+    lat: coords.reduce((s, c) => s + c.lat, 0) / coords.length,
+    lng: coords.reduce((s, c) => s + c.lng, 0) / coords.length,
+  };
+}
+
 export default function MapPage() {
   const { t } = useTranslation();
   const [pins, setPins] = useState<PublicPin[]>([]);
   const [boundary, setBoundary] = useState<Awaited<ReturnType<typeof getPublicPins>>['boundary']>(null);
   const [selectedPin, setSelectedPin] = useState<PublicPin | null>(null);
+  const [boundaryQr, setBoundaryQr] = useState<BoundaryQrData | null>(null);
 
-  // Routing state
+  // Routing
   const [route, setRoute] = useState<RouteDisplay | null>(null);
   const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
   const [isRouting, setIsRouting] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
 
-  // Fly-to target (from search)
+  // Fly-to (search / QR)
   const [flyTo, setFlyTo] = useState<{ lat: number; lng: number } | null>(null);
 
-  // Read shared location from URL on client
+  // Shared location from URL
   const [sharedLocation, setSharedLocation] = useState<{ lat: number; lng: number } | undefined>();
+
+  // Stores dismissed by user — don't auto-reopen
+  const dismissedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -52,61 +68,69 @@ export default function MapPage() {
     if (lat && lng && !isNaN(Number(lat)) && !isNaN(Number(lng))) {
       setSharedLocation({ lat: Number(lat), lng: Number(lng) });
     }
-    // Auto-open panel for a specific store from URL (?storeId=xxx)
-    const storeId = params.get('storeId');
-    if (storeId) {
-      getPublicPins().then((d) => {
-        setPins(d.pins);
-        setBoundary(d.boundary);
-        const target = d.pins.find((p) => p.storeId === storeId);
-        if (target) setSelectedPin(target);
-      }).catch(() => {});
-    } else {
-      getPublicPins().then((d) => {
-        setPins(d.pins);
-        setBoundary(d.boundary);
-      }).catch(() => {});
+
+    // Boundary QR
+    const boundaryQrId = params.get('boundaryQrId');
+    if (boundaryQrId) {
+      const raw = sessionStorage.getItem(`boundary_qr_${boundaryQrId}`);
+      if (raw) {
+        try {
+          const data = JSON.parse(raw) as BoundaryQrData;
+          setBoundaryQr(data);
+          setFlyTo(boundaryCenter(data.coordinates));
+        } catch { /* ignore */ }
+      }
     }
+
+    const storeId = params.get('storeId');
+    getPublicPins().then((d) => {
+      setPins(d.pins);
+      setBoundary(d.boundary);
+      if (storeId) {
+        const target = d.pins.find((p) => p.storeId === storeId);
+        if (target) {
+          setSelectedPin(target);
+          setFlyTo({ lat: Number(target.latitude), lng: Number(target.longitude) });
+        }
+      }
+    }).catch(() => {});
   }, []);
 
   const handleDirections = useCallback(async (destLat: number, destLng: number) => {
     setIsRouting(true);
     setRouteError(null);
-
     try {
-      // Get user location
       const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
         if (!navigator.geolocation) {
-          reject(new Error('GPS không được hỗ trợ'));
-          return;
+          reject(new Error(t('map.geolocationNotSupported'))); return;
         }
-        navigator.geolocation.getCurrentPosition(resolve, () => {
-          reject(new Error('Vui lòng bật GPS để sử dụng chỉ đường'));
-        }, { enableHighAccuracy: true, timeout: 10000 });
+        navigator.geolocation.getCurrentPosition(resolve, (err) => {
+          switch (err.code) {
+            case err.PERMISSION_DENIED:   reject(new Error(t('map.permissionRequired'))); break;
+            case err.POSITION_UNAVAILABLE: reject(new Error(t('map.positionUnavailable'))); break;
+            case err.TIMEOUT:             reject(new Error(t('map.geolocationTimeout'))); break;
+            default:                      reject(new Error(t('map.geolocationError')));
+          }
+        }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 });
       });
 
       const from = { lat: pos.coords.latitude, lng: pos.coords.longitude };
       const to = { lat: destLat, lng: destLng };
-
       const result = await fetchRoute(from, to);
 
-      setRoute({
-        coordinates: result.coordinates,
-        userLocation: [from.lat, from.lng],
-      });
+      setRoute({ coordinates: result.coordinates, userLocation: [from.lat, from.lng] });
       setRouteInfo({
         distance: formatDistance(result.distanceMeters),
         duration: formatDuration(result.durationSeconds),
-        storeName: selectedPin?.storeName ?? '',
+        storeName: selectedPin?.storeName ?? boundaryQr?.name ?? '',
       });
     } catch (err) {
       setRouteError((err as Error).message);
-      // Auto-hide error after 4s
-      setTimeout(() => setRouteError(null), 4000);
+      setTimeout(() => setRouteError(null), 8000);
     } finally {
       setIsRouting(false);
     }
-  }, [selectedPin]);
+  }, [selectedPin, boundaryQr, t]);
 
   function clearRoute() {
     setRoute(null);
@@ -114,8 +138,9 @@ export default function MapPage() {
   }
 
   return (
-    <div className="relative w-full" style={{ height: 'calc(100vh - 64px)' }}>
-      {/* Map fills the container */}
+    // Mobile: full-screen fixed (bản đồ phủ toàn màn hình, overlay nổi trên)
+    // Desktop (sm+): flow bình thường dưới header 64px
+    <div className="fixed inset-0 sm:relative sm:inset-auto sm:w-full sm:h-[calc(100dvh-64px)]">
       <MapView
         pins={pins}
         boundary={boundary}
@@ -123,18 +148,12 @@ export default function MapPage() {
         selectedPinId={selectedPin?.storeId ?? null}
         route={route}
         flyTo={flyTo}
-        onPinSelect={(pin) => setSelectedPin(pin)}
+        onPinSelect={(pin) => { setBoundaryQr(null); setSelectedPin(pin); }}
         onMapClick={() => setSelectedPin(null)}
       />
 
-      {/* Top-left overlay */}
-      <div className="absolute top-3 left-3 z-[500] flex flex-col gap-2">
-        <div className="flex gap-2 items-center">
-          <div className="bg-white rounded-lg shadow px-3 py-1.5 text-sm font-medium text-gray-700">
-            🍜 {pins.length > 0 ? t('map.pinCount', { count: pins.length }) : t('map.title')}
-          </div>
-          <ShareLocationBtn />
-        </div>
+      {/* Search — top left */}
+      <div className="absolute top-3 left-3 z-[500]">
         <MapSearchOverlay
           pins={pins}
           onSelectPin={(pin) => {
@@ -144,65 +163,83 @@ export default function MapPage() {
         />
       </div>
 
-      {/* GPS controller — floating top-right */}
+      {/* GPS controller — top right */}
       <div className="absolute top-3 right-3 z-[500]">
         <GpsAutoPlayController />
       </div>
 
-      {/* Route info panel — top center */}
-      {routeInfo && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] bg-white rounded-xl shadow-lg border border-blue-100 px-4 py-2.5 flex items-center gap-3 max-w-sm">
-          <div className="flex-shrink-0 w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center">
-            <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-            </svg>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900 truncate">{routeInfo.storeName}</p>
-            <p className="text-xs text-gray-500">
-              <span className="font-medium text-blue-600">{routeInfo.distance}</span>
-              {' · '}
-              <span className="font-medium text-blue-600">{routeInfo.duration}</span>
-            </p>
-          </div>
-          {/* Open in Google Maps */}
-          {selectedPin && (
-            <a
-              href={`https://www.google.com/maps/dir/?api=1&destination=${selectedPin.latitude},${selectedPin.longitude}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Google Maps"
-              className="flex-shrink-0 p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-            </a>
-          )}
-          {/* Clear route */}
-          <button
-            onClick={clearRoute}
-            className="flex-shrink-0 p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
-            title={t('map.close')}
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-      )}
-
       {/* Route error toast */}
       {routeError && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] bg-red-50 border border-red-200 text-red-700 rounded-lg shadow px-4 py-2 text-sm">
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[500] bg-red-50 border border-red-200 text-red-700 rounded-xl shadow px-4 py-2 text-sm whitespace-nowrap">
           {routeError}
         </div>
       )}
 
-      {/* Bottom sheet */}
+      {/* Route info bar (shown when there's a route but no store sheet open) */}
+      {routeInfo && !selectedPin && !boundaryQr && (
+        <div className="absolute bottom-24 sm:bottom-4 left-3 right-3 z-[400]">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 px-4 py-3 flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-gray-400 font-medium">Tuyến đường</p>
+              <p className="font-semibold text-gray-900 truncate">{routeInfo.storeName}</p>
+              <p className="text-xs mt-0.5">
+                <span className="font-semibold text-orange-600">{routeInfo.distance}</span>
+                <span className="text-gray-400"> · </span>
+                <span className="font-semibold text-orange-600">{routeInfo.duration}</span>
+              </p>
+            </div>
+            <button
+              onClick={clearRoute}
+              className="shrink-0 p-2 rounded-xl hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Boundary QR card */}
+      {boundaryQr && !selectedPin && (
+        <div className="absolute bottom-24 sm:bottom-4 left-3 right-3 z-[400]">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 px-4 py-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center shrink-0">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ea580c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" />
+                <line x1="9" y1="3" x2="9" y2="18" />
+                <line x1="15" y1="6" x2="15" y2="21" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-gray-400 font-medium">Khu vực hoạt động</p>
+              <p className="font-semibold text-gray-900 truncate">{boundaryQr.name}</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => handleDirections(...Object.values(boundaryCenter(boundaryQr.coordinates)) as [number, number])}
+                disabled={isRouting}
+                className="px-3 py-2 bg-orange-500 text-white rounded-xl text-sm font-medium disabled:opacity-50 active:scale-95 transition-transform"
+              >
+                {isRouting ? '...' : 'Chỉ đường'}
+              </button>
+              <button onClick={() => setBoundaryQr(null)} className="p-2 text-gray-400 hover:text-gray-600">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Store bottom sheet */}
       <StoreBottomSheet
         pin={selectedPin}
-        onClose={() => setSelectedPin(null)}
+        onClose={() => {
+          if (selectedPin) dismissedRef.current.add(selectedPin.storeId);
+          setSelectedPin(null);
+        }}
         onDirections={handleDirections}
         isRouting={isRouting}
       />

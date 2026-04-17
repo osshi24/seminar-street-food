@@ -1,6 +1,14 @@
-/* Leaflet map styles — must be before tailwind imports */
-@import 'leaflet/dist/leaflet.css';
+/* MapLibre GL map styles — must be before tailwind imports */
+@import 'maplibre-gl/dist/maplibre-gl.css';
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* On mobile, push MapLibre bottom controls above the bottom tab bar (56px + safe area) */
+@media (max-width: 639px) {
+  .maplibregl-ctrl-bottom-right,
+  .maplibregl-ctrl-bottom-left {
+    margin-bottom: calc(env(safe-area-inset-bottom, 0px) + 64px);
+  }
+}

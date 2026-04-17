@@ -64,3 +64,15 @@ export async function downloadQrPdf(storeId: string): Promise<Blob> {
   if (!res.ok) throw new Error('Không thể tải QR PDF.');
   return res.blob();
 }
+
+export type QrResolveResult =
+  | { type: 'store'; storeId: string }
+  | { type: 'boundary'; boundary: { id: string; name: string; coordinates: { lat: number; lng: number }[] } }
+  | { type: 'unavailable' };
+
+export async function resolveQrToken(token: string): Promise<QrResolveResult> {
+  const res = await fetch(`${API_URL}/qr/${token}/resolve`);
+  if (!res.ok) return { type: 'unavailable' };
+  const data = await res.json();
+  return (data?.data ?? data) as QrResolveResult;
+}
