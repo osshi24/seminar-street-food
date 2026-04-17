@@ -165,19 +165,12 @@ export class StoresService {
     const store = await this.storeRepo.findOne({ where: { ownerId } });
     if (!store) throw new NotFoundException('Store not found');
 
-    const pending = await this.draftRepo.findOne({
-      where: { storeId: store.id, status: DraftStatus.PENDING },
-    });
-    if (pending) {
-      throw new ConflictException({ code: 'DRAFT_PENDING', message: 'Cannot edit while draft is pending' });
-    }
-
     const item = this.menuItemRepo.create({
       storeId: store.id,
       name: dto.name,
       description: dto.description ?? null,
       price: dto.price,
-      isInDraft: true,
+      isInDraft: false,
     });
     return this.menuItemRepo.save(item);
   }
@@ -194,7 +187,7 @@ export class StoresService {
     if (item.storeId !== store.id) throw new ForbiddenException('Access denied');
 
     const { tagIds, ...rest } = dto;
-    Object.assign(item, { ...rest, isInDraft: true });
+    Object.assign(item, { ...rest });
 
     if (tagIds !== undefined) {
       // Sync tags via raw query to avoid loading PreferenceTag repo here
@@ -222,12 +215,84 @@ export class StoresService {
     if (!item) throw new NotFoundException('Menu item not found');
     if (item.storeId !== store.id) throw new ForbiddenException('Access denied');
 
-    if (item.isInDraft) {
-      await this.menuItemRepo.delete({ id: itemId });
-    } else {
-      item.isInDraft = true;
-      await this.menuItemRepo.save(item);
+    if (item.imageS3Key) {
+      try {
+        await this.storageService.deleteObject(item.imageS3Key);
+      } catch (err) {
+        this.logger.warn(
+          `Failed deleting menu item image for ${item.id}: ${(err as Error).message}`,
+        );
+      }
     }
+
+    await this.menuItemRepo.delete({ id: itemId });
+  }
+
+  async generateMenuItemImageUploadUrl(
+    ownerId: string,
+    itemId: string,
+    contentType: string,
+  ): Promise<{ presignedUrl: string; imageUrl: string }> {
+    const store = await this.storeRepo.findOne({ where: { ownerId } });
+    if (!store) throw new NotFoundException('Store not found');
+
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(contentType)) {
+      throw new UnprocessableEntityException({
+        code: 'UNSUPPORTED_IMAGE_TYPE',
+        message: 'Only JPG, PNG, WebP are supported',
+      });
+    }
+
+    const item = await this.menuItemRepo.findOne({ where: { id: itemId } });
+    if (!item) throw new NotFoundException('Menu item not found');
+    if (item.storeId !== store.id) throw new ForbiddenException('Access denied');
+
+    if (item.imageS3Key) {
+      try {
+        await this.storageService.deleteObject(item.imageS3Key);
+      } catch (err) {
+        this.logger.warn(
+          `Failed deleting old menu item image for ${item.id}: ${(err as Error).message}`,
+        );
+      }
+    }
+
+    const ext =
+      contentType === 'image/png'
+        ? 'png'
+        : contentType === 'image/webp'
+          ? 'webp'
+          : 'jpg';
+    const s3Key = `stores/${store.id}/menu-items/${item.id}/${uuidv4()}.${ext}`;
+    const presignedUrl = await this.storageService.generatePresignedPutUrl(
+      s3Key,
+      contentType,
+    );
+    const imageUrl = this.storageService.getPublicUrl(s3Key);
+
+    item.imageUrl = imageUrl;
+    item.imageS3Key = s3Key;
+    await this.menuItemRepo.save(item);
+
+    return { presignedUrl, imageUrl };
+  }
+
+  async deleteMenuItemImage(ownerId: string, itemId: string): Promise<void> {
+    const store = await this.storeRepo.findOne({ where: { ownerId } });
+    if (!store) throw new NotFoundException('Store not found');
+
+    const item = await this.menuItemRepo.findOne({ where: { id: itemId } });
+    if (!item) throw new NotFoundException('Menu item not found');
+    if (item.storeId !== store.id) throw new ForbiddenException('Access denied');
+
+    if (item.imageS3Key) {
+      await this.storageService.deleteObject(item.imageS3Key);
+    }
+
+    item.imageUrl = null;
+    item.imageS3Key = null;
+    await this.menuItemRepo.save(item);
   }
 
   async generateImageUploadUrl(ownerId: string, contentType: string): Promise<{ presignedUrl: string; s3Key: string; imageId: string }> {

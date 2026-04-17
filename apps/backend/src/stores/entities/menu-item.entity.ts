@@ -29,6 +29,12 @@ export class MenuItem {
   @Column({ type: 'numeric', precision: 12, scale: 0 })
   price: number;
 
+  @Column({ name: 'image_url', type: 'text', nullable: true })
+  imageUrl: string | null;
+
+  @Column({ name: 'image_s3_key', type: 'text', nullable: true })
+  imageS3Key: string | null;
+
   @Column({ name: 'is_in_draft', default: false })
   isInDraft: boolean;
 

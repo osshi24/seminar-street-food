@@ -122,6 +122,7 @@ export class PublicStoresService {
       name: mi.name,
       description: mi.description,
       price: mi.price,
+      imageUrl: mi.imageUrl,
       tags: (mi as any).tags,
     }));
     if (lang !== 'vi') {

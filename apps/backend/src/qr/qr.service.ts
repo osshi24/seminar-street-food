@@ -22,6 +22,27 @@ export class QrService {
     private readonly configService: ConfigService,
   ) {}
 
+  async getActiveQr(storeId: string, ownerId: string): Promise<CreateQrResponseDto> {
+    const qr = await this.findActiveQr(storeId, ownerId);
+    const scanUrl = this.buildScanUrl(qr.token);
+    const qrImageUrl = await QRCode.toDataURL(scanUrl, {
+      errorCorrectionLevel: 'H',
+      margin: 2,
+      width: 512,
+      color: { dark: '#000000', light: '#FFFFFF' },
+    });
+
+    return {
+      id: qr.id,
+      storeId: qr.storeId,
+      token: qr.token,
+      isActive: qr.isActive,
+      createdAt: qr.createdAt,
+      qrImageUrl,
+      scanUrl,
+    };
+  }
+
   async createQr(storeId: string, ownerId: string): Promise<CreateQrResponseDto> {
     const store = await this.verifyOwnership(storeId, ownerId);
 

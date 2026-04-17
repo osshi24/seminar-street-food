@@ -19,6 +19,15 @@ import { StoreOwnerAccount } from '../entities/store-owner-account.entity';
 export class QrController {
   constructor(private readonly qrService: QrService) {}
 
+  @Get()
+  async getActiveQr(
+    @Param('storeId') storeId: string,
+    @Request() req: { user: StoreOwnerAccount },
+  ) {
+    const ownerId = req.user.id;
+    return this.qrService.getActiveQr(storeId, ownerId);
+  }
+
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async createQr(

@@ -1,7 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getMenuItems, addMenuItem, removeMenuItem, updateMenuItem } from '../../../../../lib/api/stores';
+import {
+  getMenuItems,
+  addMenuItem,
+  removeMenuItem,
+  updateMenuItem,
+  generateMenuItemImageUploadUrl,
+} from '../../../../../lib/api/stores';
 import { fetchTags } from '../../../../../lib/api/tags';
 import type { TagGroup } from '../../../../../lib/api/tags';
 
@@ -10,7 +16,7 @@ interface MenuItemData {
   name: string;
   description?: string | null;
   price: number;
-  isInDraft: boolean;
+  imageUrl?: string | null;
   tags?: { id: number; nameVi: string }[];
 }
 
@@ -23,6 +29,9 @@ export default function MenuPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', description: '', price: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
   const [editingTagsFor, setEditingTagsFor] = useState<string | null>(null);
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
 
@@ -45,8 +54,41 @@ export default function MenuPage() {
     if (!form.name || !form.price) return;
     setSubmitting(true);
     try {
-      await addMenuItem({ name: form.name, description: form.description || undefined, price: Number(form.price) });
+      const createdRes = await addMenuItem({
+        name: form.name,
+        description: form.description || undefined,
+        price: Number(form.price),
+      });
+
+      const createdItem = createdRes?.data ?? createdRes;
+      if (imageFile && createdItem?.id) {
+        const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        if (!validTypes.includes(imageFile.type)) {
+          setImageError('Chỉ hỗ trợ JPG, PNG, WebP');
+        } else if (imageFile.size > 5 * 1024 * 1024) {
+          setImageError('Kích thước tối đa 5MB');
+        } else {
+          setImageError(null);
+          const { presignedUrl } = await generateMenuItemImageUploadUrl(
+            createdItem.id,
+            imageFile.type,
+          );
+
+          const uploadRes = await fetch(presignedUrl, {
+            method: 'PUT',
+            body: imageFile,
+            headers: { 'Content-Type': imageFile.type },
+          });
+          if (!uploadRes.ok) {
+            throw new Error('Upload ảnh thất bại');
+          }
+        }
+      }
+
       setForm({ name: '', description: '', price: '' });
+      if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+      setImageFile(null);
+      setImagePreviewUrl(null);
       setShowForm(false);
       load();
     } finally {
@@ -111,6 +153,47 @@ export default function MenuPage() {
             onChange={(e) => setForm({ ...form, price: e.target.value })}
             className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
           />
+          <div>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null;
+                setImageError(null);
+                if (!file) {
+                  if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+                  setImageFile(null);
+                  setImagePreviewUrl(null);
+                  return;
+                }
+
+                const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+                if (!validTypes.includes(file.type)) {
+                  setImageError('Chỉ hỗ trợ JPG, PNG, WebP');
+                  return;
+                }
+                if (file.size > 5 * 1024 * 1024) {
+                  setImageError('Kích thước tối đa 5MB');
+                  return;
+                }
+
+                if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+                setImageFile(file);
+                setImagePreviewUrl(URL.createObjectURL(file));
+              }}
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+            />
+            {imageError && <p className="mt-1 text-xs text-red-600">{imageError}</p>}
+            {imagePreviewUrl && (
+              <div className="mt-2">
+                <img
+                  src={imagePreviewUrl}
+                  alt="Preview"
+                  className="h-28 w-28 rounded-md object-cover border"
+                />
+              </div>
+            )}
+          </div>
           <div className="flex gap-2">
             <button
               onClick={handleAdd}
@@ -120,7 +203,13 @@ export default function MenuPage() {
               Thêm
             </button>
             <button
-              onClick={() => setShowForm(false)}
+              onClick={() => {
+                if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+                setImageFile(null);
+                setImagePreviewUrl(null);
+                setImageError(null);
+                setShowForm(false);
+              }}
               className="rounded-md border px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
             >
               Hủy
@@ -138,15 +227,21 @@ export default function MenuPage() {
           {items.map((item) => (
             <li key={item.id} className="rounded-lg bg-white p-4 shadow-sm border">
               <div className="flex items-start justify-between gap-3">
+                {item.imageUrl && (
+                  <div className="flex-shrink-0">
+                    <img
+                      src={item.imageUrl}
+                      alt={item.name}
+                      className="h-16 w-16 rounded-md object-cover border"
+                    />
+                  </div>
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{item.name}</p>
                   {item.description && <p className="text-sm text-gray-500">{item.description}</p>}
                   <p className="text-sm font-semibold text-red-600">
                     {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.price)}
                   </p>
-                  {item.isInDraft && (
-                    <span className="text-xs text-yellow-600 bg-yellow-50 px-1 rounded">Chờ duyệt</span>
-                  )}
                   {item.tags && item.tags.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {item.tags.map((t) => (
