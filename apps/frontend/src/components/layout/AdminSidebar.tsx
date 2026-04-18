@@ -168,65 +168,56 @@ const NAV_ITEMS = [
 
 export default function AdminSidebar() {
   return (
-    <aside className="hidden h-screen w-[310px] shrink-0 border-r border-slate-800 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.18),_transparent_30%),linear-gradient(180deg,_#0f172a_0%,_#020617_100%)] text-white lg:flex lg:flex-col">
-      <div className="border-b border-white/10 px-6 pb-6 pt-7">
-        <div className="flex items-start gap-4">
-          <Icon filled>
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.8}
-                d="M12 3l7 4v5c0 5-3 8-7 9-4-1-7-4-7-9V7l7-4z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.8}
-                d="M9.5 12.5l1.5 1.5 3.5-4"
-              />
-            </svg>
-          </Icon>
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-300">
-              Seminar Street Food
-            </p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white">
-              Admin Console
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-slate-300">
-              Điều phối nội dung, kiểm duyệt vận hành và theo dõi toàn bộ hệ thống từ một nơi.
-            </p>
+    <aside className="hidden min-h-screen w-[310px] shrink-0 self-stretch border-r border-slate-800 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.18),_transparent_30%),linear-gradient(180deg,_#0f172a_0%,_#020617_100%)] text-white lg:block">
+      <div className="sticky top-0 flex h-screen flex-col overflow-hidden">
+        <div className="border-b border-white/10 px-6 pb-6 pt-7">
+          <div className="flex items-start gap-4">
+            <Icon filled>
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.8}
+                  d="M12 3l7 4v5c0 5-3 8-7 9-4-1-7-4-7-9V7l7-4z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.8}
+                  d="M9.5 12.5l1.5 1.5 3.5-4"
+                />
+              </svg>
+            </Icon>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-300">
+                Seminar Street Food
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white">
+                Admin Console
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-slate-300">
+                Điều phối nội dung, kiểm duyệt vận hành và theo dõi toàn bộ hệ thống từ một nơi.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <nav className="flex-1 space-y-2 overflow-y-auto px-4 py-5">
-        {NAV_ITEMS.map((item) => (
-          <NavLink
-            key={item.href}
-            href={item.href}
-            exact={item.exact}
-            className="group flex items-center gap-3 rounded-[22px] border border-transparent px-3 py-3 text-sm font-medium text-slate-300 transition-all hover:border-white/10 hover:bg-white/5 hover:text-white"
-            activeClassName="border-white/10 bg-white/10 text-white shadow-[0_18px_36px_-24px_rgba(56,189,248,0.75)]"
-          >
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-200 transition-colors group-hover:border-white/20 group-hover:text-white">
-              {item.icon}
-            </span>
-            <span className="truncate">{item.label}</span>
-          </NavLink>
-        ))}
-      </nav>
-
-      <div className="border-t border-white/10 px-6 py-5">
-        <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
-            Admin note
-          </p>
-          <p className="mt-2 text-sm leading-6 text-slate-300">
-            Các màn quản lý đã được gom về cùng một shell để ưu tiên tốc độ rà soát, kiểm duyệt và xử lý tác vụ.
-          </p>
-        </div>
+        <nav className="flex-1 space-y-2 overflow-y-auto px-4 py-5 pb-8">
+          {NAV_ITEMS.map((item) => (
+            <NavLink
+              key={item.href}
+              href={item.href}
+              exact={item.exact}
+              className="group flex items-center gap-3 rounded-[22px] border border-transparent px-3 py-3 text-sm font-medium text-slate-300 transition-all hover:border-white/10 hover:bg-white/5 hover:text-white"
+              activeClassName="border-white/10 bg-white/10 text-white shadow-[0_18px_36px_-24px_rgba(56,189,248,0.75)]"
+            >
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-200 transition-colors group-hover:border-white/20 group-hover:text-white">
+                {item.icon}
+              </span>
+              <span className="truncate">{item.label}</span>
+            </NavLink>
+          ))}
+        </nav>
       </div>
     </aside>
   );

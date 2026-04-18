@@ -15,74 +15,81 @@ export default function LocationPinPagination({
   limit,
   onPageChange,
 }: LocationPinPaginationProps) {
-  if (totalPages <= 1) return null;
+  if (totalPages <= 1) {
+    return null;
+  }
 
   const startItem = (currentPage - 1) * limit + 1;
   const endItem = Math.min(currentPage * limit, total);
 
   const getPageNumbers = () => {
-    const pages: (number | string)[] = [];
+    const pages: Array<number | string> = [];
     const maxVisible = 5;
 
     if (totalPages <= maxVisible) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
+      for (let page = 1; page <= totalPages; page += 1) {
+        pages.push(page);
       }
-    } else {
-      pages.push(1);
-
-      if (currentPage > 3) {
-        pages.push('...');
-      }
-
-      for (
-        let i = Math.max(2, currentPage - 1);
-        i <= Math.min(totalPages - 1, currentPage + 1);
-        i++
-      ) {
-        if (!pages.includes(i)) {
-          pages.push(i);
-        }
-      }
-
-      if (currentPage < totalPages - 2) {
-        pages.push('...');
-      }
-
-      pages.push(totalPages);
+      return pages;
     }
 
+    pages.push(1);
+
+    if (currentPage > 3) {
+      pages.push('...');
+    }
+
+    for (
+      let page = Math.max(2, currentPage - 1);
+      page <= Math.min(totalPages - 1, currentPage + 1);
+      page += 1
+    ) {
+      if (!pages.includes(page)) {
+        pages.push(page);
+      }
+    }
+
+    if (currentPage < totalPages - 2) {
+      pages.push('...');
+    }
+
+    pages.push(totalPages);
     return pages;
   };
 
   return (
-    <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="text-sm text-gray-600">
-        Hiển thị <strong>{startItem}</strong> đến <strong>{endItem}</strong> trong{' '}
-        <strong>{total}</strong> kết quả
+    <div className="flex flex-col gap-4 rounded-[32px] border border-slate-200 bg-white px-5 py-4 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.45)] sm:flex-row sm:items-center sm:justify-between">
+      <div className="text-sm text-slate-500">
+        Hiển thị <span className="font-semibold text-slate-900">{startItem}</span> đến{' '}
+        <span className="font-semibold text-slate-900">{endItem}</span> trong{' '}
+        <span className="font-semibold text-slate-900">{total}</span> kết quả
       </div>
 
       <div className="flex items-center gap-2">
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
         >
-          ← Trước
+          Trang trước
         </button>
 
-        <div className="flex gap-1">
-          {getPageNumbers().map((page, idx) => (
+        <div className="flex items-center gap-1">
+          {getPageNumbers().map((page, index) => (
             <button
-              key={idx}
-              onClick={() => typeof page === 'number' && onPageChange(page)}
+              key={`${page}-${index}`}
+              onClick={() => {
+                if (typeof page === 'number') {
+                  onPageChange(page);
+                }
+              }}
               disabled={page === '...' || page === currentPage}
-              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              className={`min-w-10 rounded-full px-3 py-2 text-sm font-semibold transition ${
                 page === currentPage
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-slate-950 text-white'
                   : page === '...'
-                    ? 'cursor-default text-gray-600'
-                    : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                    ? 'cursor-default text-slate-400'
+                    : 'border border-slate-200 text-slate-700 hover:bg-slate-50'
               }`}
             >
               {page}
@@ -93,9 +100,9 @@ export default function LocationPinPagination({
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
         >
-          Tiếp →
+          Trang sau
         </button>
       </div>
     </div>

@@ -18,23 +18,11 @@ interface LocationPinTableProps {
   onQuickAction?: (action: 'approve' | 'reject' | 'delete', id: string) => void;
 }
 
-const STATUS_COLORS: Record<string, { badge: string; border: string }> = {
-  pending: {
-    badge: 'bg-amber-100 text-amber-800',
-    border: 'border-l-4 border-l-amber-500',
-  },
-  approved: {
-    badge: 'bg-emerald-100 text-emerald-800',
-    border: 'border-l-4 border-l-emerald-500',
-  },
-  rejected: {
-    badge: 'bg-red-100 text-red-800',
-    border: 'border-l-4 border-l-red-500',
-  },
-  superseded: {
-    badge: 'bg-purple-100 text-purple-800',
-    border: 'border-l-4 border-l-purple-500',
-  },
+const STATUS_STYLES: Record<string, string> = {
+  pending: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
+  approved: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
+  rejected: 'bg-rose-50 text-rose-700 ring-1 ring-rose-200',
+  superseded: 'bg-violet-50 text-violet-700 ring-1 ring-violet-200',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -44,91 +32,92 @@ const STATUS_LABELS: Record<string, string> = {
   superseded: 'Đã thay thế',
 };
 
-export default function LocationPinTable({
-  pins,
-  onQuickAction,
-}: LocationPinTableProps) {
+export default function LocationPinTable({ pins, onQuickAction }: LocationPinTableProps) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-              Gian hàng
-            </th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-              Tọa độ
-            </th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-              Trạng thái
-            </th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-              Ngày gửi
-            </th>
-            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-              Hành động
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200">
-          {pins.map((pin) => {
-            const statusColor = STATUS_COLORS[pin.status];
-            return (
-              <tr key={pin.id} className={`${statusColor.border} hover:bg-gray-50 transition-colors`}>
-                <td className="px-4 py-3">
-                  <div>
-                    <div className="text-sm font-medium text-gray-900">
-                      {pin.store?.name || pin.storeId.slice(0, 8)}
+    <div className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-[0_24px_60px_-40px_rgba(15,23,42,0.45)]">
+      <div className="overflow-x-auto">
+        <table className="min-w-full">
+          <thead className="bg-slate-50/80">
+            <tr className="border-b border-slate-200">
+              <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+                Gian hàng
+              </th>
+              <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+                Tọa độ
+              </th>
+              <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+                Trạng thái
+              </th>
+              <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+                Ngày gửi
+              </th>
+              <th className="px-5 py-4 text-right text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+                Tác vụ
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200">
+            {pins.map((pin) => (
+              <tr key={pin.id} className="transition hover:bg-cyan-50/50">
+                <td className="px-5 py-4">
+                  <div className="space-y-2">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {pin.store?.name || pin.storeId.slice(0, 8)}
+                      </p>
+                      <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-400">
+                        {pin.id.slice(0, 8)}
+                      </p>
                     </div>
-                    {pin.hasDuplicateWarning && (
-                      <span className="inline-block mt-1 text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
-                        ⚠️ Trùng tọa độ
+                    {pin.hasDuplicateWarning ? (
+                      <span className="inline-flex rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 ring-1 ring-amber-200">
+                        Có cảnh báo trùng tọa độ
                       </span>
-                    )}
+                    ) : null}
                   </div>
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-600 font-mono">
+                <td className="px-5 py-4 font-mono text-sm text-slate-600">
                   {Number(pin.latitude).toFixed(5)}, {Number(pin.longitude).toFixed(5)}
                 </td>
-                <td className="px-4 py-3">
-                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor.badge}`}>
+                <td className="px-5 py-4">
+                  <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${STATUS_STYLES[pin.status]}`}>
                     {STATUS_LABELS[pin.status]}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-600">
+                <td className="px-5 py-4 text-sm text-slate-600">
                   {new Date(pin.submittedAt).toLocaleDateString('vi-VN')}
                 </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    {pin.status === 'pending' && (
+                <td className="px-5 py-4">
+                  <div className="flex items-center justify-end gap-2">
+                    {pin.status === 'pending' ? (
                       <>
                         <button
                           onClick={() => onQuickAction?.('approve', pin.id)}
-                          className="text-xs px-2.5 py-1 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-medium"
+                          className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100"
                         >
-                          ✓ Duyệt
+                          Duyệt
                         </button>
                         <button
                           onClick={() => onQuickAction?.('reject', pin.id)}
-                          className="text-xs px-2.5 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100 font-medium"
+                          className="rounded-full bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
                         >
-                          ✕ Từ chối
+                          Từ chối
                         </button>
                       </>
-                    )}
+                    ) : null}
                     <Link
                       href={`/admin/location-pins/${pin.id}`}
-                      className="text-xs text-blue-600 hover:underline font-medium"
+                      className="rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700"
                     >
                       Chi tiết
                     </Link>
                   </div>
                 </td>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
