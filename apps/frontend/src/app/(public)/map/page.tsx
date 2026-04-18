@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { getPublicPins } from '../../../lib/api/map';
 import type { PublicPin } from '../../../lib/api/map';
@@ -17,6 +17,8 @@ if (typeof window !== 'undefined') {
   installFakeGpsFromStorage();
 }
 import { fetchRoute, formatDistance, formatDuration } from '../../../lib/map/osrm';
+
+const PENDING_QR_SCAN_KEY = 'pending_qr_scan';
 
 const MapView = dynamic(() => import('./components/MapView'), {
   ssr: false,
@@ -39,6 +41,13 @@ interface BoundaryQrData {
   coordinates: { lat: number; lng: number }[];
 }
 
+interface PendingQrScan {
+  storeId: string;
+  source: 'qr';
+  autoplayCommentary: boolean;
+  qrNonce: string;
+}
+
 function boundaryCenter(coords: { lat: number; lng: number }[]) {
   return {
     lat: coords.reduce((s, c) => s + c.lat, 0) / coords.length,
@@ -48,12 +57,17 @@ function boundaryCenter(coords: { lat: number; lng: number }[]) {
 
 export default function MapPage() {
   const { t } = useTranslation();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [pins, setPins] = useState<PublicPin[]>([]);
   const [boundary, setBoundary] = useState<Awaited<ReturnType<typeof getPublicPins>>['boundary']>(null);
   const [selectedPin, setSelectedPin] = useState<PublicPin | null>(null);
   const [boundaryQr, setBoundaryQr] = useState<BoundaryQrData | null>(null);
+  const [qrFocus, setQrFocus] = useState<{ storeId: string; nonce: string } | null>(null);
+  const [qrSessionKey, setQrSessionKey] = useState<string | null>(null);
   const pinsLoadedRef = useRef(false);
+  const lastQrNonceRef = useRef<string | null>(null);
+  const suppressMapClickUntilRef = useRef(0);
 
   // Routing
   const [route, setRoute] = useState<RouteDisplay | null>(null);
@@ -73,6 +87,47 @@ export default function MapPage() {
 
   // Stores dismissed by user — don't auto-reopen
   const dismissedRef = useRef<Set<string>>(new Set());
+
+  const applyQrScan = useCallback((scan: PendingQrScan) => {
+    if (!scan.storeId) return;
+    if (lastQrNonceRef.current === scan.qrNonce) return;
+
+    lastQrNonceRef.current = scan.qrNonce;
+    suppressMapClickUntilRef.current = Date.now() + 1500;
+    setQrSessionKey(scan.qrNonce);
+    setSelectedPin(null);
+    setBoundaryQr(null);
+    setRoute(null);
+    setRouteInfo(null);
+    setQrFocus({
+      storeId: scan.storeId,
+      nonce: scan.qrNonce,
+    });
+
+    const openPin = (pinList: PublicPin[]) => {
+      const target = pinList.find((p) => p.storeId === scan.storeId);
+      if (target) {
+        dismissedRef.current.delete(scan.storeId);
+        setSelectedPin(target);
+        setFlyTo({ lat: Number(target.latitude), lng: Number(target.longitude) });
+        return;
+      }
+
+      router.replace(`/stores/${scan.storeId}`);
+    };
+
+    if (pinsLoadedRef.current && pins.length > 0) {
+      openPin(pins);
+      return;
+    }
+
+    getPublicPins().then((d) => {
+      setPins(d.pins);
+      setBoundary(d.boundary);
+      pinsLoadedRef.current = true;
+      openPin(d.pins);
+    }).catch(() => {});
+  }, [pins, router]);
 
   // Load pins once
   useEffect(() => {
@@ -104,29 +159,54 @@ export default function MapPage() {
     }
 
     const storeId = searchParams.get('storeId');
+    const scanSource = searchParams.get('source');
+    const autoplayCommentary = searchParams.get('autoplayCommentary') === '1';
+    const qrNonce = searchParams.get('qrNonce');
+
+    if (scanSource === 'qr' && autoplayCommentary && storeId) {
+      applyQrScan({
+        storeId,
+        source: 'qr',
+        autoplayCommentary: true,
+        qrNonce: qrNonce ?? `${storeId}-qr`,
+      });
+      return;
+    }
+
     if (storeId) {
-      // If pins already loaded, open immediately; otherwise wait
-      const openPin = (pinList: PublicPin[]) => {
-        const target = pinList.find((p) => p.storeId === storeId);
-        if (target) {
-          dismissedRef.current.delete(storeId);
-          setSelectedPin(target);
-          setFlyTo({ lat: Number(target.latitude), lng: Number(target.longitude) });
-        }
-      };
-      if (pinsLoadedRef.current && pins.length > 0) {
-        openPin(pins);
-      } else {
-        getPublicPins().then((d) => {
-          setPins(d.pins);
-          setBoundary(d.boundary);
-          pinsLoadedRef.current = true;
-          openPin(d.pins);
-        }).catch(() => {});
+      const target = pins.find((p) => p.storeId === storeId);
+      if (target) {
+        setSelectedPin(target);
+        setFlyTo({ lat: Number(target.latitude), lng: Number(target.longitude) });
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [applyQrScan, pins, searchParams]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const raw = sessionStorage.getItem(PENDING_QR_SCAN_KEY);
+    if (raw) {
+      try {
+        applyQrScan(JSON.parse(raw) as PendingQrScan);
+        sessionStorage.removeItem(PENDING_QR_SCAN_KEY);
+      } catch {
+        // ignore malformed payload
+      }
+    }
+
+    const handleQrScan = (event: Event) => {
+      const customEvent = event as CustomEvent<PendingQrScan>;
+      if (customEvent.detail) {
+        applyQrScan(customEvent.detail);
+        sessionStorage.removeItem(PENDING_QR_SCAN_KEY);
+      }
+    };
+
+    window.addEventListener('qr-scan', handleQrScan as EventListener);
+    return () => window.removeEventListener('qr-scan', handleQrScan as EventListener);
+  }, [applyQrScan]);
 
   const handleDirections = useCallback(async (destLat: number, destLng: number): Promise<boolean> => {
     setIsRouting(true);
@@ -187,6 +267,8 @@ export default function MapPage() {
     setRouteInfo(null);
   }
 
+  const isQrFocusedStore = !!qrFocus && qrFocus.storeId === selectedPin?.storeId;
+
   return (
     // Mobile: fixed full-screen (map behind bottom tab bar, overlays float above).
     // Desktop (sm+): normal flow below the 64px header.
@@ -202,8 +284,16 @@ export default function MapPage() {
         tracking={isNavigating && !arrived}
         onArrived={() => setArrived(true)}
         onUserPositionUpdate={(pos) => setFlyTo({ lat: pos[0], lng: pos[1] })}
-        onPinSelect={(pin) => { setBoundaryQr(null); setSelectedPin(pin); }}
-        onMapClick={() => setSelectedPin(null)}
+        onPinSelect={(pin) => {
+          setBoundaryQr(null);
+          setQrFocus(null);
+          setSelectedPin(pin);
+        }}
+        onMapClick={() => {
+          if (Date.now() < suppressMapClickUntilRef.current) return;
+          setQrFocus(null);
+          setSelectedPin(null);
+        }}
       />
 
       {/* Top-left overlay */}
@@ -290,9 +380,15 @@ export default function MapPage() {
 
       {/* Store bottom sheet */}
       <StoreBottomSheet
+        key={`${selectedPin?.storeId ?? 'none'}-${qrSessionKey ?? 'default'}`}
         pin={selectedPin}
+        autoExpand={isQrFocusedStore}
+        autoShowCommentary={isQrFocusedStore}
+        autoPlayCommentaryKey={isQrFocusedStore ? qrFocus?.nonce ?? null : null}
+        onAutoPlayCommentaryHandled={() => {}}
         onClose={() => {
           if (selectedPin) dismissedRef.current.add(selectedPin.storeId);
+          setQrFocus(null);
           setSelectedPin(null);
           if (isNavigating) handleStopNavigation();
         }}

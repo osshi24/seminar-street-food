@@ -6,9 +6,15 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PublicPin } from '../../../../lib/api/map';
 import CommentaryPlayer from '../../../../components/stores/CommentaryPlayer';
+import { useCommentary } from '../../../../hooks/useCommentary';
+import { useLang } from '../../../../contexts/LanguageContext';
 
 interface StoreBottomSheetProps {
   pin: PublicPin | null;
+  autoExpand?: boolean;
+  autoShowCommentary?: boolean;
+  autoPlayCommentaryKey?: string | null;
+  onAutoPlayCommentaryHandled?: () => void;
   onClose: () => void;
   onDirections?: (lat: number, lng: number) => void;
   onStartNavigation?: (lat: number, lng: number) => void;
@@ -25,6 +31,10 @@ function formatVND(amount: number) {
 
 export default function StoreBottomSheet({
   pin,
+  autoExpand = false,
+  autoShowCommentary = false,
+  autoPlayCommentaryKey = null,
+  onAutoPlayCommentaryHandled,
   onClose,
   onDirections,
   onStartNavigation,
@@ -35,14 +45,28 @@ export default function StoreBottomSheet({
   arrived,
 }: StoreBottomSheetProps) {
   const { t } = useTranslation();
+  const { lang, speechCode } = useLang();
   const [expanded, setExpanded] = useState(false);
   const [showCommentary, setShowCommentary] = useState(false);
+  const [manualPlayKey, setManualPlayKey] = useState<string | null>(null);
   const touchStartY = useRef<number | null>(null);
+  const speechAudioRef = useRef<HTMLAudioElement | null>(null);
+  const { translatedText, audioUrl } = useCommentary(pin?.storeId ?? '', lang);
 
   useEffect(() => {
     setShowCommentary(false);
     setExpanded(false);
+    setManualPlayKey(null);
   }, [pin?.storeId]);
+
+  useEffect(() => {
+    if (!pin) return;
+    if (autoExpand) setExpanded(true);
+    if (autoShowCommentary && pin.hasCommentary) setShowCommentary(true);
+    if (autoShowCommentary && !pin.hasCommentary && autoPlayCommentaryKey) {
+      onAutoPlayCommentaryHandled?.();
+    }
+  }, [autoExpand, autoPlayCommentaryKey, autoShowCommentary, onAutoPlayCommentaryHandled, pin]);
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -59,10 +83,56 @@ export default function StoreBottomSheet({
   useEffect(() => {
     if (!pin) {
       window.speechSynthesis?.cancel();
+      if (speechAudioRef.current) {
+        speechAudioRef.current.pause();
+        speechAudioRef.current.currentTime = 0;
+        speechAudioRef.current = null;
+      }
       setShowCommentary(false);
       setExpanded(false);
+      setManualPlayKey(null);
     }
   }, [pin]);
+
+  async function playCommentaryImmediately() {
+    window.speechSynthesis?.cancel();
+    if (speechAudioRef.current) {
+      speechAudioRef.current.pause();
+      speechAudioRef.current.currentTime = 0;
+      speechAudioRef.current = null;
+    }
+
+    if (audioUrl) {
+      const audio = new Audio(audioUrl);
+      speechAudioRef.current = audio;
+      try {
+        await audio.play();
+        return;
+      } catch {
+        speechAudioRef.current = null;
+      }
+    }
+
+    if (!translatedText || !window.speechSynthesis) return;
+    const utterance = new SpeechSynthesisUtterance(translatedText);
+    utterance.lang = speechCode;
+    utterance.rate = 0.95;
+    utterance.pitch = 1;
+    window.speechSynthesis.speak(utterance);
+  }
+
+  function triggerCommentaryPlayback() {
+    if (!pin?.hasCommentary) return;
+    setExpanded(true);
+    setShowCommentary(true);
+    setManualPlayKey(`${pin.storeId}-${Date.now()}`);
+    void playCommentaryImmediately();
+  }
+
+  useEffect(() => {
+    if (!autoPlayCommentaryKey || !autoShowCommentary || !pin?.hasCommentary) return;
+    void playCommentaryImmediately();
+  }, [autoPlayCommentaryKey, autoShowCommentary, audioUrl, pin?.hasCommentary, speechCode, translatedText]);
 
   function handleTouchStart(e: React.TouchEvent) {
     touchStartY.current = e.touches[0].clientY;
@@ -315,7 +385,7 @@ export default function StoreBottomSheet({
 
                 {pin.hasCommentary && (
                   <button
-                    onClick={() => setShowCommentary((v) => !v)}
+                    onClick={triggerCommentaryPlayback}
                     className={`flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${
                       showCommentary ? 'bg-orange-600 text-white' : 'bg-orange-500 hover:bg-orange-600 text-white'
                     }`}
@@ -340,7 +410,18 @@ export default function StoreBottomSheet({
 
               {showCommentary && (
                 <div className="rounded-xl bg-orange-50 border border-orange-100 p-3">
-                  <CommentaryPlayer storeId={pin.storeId} />
+                  {(() => {
+                    const effectivePlayKey = autoPlayCommentaryKey ?? manualPlayKey;
+                    return (
+                  <CommentaryPlayer
+                    key={`${pin.storeId}-${effectivePlayKey ?? 'manual'}`}
+                    storeId={pin.storeId}
+                    autoPlay={effectivePlayKey != null}
+                    autoPlayKey={effectivePlayKey}
+                    onAutoPlayHandled={onAutoPlayCommentaryHandled}
+                  />
+                    );
+                  })()}
                 </div>
               )}
             </div>

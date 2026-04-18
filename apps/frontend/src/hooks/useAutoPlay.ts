@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { getStoreCommentary } from '../lib/api/commentary';
+import { useLang } from '../contexts/LanguageContext';
 import type { NearbyStore } from '../lib/gps/proximitySession';
 
 export function useAutoPlay(
@@ -9,6 +10,7 @@ export function useAutoPlay(
   session: Map<string, boolean>,
   onMarkPlayed: (storeId: string) => void,
 ) {
+  const { lang } = useLang();
   const [bannerVisible, setBannerVisible] = useState(false);
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
   const [currentStoreName, setCurrentStoreName] = useState<string | null>(null);
@@ -22,7 +24,7 @@ export function useAutoPlay(
       lastTriggeredRef.current = store.storeId;
 
       try {
-        const commentary = await getStoreCommentary(store.storeId, 'vi');
+        const commentary = await getStoreCommentary(store.storeId, lang);
         const audioUrl = commentary.data?.audioUrl;
         if (!audioUrl) return;
 
@@ -49,7 +51,7 @@ export function useAutoPlay(
         lastTriggeredRef.current = null;
       }
     },
-    [session, onMarkPlayed],
+    [lang, session, onMarkPlayed],
   );
 
   const triggerManualPlay = useCallback(async () => {
