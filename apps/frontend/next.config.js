@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
+const UMAMI_URL = process.env.UMAMI_URL || 'http://localhost:3002';
 
 const nextConfig = {
   output: 'standalone',
@@ -23,6 +24,15 @@ const nextConfig = {
       {
         source: '/socket.io/:path*',
         destination: `${BACKEND_URL}/socket.io/:path*`,
+      },
+      // Proxy Umami — thiết bị LAN dùng cùng origin, không cần biết IP host
+      {
+        source: '/umami/script.js',
+        destination: `${UMAMI_URL}/script.js`,
+      },
+      {
+        source: '/umami/api/send',
+        destination: `${UMAMI_URL}/api/send`,
       },
     ];
   },

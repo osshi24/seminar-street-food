@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   postgres:
     image: postgis/postgis:15-3.4
@@ -64,7 +62,39 @@ services:
       exit 0;
       "
 
+  umami_postgres:
+    image: postgres:15-alpine
+    container_name: seminar_umami_postgres
+    environment:
+      POSTGRES_DB: umami_db
+      POSTGRES_USER: umami_user
+      POSTGRES_PASSWORD: umami_pass
+    volumes:
+      - umami_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U umami_user -d umami_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  umami:
+    image: ghcr.io/umami-software/umami:postgresql-latest
+    container_name: seminar_umami
+    ports:
+      - '3002:3000'
+    environment:
+      DATABASE_URL: postgresql://umami_user:umami_pass@umami_postgres:5432/umami_db
+      DATABASE_TYPE: postgresql
+      APP_SECRET: seminar-umami-secret-change-in-production
+      DISABLE_TELEMETRY: 1
+      DISABLE_UPDATE_CHECK: 1
+    depends_on:
+      umami_postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:
   minio_data:
+  umami_postgres_data:
