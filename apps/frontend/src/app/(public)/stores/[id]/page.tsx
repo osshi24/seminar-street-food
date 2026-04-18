@@ -30,16 +30,22 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
   } catch {
     return (
       <main className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-600">Gian hàng không tồn tại hoặc đã ngưng hoạt động</p>
+        <p className="text-gray-600">Gian hàng không tồn tại</p>
       </main>
     );
   }
 
   if (!store) return null;
   const s = store.data;
+  const isInactive = s.status === 'inactive';
 
   return (
     <main className="min-h-screen bg-gray-50">
+      {isInactive && (
+        <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2 text-center text-sm text-yellow-800">
+          Gian hàng này hiện tạm ngưng hoạt động
+        </div>
+      )}
       <div className="mx-auto max-w-3xl px-4 py-8 space-y-8">
         <StoreDetailView
           storeId={s.id}
