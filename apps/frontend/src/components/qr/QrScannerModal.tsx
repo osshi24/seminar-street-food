@@ -52,7 +52,7 @@ export default function QrScannerModal({ onResult, onClose }: Props) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
       if (!video || !canvas) return;
-      const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D;
       if (!ctx) return;
 
       function tick() {

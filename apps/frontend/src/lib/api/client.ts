@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+// Always use the proxy path — this module only runs in the browser
+const API_URL = '/api/backend';
 
 let accessToken: string | null = null;
 

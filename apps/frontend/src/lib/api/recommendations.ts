@@ -1,4 +1,5 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+import { getApiUrl } from './config';
+const API_URL = getApiUrl();
 
 export interface RecommendationItem {
   menuItemId: string;

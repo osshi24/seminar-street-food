@@ -1,4 +1,5 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+// Browser-only (uses document.cookie); always use proxy path
+const API_URL = '/api/backend';
 
 export interface CreateQrResponse {
   id: number;

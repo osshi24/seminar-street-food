@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getMyStore } from '../../../../lib/api/stores';
-import { createQr, downloadQrPng } from '../../../../lib/api/qr';
+import { createQr, getActiveQr, downloadQrPng } from '../../../../lib/api/qr';
 import type { CreateQrResponse } from '../../../../lib/api/qr';
 import QRCodeDisplay from '../../../../components/qr/QRCodeDisplay';
 import QRDownloadButtons from '../../../../components/qr/QRDownloadButtons';
@@ -23,7 +23,16 @@ export default function DashboardQrPage() {
 
   useEffect(() => {
     getMyStore()
-      .then((res) => setStore(res.data))
+      .then(async (res) => {
+        const s = res.data;
+        setStore(s);
+        // Load existing active QR if any
+        const existing = await getActiveQr(s.id).catch(() => null);
+        if (existing) {
+          setQrData(existing);
+          setQrPreviewUrl(existing.qrImageUrl);
+        }
+      })
       .catch(() => setStore(null))
       .finally(() => setLoading(false));
   }, []);
