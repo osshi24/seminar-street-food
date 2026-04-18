@@ -1,5 +1,7 @@
 'use client';
 
+import AdminMetricGrid from '../common/AdminMetricGrid';
+
 interface ReportStatsCardProps {
   total: number;
   pending: number;
@@ -13,49 +15,38 @@ export default function ReportStatsCard({
   resolved,
   dismissed,
 }: ReportStatsCardProps) {
-  const stats = [
-    {
-      label: 'Tổng cộng',
-      value: total,
-      bgColor: 'bg-slate-100',
-      textColor: 'text-slate-800',
-      emoji: '📋',
-    },
-    {
-      label: 'Chờ xử lý',
-      value: pending,
-      bgColor: 'bg-amber-100',
-      textColor: 'text-amber-800',
-      emoji: '⏳',
-    },
-    {
-      label: 'Đã xử lý',
-      value: resolved,
-      bgColor: 'bg-emerald-100',
-      textColor: 'text-emerald-800',
-      emoji: '✅',
-    },
-    {
-      label: 'Bác bỏ',
-      value: dismissed,
-      bgColor: 'bg-purple-100',
-      textColor: 'text-purple-800',
-      emoji: '✕',
-    },
-  ];
-
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {stats.map((stat) => (
-        <div
-          key={stat.label}
-          className={`rounded-lg border border-gray-200 p-4 ${stat.bgColor}`}
-        >
-          <div className="mb-2 text-2xl">{stat.emoji}</div>
-          <div className={`text-sm font-medium ${stat.textColor}`}>{stat.label}</div>
-          <div className={`text-2xl font-bold ${stat.textColor} mt-1`}>{stat.value}</div>
-        </div>
-      ))}
-    </div>
+    <AdminMetricGrid
+      items={[
+        {
+          label: 'Tổng cộng',
+          value: total,
+          tone: 'slate',
+          icon: '📋',
+          description: 'Tổng số báo cáo bình luận đã đi qua hệ thống kiểm duyệt.',
+        },
+        {
+          label: 'Chờ xử lý',
+          value: pending,
+          tone: 'amber',
+          icon: '⏳',
+          description: 'Các báo cáo đang chờ admin ra quyết định ẩn, xóa hoặc bác bỏ.',
+        },
+        {
+          label: 'Đã xử lý',
+          value: resolved,
+          tone: 'emerald',
+          icon: '✅',
+          description: 'Đã được xử lý bằng hành động ẩn hoặc xóa bình luận.',
+        },
+        {
+          label: 'Bác bỏ',
+          value: dismissed,
+          tone: 'violet',
+          icon: '✕',
+          description: 'Các báo cáo được kết luận không vi phạm hoặc không cần can thiệp.',
+        },
+      ]}
+    />
   );
 }

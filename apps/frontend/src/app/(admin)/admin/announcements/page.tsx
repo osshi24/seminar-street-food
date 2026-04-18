@@ -278,8 +278,9 @@ export default function AdminAnnouncementsPage() {
                   </div>
                 ) : (
                   history.slice(0, 5).map((h) => {
-                    const recipientStores = h.storeIds
-                      ? stores.filter((s) => h.storeIds.includes(s.id))
+                    const storeIds = h.storeIds ?? [];
+                    const recipientStores = storeIds.length > 0
+                      ? stores.filter((s) => storeIds.includes(s.id))
                       : [];
 
                     return (

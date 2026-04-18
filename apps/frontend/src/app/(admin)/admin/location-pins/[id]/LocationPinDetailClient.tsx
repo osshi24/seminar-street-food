@@ -73,8 +73,8 @@ export default function LocationPinDetailClient({ id }: LocationPinDetailClientP
     try {
       setApproveLoading(true);
       await approvePin(id, {
-        latitude: overrideLat,
-        longitude: overrideLng,
+        lat: overrideLat,
+        lng: overrideLng,
       });
 
       showToast(`✓ Đã duyệt ghim của "${pin.store?.name || 'gian hàng'}"`, 'success');
@@ -165,7 +165,6 @@ export default function LocationPinDetailClient({ id }: LocationPinDetailClientP
         longitude={pin.longitude}
         status={pin.status}
         submittedAt={pin.submittedAt}
-        submittedBy={pin.submittedBy}
       />
 
       {/* Mini map */}
