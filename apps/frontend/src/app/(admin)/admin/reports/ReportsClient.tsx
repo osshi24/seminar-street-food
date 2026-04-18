@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   listAdminReports,
@@ -15,6 +15,7 @@ import ReportEmptyState from '@/components/admin/reports/ReportEmptyState';
 import ReportPagination from '@/components/admin/reports/ReportPagination';
 import ResolveReportModal from '@/components/admin/reports/ResolveReportModal';
 import DismissReportModal from '@/components/admin/reports/DismissReportModal';
+import AdminPageHeader from '@/components/admin/common/AdminPageHeader';
 
 export default function ReportsClient() {
   const searchParams = useSearchParams();
@@ -33,11 +34,8 @@ export default function ReportsClient() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Pagination
   const currentPage = parseInt(searchParams.get('page') || '1');
   const limit = 20;
-
-  // Filters
   const statusFilter = (searchParams.get('status') || '').toLowerCase();
   const searchQuery = searchParams.get('search') || '';
 
@@ -46,28 +44,22 @@ export default function ReportsClient() {
       try {
         setLoading(true);
 
-        // Fetch filtered reports
         const response = await listAdminReports({
           status: statusFilter || undefined,
           page: currentPage,
           limit,
         });
 
-        console.log('Reports response:', response); // Debug
-        
         const reportsList = Array.isArray(response.data) ? response.data : [];
         setReports(reportsList);
 
-        // Fetch stats (limit max 100)
         const statsResponse = await listAdminReports({ limit: 100 });
-        console.log('Stats response:', statsResponse); // Debug
-        
         const allReports = Array.isArray(statsResponse.data) ? statsResponse.data : [];
         setStats({
           total: statsResponse.meta?.total || 0,
-          pending: allReports.filter((r) => r.status === 'pending').length,
-          resolved: allReports.filter((r) => r.status === 'resolved').length,
-          dismissed: allReports.filter((r) => r.status === 'dismissed').length,
+          pending: allReports.filter((report) => report.status === 'pending').length,
+          resolved: allReports.filter((report) => report.status === 'resolved').length,
+          dismissed: allReports.filter((report) => report.status === 'dismissed').length,
         });
       } catch (error) {
         console.error('Error fetching reports:', error);
@@ -80,7 +72,6 @@ export default function ReportsClient() {
     fetchData();
   }, [statusFilter, currentPage]);
 
-  // Modal states
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [dismissingId, setDismissingId] = useState<string | null>(null);
   const [resolveModal, setResolveModal] = useState(false);
@@ -90,17 +81,27 @@ export default function ReportsClient() {
 
   const getSelectedReport = () => {
     if (!Array.isArray(reports)) return undefined;
-    return reports.find((r) => r.id === resolvingId || r.id === dismissingId);
+    return reports.find((report) => report.id === resolvingId || report.id === dismissingId);
   };
 
   const handleQuickAction = (action: 'resolve' | 'dismiss', id: string) => {
     if (action === 'resolve') {
       setResolvingId(id);
       setResolveModal(true);
-    } else {
-      setDismissingId(id);
-      setDismissModal(true);
+      return;
     }
+
+    setDismissingId(id);
+    setDismissModal(true);
+  };
+
+  const reloadCurrentPage = async () => {
+    const response = await listAdminReports({
+      status: statusFilter || undefined,
+      page: currentPage,
+      limit,
+    });
+    setReports(response.data || []);
   };
 
   const handleResolve = async (action: 'hide' | 'delete') => {
@@ -108,23 +109,13 @@ export default function ReportsClient() {
 
     try {
       setResolveLoading(true);
-      const report = reports.find((r) => r.id === resolvingId);
-      if (!report) return;
-
       await resolveReport(resolvingId, action);
 
       const actionText = action === 'hide' ? 'Ẩn' : 'Xóa';
       showToast(`✓ ${actionText} bình luận thành công`, 'success');
       setResolveModal(false);
       setResolvingId(null);
-
-      // Refresh data
-      const response = await listAdminReports({
-        status: statusFilter || undefined,
-        page: currentPage,
-        limit,
-      });
-      setReports(response.data || []);
+      await reloadCurrentPage();
     } catch (error) {
       console.error('Error resolving report:', error);
       showToast('Lỗi khi xử lý báo cáo', 'error');
@@ -143,14 +134,7 @@ export default function ReportsClient() {
       showToast('✓ Đã bác bỏ báo cáo', 'success');
       setDismissModal(false);
       setDismissingId(null);
-
-      // Refresh data
-      const response = await listAdminReports({
-        status: statusFilter || undefined,
-        page: currentPage,
-        limit,
-      });
-      setReports(response.data || []);
+      await reloadCurrentPage();
     } catch (error) {
       console.error('Error dismissing report:', error);
       showToast('Lỗi khi bác bỏ báo cáo', 'error');
@@ -163,12 +147,14 @@ export default function ReportsClient() {
   const totalPages = Math.ceil(stats.total / limit);
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Quản lý báo cáo bình luận</h1>
-      </div>
+    <div className="space-y-6">
+      <AdminPageHeader
+        badge="Moderation reports"
+        title="Quản lý báo cáo bình luận"
+        description="Theo dõi các báo cáo do store owner gửi lên, xử lý nhanh các nội dung vi phạm và giữ luồng kiểm duyệt bình luận luôn thông suốt."
+        meta={`${stats.pending} báo cáo đang chờ xử lý`}
+      />
 
-      {/* Stats */}
       <ReportStatsCard
         total={stats.total}
         pending={stats.pending}
@@ -176,14 +162,13 @@ export default function ReportsClient() {
         dismissed={stats.dismissed}
       />
 
-      {/* Filter Bar */}
       <ReportFilterBar currentStatus={statusFilter} currentSearch={searchQuery} />
 
-      {/* Main Content */}
       {loading ? (
-        <div className="rounded-lg border border-gray-200 bg-white px-8 py-12 text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
-          <p className="mt-4 text-gray-600">Đang tải dữ liệu...</p>
+        <div className="space-y-3 rounded-[32px] border border-slate-200 bg-white p-5 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.45)]">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="h-24 animate-pulse rounded-2xl bg-slate-50" />
+          ))}
         </div>
       ) : reports.length === 0 ? (
         <ReportEmptyState status={statusFilter} searchQuery={searchQuery} />
@@ -204,8 +189,7 @@ export default function ReportsClient() {
         </>
       )}
 
-      {/* Modals */}
-      {selectedReport && (
+      {selectedReport ? (
         <>
           <ResolveReportModal
             isOpen={resolveModal}
@@ -229,18 +213,17 @@ export default function ReportsClient() {
             storeName={selectedReport.review?.store?.name || 'Báo cáo'}
           />
         </>
-      )}
+      ) : null}
 
-      {/* Toast */}
-      {toast && (
+      {toast ? (
         <div
-          className={`fixed bottom-6 right-6 px-4 py-3 rounded-lg shadow-lg text-white text-sm ${
+          className={`fixed bottom-6 right-6 rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-lg ${
             toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
           }`}
         >
           {toast.message}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

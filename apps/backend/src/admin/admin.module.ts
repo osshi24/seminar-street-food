@@ -29,6 +29,9 @@ import { AdminAnnouncement } from './entities/admin-announcement.entity';
 import { AdminCatalogStoresService } from './admin-catalog-stores.service';
 import { AdminCatalogStoresController } from './admin-catalog-stores.controller';
 import { MailModule } from '../mail/mail.module';
+import { PreferenceTag } from '../tags/entities/preference-tag.entity';
+import { AdminOverviewService } from './admin-overview.service';
+import { AdminOverviewController } from './admin-overview.controller';
 
 @Module({
   imports: [
@@ -45,6 +48,7 @@ import { MailModule } from '../mail/mail.module';
       Review,
       CommentReport,
       AdminAnnouncement,
+      PreferenceTag,
     ]),
     BullModule.registerQueue({ name: COMMENTARY_QUEUE }),
     BullModule.registerQueue({ name: STORE_TRANSLATION_QUEUE }),
@@ -56,6 +60,7 @@ import { MailModule } from '../mail/mail.module';
     AdminStoresService,
     AdminCatalogStoresService,
     AdminAnnouncementsService,
+    AdminOverviewService,
     AdminLocationService,
     DuplicateDetectionService,
   ],
@@ -63,6 +68,7 @@ import { MailModule } from '../mail/mail.module';
     AdminStoresController,
     AdminCatalogStoresController,
     AdminAnnouncementsController,
+    AdminOverviewController,
     AdminLocationController,
     AdminReportsController,
     AdminReviewsController,

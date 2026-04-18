@@ -1,16 +1,18 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { listStoreOwners, approveStoreOwner, rejectStoreOwner } from '../../../../lib/api/store-owners';
-import type { StoreOwner, StoreOwnerStatus } from '../../../../types/store-owner';
-import StoreOwnerStatsCard from '../../../../components/admin/store-owners/StoreOwnerStatsCard';
-import StoreOwnerFilterBar from '../../../../components/admin/store-owners/StoreOwnerFilterBar';
-import StoreOwnerTable from '../../../../components/admin/store-owners/StoreOwnerTable';
-import StoreOwnerEmptyState from '../../../../components/admin/store-owners/StoreOwnerEmptyState';
-import StoreOwnerPagination from '../../../../components/admin/store-owners/StoreOwnerPagination';
+import { useCallback, useEffect, useState } from 'react';
 import ApprovalModal from '../../../../components/admin/store-owners/ApprovalModal';
 import RejectionModal from '../../../../components/admin/store-owners/RejectionModal';
+import AdminPageHeader from '../../../../components/admin/common/AdminPageHeader';
+import StoreOwnerEmptyState from '../../../../components/admin/store-owners/StoreOwnerEmptyState';
+import StoreOwnerFilterBar from '../../../../components/admin/store-owners/StoreOwnerFilterBar';
+import StoreOwnerPagination from '../../../../components/admin/store-owners/StoreOwnerPagination';
+import StoreOwnerStatsCard from '../../../../components/admin/store-owners/StoreOwnerStatsCard';
+import StoreOwnerTable from '../../../../components/admin/store-owners/StoreOwnerTable';
+import { approveStoreOwner, listStoreOwners, rejectStoreOwner } from '../../../../lib/api/store-owners';
+import type { StoreOwner, StoreOwnerStatus } from '../../../../types/store-owner';
 
 export default function StoreOwnersClient() {
   const router = useRouter();
@@ -19,8 +21,6 @@ export default function StoreOwnersClient() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-
-  // Quick action modals
   const [quickActionModal, setQuickActionModal] = useState<{
     type: 'approve' | 'reject' | null;
     ownerId?: string;
@@ -31,17 +31,32 @@ export default function StoreOwnersClient() {
 
   const currentStatus = (searchParams.get('status') || 'all') as StoreOwnerStatus | 'all';
   const currentSearch = searchParams.get('search') || '';
-  const currentPage = parseInt(searchParams.get('page') || '1');
+  const currentPage = Number.parseInt(searchParams.get('page') || '1', 10);
   const limit = 20;
 
-  // Calculate stats
   const stats = {
     total,
-    pending: storeOwners.filter((o) => o.status === 'pending').length,
-    active: storeOwners.filter((o) => o.status === 'active').length,
-    inactive: storeOwners.filter((o) => o.status === 'inactive').length,
-    rejected: storeOwners.filter((o) => o.status === 'rejected').length,
+    pending: storeOwners.filter((owner) => owner.status === 'pending').length,
+    active: storeOwners.filter((owner) => owner.status === 'active').length,
+    inactive: storeOwners.filter((owner) => owner.status === 'inactive').length,
+    rejected: storeOwners.filter((owner) => owner.status === 'rejected').length,
   };
+
+  const setParam = useCallback(
+    (key: string, value: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value) {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
+      if (key !== 'page') {
+        params.set('page', '1');
+      }
+      router.push(`/admin/store-owners?${params.toString()}`);
+    },
+    [router, searchParams],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -57,90 +72,95 @@ export default function StoreOwnersClient() {
     } finally {
       setLoading(false);
     }
-  }, [currentStatus, currentSearch, currentPage]);
+  }, [currentPage, currentSearch, currentStatus]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
-
-  function setParam(key: string, value: string) {
-    const params = new URLSearchParams(searchParams.toString());
-    if (value) params.set(key, value);
-    else params.delete(key);
-    if (key !== 'page') params.set('page', '1');
-    router.push(`/admin/store-owners?${params.toString()}`);
-  }
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+    window.setTimeout(() => setToast(null), 3200);
   };
 
   const handleQuickAction = (action: 'approve' | 'reject', ownerId: string) => {
-    const owner = storeOwners.find((o) => o.id === ownerId);
-    if (owner) {
-      setQuickActionModal({ type: action, ownerId, ownerName: owner.fullName });
+    const owner = storeOwners.find((item) => item.id === ownerId);
+    if (!owner) {
+      return;
     }
+
+    setQuickActionModal({
+      type: action,
+      ownerId,
+      ownerName: owner.fullName,
+    });
   };
 
   const handleApprove = async () => {
-    if (!quickActionModal.ownerId) return;
+    if (!quickActionModal.ownerId) {
+      return;
+    }
 
     setActionLoading(true);
     try {
       await approveStoreOwner(quickActionModal.ownerId);
       setQuickActionModal({ type: null });
-      showToast('✓ Đã phê duyệt tài khoản thành công', 'success');
+      showToast('Đã phê duyệt tài khoản chủ gian hàng.', 'success');
       await load();
-    } catch (error) {
-      showToast('Lỗi khi phê duyệt tài khoản', 'error');
+    } catch {
+      showToast('Không thể phê duyệt tài khoản này.', 'error');
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleReject = async () => {
-    if (!quickActionModal.ownerId) return;
+    if (!quickActionModal.ownerId) {
+      return;
+    }
 
     setActionLoading(true);
     try {
       await rejectStoreOwner(quickActionModal.ownerId, rejectReason);
       setQuickActionModal({ type: null });
       setRejectReason('');
-      showToast('✓ Đã từ chối tài khoản', 'success');
+      showToast('Đã từ chối hồ sơ đăng ký.', 'success');
       await load();
-    } catch (error) {
-      showToast('Lỗi khi từ chối tài khoản', 'error');
+    } catch {
+      showToast('Không thể từ chối hồ sơ này.', 'error');
     } finally {
       setActionLoading(false);
     }
   };
 
   const totalPages = Math.ceil(total / limit);
+  const visibleStart = total === 0 ? 0 : (currentPage - 1) * limit + 1;
+  const visibleEnd = Math.min(currentPage * limit, total);
 
   return (
     <div className="space-y-6">
-      {/* Toast */}
-      {toast && (
-        <div
-          className={`fixed top-4 right-4 z-50 rounded-lg px-4 py-3 text-white shadow-lg ${
-            toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
-          }`}
-        >
-          {toast.message}
-        </div>
-      )}
+      <AdminPageHeader
+        badge="Accounts"
+        title="Quản lý chủ gian hàng"
+        description="Duyệt hồ sơ đăng ký, theo dõi trạng thái tài khoản và chuyển nhanh sang chi tiết để xử lý các trường hợp cần can thiệp."
+        meta={
+          total > 0
+            ? `Hiển thị ${visibleStart}-${visibleEnd} trên tổng ${total} tài khoản`
+            : 'Chưa có hồ sơ đăng ký nào trong hệ thống'
+        }
+        action={
+          <Link
+            href="/admin/store-drafts"
+            className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+          >
+            Mở bản nháp
+            <span aria-hidden>→</span>
+          </Link>
+        }
+      />
 
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Quản lý chủ gian hàng</h1>
-        <p className="mt-1 text-gray-600">Duyệt, quản lý và điều chỉnh tài khoản chủ gian hàng</p>
-      </div>
-
-      {/* Stats Cards */}
       <StoreOwnerStatsCard {...stats} />
 
-      {/* Filter Bar */}
       <StoreOwnerFilterBar
         currentStatus={currentStatus}
         currentSearch={currentSearch}
@@ -148,40 +168,29 @@ export default function StoreOwnersClient() {
         onSearchChange={(search) => setParam('search', search)}
       />
 
-      {/* Loading State */}
-      {loading && (
-        <div className="rounded-lg border border-gray-200 bg-white px-8 py-12 text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-blue-600"></div>
-          <p className="mt-4 text-gray-600">Đang tải dữ liệu...</p>
+      {loading ? (
+        <div className="rounded-[32px] border border-slate-200 bg-white px-8 py-14 text-center shadow-[0_24px_60px_-40px_rgba(15,23,42,0.45)]">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-cyan-600" />
+          <p className="mt-4 text-sm text-slate-500">Đang tải danh sách chủ gian hàng...</p>
         </div>
-      )}
-
-      {/* Table or Empty State */}
-      {!loading && storeOwners.length === 0 ? (
+      ) : storeOwners.length === 0 ? (
         <StoreOwnerEmptyState status={currentStatus} searchQuery={currentSearch} />
       ) : (
-        !loading && (
-          <>
-            <StoreOwnerTable
-              owners={storeOwners}
-              onQuickAction={handleQuickAction}
-            />
+        <>
+          <StoreOwnerTable owners={storeOwners} onQuickAction={handleQuickAction} />
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <StoreOwnerPagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                total={total}
-                limit={limit}
-                onPageChange={(page) => setParam('page', String(page))}
-              />
-            )}
-          </>
-        )
+          {totalPages > 1 ? (
+            <StoreOwnerPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              total={total}
+              limit={limit}
+              onPageChange={(page) => setParam('page', String(page))}
+            />
+          ) : null}
+        </>
       )}
 
-      {/* Quick Action Modals */}
       <ApprovalModal
         isOpen={quickActionModal.type === 'approve'}
         isLoading={actionLoading}
@@ -200,7 +209,16 @@ export default function StoreOwnersClient() {
           setRejectReason('');
         }}
       />
+
+      {toast ? (
+        <div
+          className={`fixed bottom-6 right-6 z-50 rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-lg ${
+            toast.type === 'success' ? 'bg-emerald-600' : 'bg-rose-600'
+          }`}
+        >
+          {toast.message}
+        </div>
+      ) : null}
     </div>
   );
 }
-

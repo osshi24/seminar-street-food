@@ -8,23 +8,11 @@ interface StoreOwnerTableRowProps {
   onQuickAction?: (action: 'approve' | 'reject', id: string) => void;
 }
 
-const STATUS_COLORS: Record<string, { badge: string; border: string }> = {
-  pending: {
-    badge: 'bg-amber-100 text-amber-800',
-    border: 'border-l-4 border-l-amber-500',
-  },
-  active: {
-    badge: 'bg-emerald-100 text-emerald-800',
-    border: 'border-l-4 border-l-emerald-500',
-  },
-  inactive: {
-    badge: 'bg-slate-100 text-slate-800',
-    border: 'border-l-4 border-l-slate-500',
-  },
-  rejected: {
-    badge: 'bg-red-100 text-red-800',
-    border: 'border-l-4 border-l-red-500',
-  },
+const STATUS_COLORS: Record<string, string> = {
+  pending: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
+  active: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
+  inactive: 'bg-slate-100 text-slate-700 ring-1 ring-slate-200',
+  rejected: 'bg-rose-50 text-rose-700 ring-1 ring-rose-200',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -34,63 +22,64 @@ const STATUS_LABELS: Record<string, string> = {
   rejected: 'Đã từ chối',
 };
 
-export default function StoreOwnerTableRow({
-  owner,
-  onQuickAction,
-}: StoreOwnerTableRowProps) {
-  const statusColor = STATUS_COLORS[owner.status];
-
+export default function StoreOwnerTableRow({ owner, onQuickAction }: StoreOwnerTableRowProps) {
   return (
-    <tr className={`${statusColor.border} hover:bg-gray-50 transition-colors`}>
-      <td className="px-4 py-3">
+    <tr className="transition hover:bg-cyan-50/50">
+      <td className="px-5 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-sm font-medium text-blue-700">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-cyan-50 text-sm font-semibold text-cyan-700 ring-1 ring-cyan-100">
             {owner.fullName.charAt(0).toUpperCase()}
           </div>
           <div>
-            <div className="text-sm font-medium text-gray-900">{owner.fullName}</div>
+            <p className="text-sm font-semibold text-slate-900">{owner.fullName}</p>
+            <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-400">
+              {owner.id.slice(0, 8)}
+            </p>
           </div>
         </div>
       </td>
-      <td className="px-4 py-3 text-sm text-gray-600">{owner.email}</td>
-      <td className="px-4 py-3 text-sm text-gray-600">
+      <td className="px-5 py-4 text-sm text-slate-600">{owner.email}</td>
+      <td className="px-5 py-4 text-sm text-slate-600">
         {owner.store?.name ? (
-          <Link href={`/admin/stores/${owner.store.id}`} className="text-blue-600 hover:underline">
+          <Link
+            href={`/admin/stores/${owner.store.id}`}
+            className="font-medium text-cyan-700 transition hover:text-cyan-800"
+          >
             {owner.store.name}
           </Link>
         ) : (
           '—'
         )}
       </td>
-      <td className="px-4 py-3">
-        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor.badge}`}>
+      <td className="px-5 py-4">
+        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${STATUS_COLORS[owner.status]}`}>
           {STATUS_LABELS[owner.status]}
         </span>
       </td>
-      <td className="px-4 py-3 text-sm text-gray-600">
+      <td className="px-5 py-4 text-sm text-slate-600">
         {new Date(owner.createdAt).toLocaleDateString('vi-VN')}
       </td>
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          {owner.status === 'pending' && (
+      <td className="px-5 py-4">
+        <div className="flex items-center justify-end gap-2">
+          {owner.status === 'pending' ? (
             <>
               <button
                 onClick={() => onQuickAction?.('approve', owner.id)}
-                className="text-xs px-2.5 py-1 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-medium"
+                className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100"
               >
-                ✓ Duyệt
+                Phê duyệt
               </button>
               <button
                 onClick={() => onQuickAction?.('reject', owner.id)}
-                className="text-xs px-2.5 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100 font-medium"
+                className="rounded-full bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
               >
-                ✕ Từ chối
+                Từ chối
               </button>
             </>
-          )}
+          ) : null}
           <Link
             href={`/admin/store-owners/${owner.id}`}
-            className="text-xs text-blue-600 hover:underline font-medium"
+            className="rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700"
           >
             Chi tiết
           </Link>

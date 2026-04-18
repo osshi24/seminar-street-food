@@ -28,7 +28,7 @@ export function middleware(request: NextRequest) {
   if (pathname === '/admin/login') {
     const adminToken = request.cookies.get('admin_access_token')?.value;
     if (adminToken) {
-      return NextResponse.redirect(new URL('/admin/store-owners', request.url));
+      return NextResponse.redirect(new URL('/admin', request.url));
     }
   }
 
