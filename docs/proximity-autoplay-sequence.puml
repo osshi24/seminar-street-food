@@ -1,0 +1,140 @@
+@startuml proximity-autoplay-sequence
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 8
+skinparam sequenceParticipantBorderColor #555
+skinparam sequenceParticipantBackgroundColor #FFF
+skinparam noteBorderColor #888
+skinparam noteBackgroundColor #FFFDE7
+
+title Logic Auto-Play Thuyết Minh Khi Đứng Giữa 2 Gian Hàng
+
+actor "Người dùng\n(Browser)" as User
+participant "GpsAutoPlay\nController" as Ctrl
+participant "useGeolocation" as Geo
+participant "useProximity\nDetection" as Prox
+participant "useAutoPlay\n(tryPlay)" as Play
+participant "Commentary\nAPI" as API
+participant "HTMLAudio\nElement" as Audio
+
+== Khởi tạo ==
+
+User -> Ctrl : mount component
+activate Ctrl
+Ctrl -> Geo : khởi động watchPosition()
+Ctrl -> Prox : fetch tất cả pins (1 lần)
+Prox -> API : GET /api/backend/map/pins
+API --> Prox : [pin_A, pin_B, pin_C, ...]
+deactivate Ctrl
+
+== Cập nhật vị trí GPS ==
+
+Geo -> Ctrl : position thay đổi\n{ lat, lng, accuracy }
+activate Ctrl
+
+note over Prox
+  Debounce 500ms —
+  tránh rung giật khi đứng
+  ở ranh giới 2 gian hàng
+end note
+
+Ctrl -> Prox : position mới
+activate Prox
+
+loop mỗi pin trong danh sách
+  Prox -> Prox : haversineMeters(user, pin)
+end
+
+note over Prox
+  Gian hàng 1 — khoảng cách 3.0m ✓ (trong 4m)
+  Gian hàng 2 — khoảng cách 3.0m ✓ (trong 4m)
+  Gian hàng 3 — khoảng cách 6.1m ✗ (ngoài 4m)
+end note
+
+Prox -> Prox : lọc dist <= 4m → thu thập tất cả\nsort tăng dần theo distanceMeters
+Prox --> Ctrl : nearbyStores = [\n  { Gian hàng 1, 3.0m },\n  { Gian hàng 2, 3.0m }\n]
+
+note over Ctrl
+  Chọn gian hàng gần nhất CHƯA phát:
+  nearbyStores.find(s => !session.get(s.storeId))
+end note
+
+alt Gian hàng 1 chưa phát (user mới đến)
+  Ctrl -> Ctrl : nearestStore = Gian hàng 1\n(index 0, chưa có trong session)
+else Gian hàng 1 đã phát (user đi từ A → B, đã qua gian hàng 1)
+  Ctrl -> Ctrl : session.get("gian-hang-1") === true → bỏ qua\nnearestStore = Gian hàng 2\n(index 1, chưa phát)
+end
+deactivate Prox
+
+== Trigger Auto-Play ==
+
+Ctrl -> Ctrl : useEffect:\nnearestStore thay đổi\n&& gpsStatus === 'granted'
+Ctrl -> Play : tryPlay(Gian hàng A)
+activate Play
+
+alt đã phát trong session này
+  Play -> Play : session.get(storeId) === true
+  Play --> Ctrl : return (bỏ qua)
+else đang xử lý storeId này
+  Play -> Play : lastTriggeredRef === storeId
+  Play --> Ctrl : return (tránh duplicate)
+else chưa phát — tiếp tục
+  Play -> Play : lastTriggeredRef = storeId
+  Play -> API : GET /commentary/:storeId?lang=vi
+  activate API
+  API --> Play : { audioUrl: "https://..." }
+  deactivate API
+
+  Play -> Audio : new Audio(audioUrl)
+  activate Audio
+  Play -> Audio : audio.play()
+
+  alt Browser cho phép autoplay
+    Audio --> Play : Promise resolved
+    Play -> Ctrl : onMarkPlayed(storeId)
+    Ctrl -> Ctrl : session.set(storeId, true)
+    Play -> Play : setCurrentAudio(audio)\nsetCurrentStoreName("Gian hàng A")
+    Audio -> User : 🔊 phát thuyết minh
+    Audio -> Play : onended callback
+    Play -> Play : setCurrentAudio(null)
+    deactivate Audio
+  else Browser chặn autoplay (NotAllowedError)
+    Audio --> Play : DOMException: NotAllowedError
+    deactivate Audio
+    Play -> Play : setBannerVisible(true)\nlưu pendingAudioRef
+    Play --> User : hiện AutoplayBanner\n"Nhấn để nghe thuyết minh"
+
+    User -> Ctrl : nhấn nút Play trên banner
+    Ctrl -> Play : triggerManualPlay()
+    Play -> Audio : pendingAudio.play()
+    activate Audio
+    Audio -> User : 🔊 phát thuyết minh
+    deactivate Audio
+    Play -> Ctrl : onMarkPlayed(storeId)
+    Play -> Play : setBannerVisible(false)
+  end
+end
+
+deactivate Play
+deactivate Ctrl
+
+== Người dùng rời khỏi vùng ==
+
+Geo -> Ctrl : position cập nhật (ra xa)
+activate Ctrl
+Ctrl -> Prox : position mới
+activate Prox
+Prox -> Prox : không có pin nào\ntrong bán kính 4m
+Prox --> Ctrl : nearestStore = null
+deactivate Prox
+
+note over Ctrl
+  Session vẫn giữ nguyên —
+  quay lại Gian hàng A sẽ
+  KHÔNG phát lại (đã đánh dấu)
+end note
+
+deactivate Ctrl
+
+@enduml

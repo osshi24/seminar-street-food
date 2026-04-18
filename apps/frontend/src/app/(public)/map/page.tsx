@@ -18,6 +18,7 @@ if (typeof window !== 'undefined') {
   installFakeGpsFromStorage();
 }
 import { fetchRoute, formatDistance, formatDuration } from '../../../lib/map/osrm';
+import { analytics } from '../../../lib/analytics';
 
 const PENDING_QR_SCAN_KEY = 'pending_qr_scan';
 
@@ -231,12 +232,14 @@ export default function MapPage() {
       const to = { lat: destLat, lng: destLng };
       const result = await fetchRoute(from, to);
 
+      const storeName = selectedPin?.storeName ?? boundaryQr?.name ?? '';
       setRoute({ coordinates: result.coordinates, userLocation: [from.lat, from.lng] });
       setRouteInfo({
         distance: formatDistance(result.distanceMeters),
         duration: formatDuration(result.durationSeconds),
-        storeName: selectedPin?.storeName ?? boundaryQr?.name ?? '',
+        storeName,
       });
+      analytics.directionsRequest(storeName);
       return true;
     } catch (err) {
       setRouteError((err as Error).message);
@@ -253,10 +256,12 @@ export default function MapPage() {
     if (ok) {
       setArrived(false);
       setIsNavigating(true);
+      analytics.navigationStart(selectedPin?.storeName ?? '');
     }
-  }, [route, handleDirections]);
+  }, [route, handleDirections, selectedPin]);
 
   function handleStopNavigation() {
+    analytics.navigationStop();
     setIsNavigating(false);
     setArrived(false);
     setRoute(null);
@@ -284,12 +289,13 @@ export default function MapPage() {
         route={route}
         flyTo={flyTo}
         tracking={isNavigating && !arrived}
-        onArrived={() => setArrived(true)}
+        onArrived={() => { setArrived(true); analytics.navigationArrived(selectedPin?.storeName ?? ''); }}
         onUserPositionUpdate={(pos) => setFlyTo({ lat: pos[0], lng: pos[1] })}
         onPinSelect={(pin) => {
           setBoundaryQr(null);
           setQrFocus(null);
           setSelectedPin(pin);
+          analytics.pinSelect(pin.storeName);
         }}
         onMapClick={() => {
           if (Date.now() < suppressMapClickUntilRef.current) return;

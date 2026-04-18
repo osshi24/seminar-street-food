@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getPublicPins } from '../lib/api/map';
 import { haversineMeters } from '../lib/gps/haversine';
 import type { NearbyStore } from '../lib/gps/proximitySession';
@@ -12,7 +12,7 @@ export function useProximityDetection(
   position: GeolocationCoordinates | null,
 ) {
   const [pins, setPins] = useState<Awaited<ReturnType<typeof getPublicPins>>['pins']>([]);
-  const [nearestStore, setNearestStore] = useState<NearbyStore | null>(null);
+  const [nearbyStores, setNearbyStores] = useState<NearbyStore[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Fetch pins once on mount
@@ -24,14 +24,14 @@ export function useProximityDetection(
 
   useEffect(() => {
     if (!position) {
-      setNearestStore(null);
+      setNearbyStores([]);
       return;
     }
 
     // Debounce position updates to avoid rapid trigger at boundary
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      let best: NearbyStore | null = null;
+      const nearby: NearbyStore[] = [];
 
       for (const pin of pins) {
         const dist = haversineMeters(
@@ -41,19 +41,19 @@ export function useProximityDetection(
           pin.longitude,
         );
         if (dist <= PROXIMITY_RADIUS_METERS) {
-          if (!best || dist < best.distanceMeters) {
-            best = {
-              storeId: pin.storeId,
-              storeName: pin.storeName,
-              distanceMeters: dist,
-              lat: pin.latitude,
-              lng: pin.longitude,
-            };
-          }
+          nearby.push({
+            storeId: pin.storeId,
+            storeName: pin.storeName,
+            distanceMeters: dist,
+            lat: pin.latitude,
+            lng: pin.longitude,
+          });
         }
       }
 
-      setNearestStore(best);
+      // Sort ascending so index 0 is always the closest store
+      nearby.sort((a, b) => a.distanceMeters - b.distanceMeters);
+      setNearbyStores(nearby);
     }, DEBOUNCE_MS);
 
     return () => {
@@ -61,5 +61,5 @@ export function useProximityDetection(
     };
   }, [position, pins]);
 
-  return { nearestStore };
+  return { nearbyStores };
 }
