@@ -15,6 +15,7 @@ import type { CustomerProfile } from '../../lib/api/auth-google';
 import type { QrResolveResult } from '../../lib/api/qr';
 
 const QrScannerModal = dynamic(() => import('../qr/QrScannerModal'), { ssr: false });
+const PENDING_QR_SCAN_KEY = 'pending_qr_scan';
 
 export default function BottomTabBar() {
   const pathname = usePathname();
@@ -43,7 +44,26 @@ export default function BottomTabBar() {
   function handleQrResult(result: QrResolveResult) {
     setShowQrScanner(false);
     if (result.type === 'store') {
-      router.push(`/map?storeId=${result.storeId}`);
+      const nonce =
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const payload = {
+        storeId: result.storeId,
+        source: 'qr' as const,
+        autoplayCommentary: true,
+        qrNonce: nonce,
+      };
+      sessionStorage.setItem(PENDING_QR_SCAN_KEY, JSON.stringify(payload));
+      window.dispatchEvent(new CustomEvent('qr-scan', { detail: payload }));
+
+      const params = new URLSearchParams({
+        storeId: result.storeId,
+        source: 'qr',
+        autoplayCommentary: '1',
+        qrNonce: nonce,
+      });
+      router.push(`/map?${params.toString()}`);
     } else if (result.type === 'boundary') {
       sessionStorage.setItem(
         `boundary_qr_${result.boundary.id}`,
