@@ -9,6 +9,12 @@ import type { RouteDisplay } from './components/MapView';
 import StoreBottomSheet from './components/StoreBottomSheet';
 import MapSearchOverlay from './components/MapSearchOverlay';
 import GpsAutoPlayController from '../../../components/gps/GpsAutoPlayController';
+import DevFakeGps, { installFakeGpsFromStorage } from '../../../components/gps/DevFakeGps';
+
+// Install fake GPS override BEFORE any hooks run
+if (typeof window !== 'undefined') {
+  installFakeGpsFromStorage();
+}
 import { fetchRoute, formatDistance, formatDuration } from '../../../lib/map/osrm';
 
 const MapView = dynamic(() => import('./components/MapView'), {
@@ -138,9 +144,10 @@ export default function MapPage() {
   }
 
   return (
-    // Mobile: full-screen fixed (bản đồ phủ toàn màn hình, overlay nổi trên)
-    // Desktop (sm+): flow bình thường dưới header 64px
+    // Mobile: fixed full-screen (map behind bottom tab bar, overlays float above).
+    // Desktop (sm+): normal flow below the 64px header.
     <div className="fixed inset-0 sm:relative sm:inset-auto sm:w-full sm:h-[calc(100dvh-64px)]">
+      {/* Map fills the container */}
       <MapView
         pins={pins}
         boundary={boundary}
@@ -152,7 +159,7 @@ export default function MapPage() {
         onMapClick={() => setSelectedPin(null)}
       />
 
-      {/* Search — top left */}
+      {/* Top-left overlay */}
       <div className="absolute top-3 left-3 z-[500]">
         <MapSearchOverlay
           pins={pins}
@@ -163,9 +170,10 @@ export default function MapPage() {
         />
       </div>
 
-      {/* GPS controller — top right */}
-      <div className="absolute top-3 right-3 z-[500]">
+      {/* GPS controller + Fake GPS — top right */}
+      <div className="absolute top-3 right-3 z-[500] flex flex-col gap-2">
         <GpsAutoPlayController />
+        <DevFakeGps />
       </div>
 
       {/* Route error toast */}
