@@ -54,5 +54,5 @@ export class StoreOwnerAccount {
   updatedAt: Date;
 
   @OneToMany('Store', 'owner')
-  stores: unknown[];
+  stores: import('../stores/entities/store.entity').Store[];
 }

@@ -25,7 +25,10 @@ const apiClient: AxiosInstance = axios.create({
 });
 
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  const token = accessToken || getCookie('access_token') || getCookie('admin_access_token');
+  const isAdminRequest = config.url?.startsWith('/admin/') || config.url?.startsWith('/auth/admin');
+  const token = isAdminRequest
+    ? getCookie('admin_access_token')
+    : accessToken || getCookie('access_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -55,10 +58,9 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
     if (error.response?.status === 401 && !originalRequest._retry) {
-      // Check if admin token
-      const adminToken = getCookie('admin_access_token');
-      if (adminToken) {
-        // Admin request — redirect to admin login (no refresh for admin)
+      const isAdminRequest = originalRequest.url?.startsWith('/admin/') || originalRequest.url?.startsWith('/auth/admin');
+      if (isAdminRequest) {
+        // Admin token expired/invalid — redirect to admin login
         if (typeof window !== 'undefined') {
           window.location.href = '/admin/login';
         }

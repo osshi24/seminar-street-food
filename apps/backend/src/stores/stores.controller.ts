@@ -64,19 +64,6 @@ export class StoresController {
     return this.storesService.getStoreById(req.user.id, storeId);
   }
 
-  @Get('store')
-  async getMyStore(@Request() req: { user: StoreOwnerAccount }) {
-    return this.storesService.getMyStore(req.user.id);
-  }
-
-  @Patch('store/info')
-  async updateStoreInfo(
-    @Request() req: { user: StoreOwnerAccount },
-    @Body() dto: UpdateStoreInfoDto,
-  ) {
-    return this.storesService.updateStoreInfo(req.user.id, dto);
-  }
-
   @Patch('stores/:id/info')
   async updateStoreInfoById(
     @Request() req: { user: StoreOwnerAccount },
@@ -159,28 +146,6 @@ export class StoresController {
     await this.storesService.deleteImage(req.user.id, imageId, storeId);
   }
 
-  @Put('store')
-  async saveDraft(@Request() req: { user: StoreOwnerAccount }, @Body() dto: UpdateStoreDto) {
-    return this.storesService.saveDraft(req.user.id, dto);
-  }
-
-  @Post('store/submit')
-  @HttpCode(HttpStatus.OK)
-  async submitDraft(@Request() req: { user: StoreOwnerAccount }) {
-    return this.storesService.submitDraft(req.user.id);
-  }
-
-  @Delete('store/draft')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async revokeDraft(@Request() req: { user: StoreOwnerAccount }) {
-    await this.storesService.revokeDraft(req.user.id);
-  }
-
-  @Get('store/draft')
-  async getMyDraft(@Request() req: { user: StoreOwnerAccount }) {
-    return this.storesService.getMyDraft(req.user.id);
-  }
-
   // Per-store menu items
   @Get('stores/:storeId/menu-items')
   async getMenuItemsByStore(
@@ -244,84 +209,4 @@ export class StoresController {
     await this.storesService.deleteMenuItemImage(req.user.id, id, storeId);
   }
 
-  // Menu items (legacy single-store)
-  @Get('store/menu-items')
-  async getMenuItems(@Request() req: { user: StoreOwnerAccount }) {
-    return this.storesService.getMenuItems(req.user.id);
-  }
-
-  @Post('store/menu-items')
-  async addMenuItem(
-    @Request() req: { user: StoreOwnerAccount },
-    @Body() dto: CreateMenuItemDto,
-  ) {
-    return this.storesService.addMenuItem(req.user.id, dto);
-  }
-
-  @Put('store/menu-items/:id')
-  async updateMenuItem(
-    @Request() req: { user: StoreOwnerAccount },
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: UpdateMenuItemDto,
-  ) {
-    return this.storesService.updateMenuItem(req.user.id, id, dto);
-  }
-
-  @Delete('store/menu-items/:id')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async removeMenuItem(
-    @Request() req: { user: StoreOwnerAccount },
-    @Param('id', ParseUUIDPipe) id: string,
-  ) {
-    await this.storesService.removeMenuItem(req.user.id, id);
-  }
-
-  // Menu item image (single)
-  @Post('store/menu-items/:id/image')
-  async generateMenuItemImageUploadUrl(
-    @Request() req: { user: StoreOwnerAccount },
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: { contentType: string },
-  ) {
-    return this.storesService.generateMenuItemImageUploadUrl(
-      req.user.id,
-      id,
-      body.contentType,
-    );
-  }
-
-  @Delete('store/menu-items/:id/image')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteMenuItemImage(
-    @Request() req: { user: StoreOwnerAccount },
-    @Param('id', ParseUUIDPipe) id: string,
-  ) {
-    await this.storesService.deleteMenuItemImage(req.user.id, id);
-  }
-
-  // Images
-  @Post('store/images')
-  async generateImageUploadUrl(
-    @Request() req: { user: StoreOwnerAccount },
-    @Body() body: { contentType: string },
-  ) {
-    return this.storesService.generateImageUploadUrl(req.user.id, body.contentType);
-  }
-
-  @Patch('store/images/:id/confirm')
-  async confirmImageUpload(
-    @Request() req: { user: StoreOwnerAccount },
-    @Param('id', ParseUUIDPipe) id: string,
-  ) {
-    return this.storesService.confirmImageUpload(req.user.id, id);
-  }
-
-  @Delete('store/images/:id')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteImage(
-    @Request() req: { user: StoreOwnerAccount },
-    @Param('id', ParseUUIDPipe) id: string,
-  ) {
-    await this.storesService.deleteImage(req.user.id, id);
-  }
 }

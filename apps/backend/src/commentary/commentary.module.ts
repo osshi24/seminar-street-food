@@ -25,6 +25,6 @@ export { COMMENTARY_QUEUE };
     }),
   ],
   providers: [CommentaryService, CommentaryProcessor, CommentaryGateway, TranslationService, TtsService],
-  exports: [CommentaryService],
+  exports: [CommentaryService, TranslationService],
 })
 export class CommentaryModule {}

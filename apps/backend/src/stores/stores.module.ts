@@ -12,8 +12,8 @@ import { MenuItemTranslation } from './entities/menu-item-translation.entity';
 import { AdminAccount } from '../entities/admin-account.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { MailModule } from '../mail/mail.module';
+import { CommentaryModule } from '../commentary/commentary.module';
 import { StoreTranslationProcessor, STORE_TRANSLATION_QUEUE } from './store-translation.processor';
-import { TranslationService } from '../commentary/translation.service';
 
 @Module({
   imports: [
@@ -31,8 +31,9 @@ import { TranslationService } from '../commentary/translation.service';
     }),
     NotificationsModule,
     MailModule,
+    CommentaryModule,
   ],
-  providers: [StoresService, StoreTranslationProcessor, TranslationService],
+  providers: [StoresService, StoreTranslationProcessor],
   controllers: [StoresController],
   exports: [StoresService],
 })

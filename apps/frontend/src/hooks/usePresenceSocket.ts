@@ -32,7 +32,7 @@ export function usePresenceSocket(role: PresenceRole): void {
 
     socket = io('/presence', {
       path: '/socket.io',
-      transports: ['websocket', 'polling'],
+      transports: ['polling'],
       auth: { token: token ?? undefined, role },
       reconnection: true,
       reconnectionDelay: 2000,
