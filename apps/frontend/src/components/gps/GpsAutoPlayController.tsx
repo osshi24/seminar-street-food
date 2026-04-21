@@ -5,7 +5,6 @@ import { useGeolocation } from '../../hooks/useGeolocation';
 import { useProximityDetection } from '../../hooks/useProximityDetection';
 import { useAutoPlay } from '../../hooks/useAutoPlay';
 import { createProximitySession, markPlayed } from '../../lib/gps/proximitySession';
-import GpsPermissionBanner from './GpsPermissionBanner';
 import GpsStatusBar from './GpsStatusBar';
 import AutoplayBanner from './AutoplayBanner';
 import AudioControls from './AudioControls';
@@ -39,7 +38,6 @@ export default function GpsAutoPlayController() {
   return (
     <div className="space-y-2">
       <GpsStatusBar gpsStatus={gpsStatus} />
-      <GpsPermissionBanner gpsStatus={gpsStatus} />
       <AudioControls
         storeName={currentStoreName}
         onStop={stopAudio}

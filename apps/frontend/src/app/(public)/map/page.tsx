@@ -9,6 +9,7 @@ import type { PublicPin } from '../../../lib/api/map';
 import type { RouteDisplay } from './components/MapView';
 import StoreBottomSheet from './components/StoreBottomSheet';
 import MapSearchOverlay from './components/MapSearchOverlay';
+import GpsPermissionBanner from './components/GpsPermissionBanner';
 import GpsAutoPlayController from '../../../components/gps/GpsAutoPlayController';
 import DevFakeGps, { installFakeGpsFromStorage } from '../../../components/gps/DevFakeGps';
 
@@ -273,6 +274,7 @@ export default function MapPage() {
     // Mobile: fixed full-screen (map behind bottom tab bar, overlays float above).
     // Desktop (sm+): normal flow below the 64px header.
     <div className="fixed inset-0 sm:relative sm:inset-auto sm:w-full sm:h-[calc(100dvh-64px)]">
+      <GpsPermissionBanner />
       {/* Map fills the container */}
       <MapView
         pins={pins}

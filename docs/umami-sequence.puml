@@ -1,0 +1,95 @@
+@startuml umami-sequence
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 8
+skinparam sequenceParticipantBorderColor #555
+skinparam sequenceParticipantBackgroundColor #FFF
+skinparam noteBorderColor #888
+skinparam noteBackgroundColor #FFFDE7
+
+title Hệ thống Monitoring — Umami (Phố Ẩm Thực)
+
+actor "Người dùng\n(Browser / Mobile)" as User
+participant "Next.js Frontend\n:3000" as FE
+participant "Umami\n:3002" as Umami
+database "Umami DB\n(PostgreSQL)" as DB
+actor "Dev / Admin" as Dev
+
+== Khởi động — Load script ==
+
+User -> FE : GET /map
+activate FE
+FE --> User : HTML response
+
+FE -> FE : load <Script src="/umami/script.js">
+FE -> Umami : GET /script.js\n(qua Next.js rewrite)
+activate Umami
+Umami --> FE : umami.js (tracker)
+deactivate Umami
+
+note over FE
+  data-website-id = WEBSITE_ID
+  data-host-url   = "/umami"
+  → mọi request tracking đều qua
+    Next.js proxy, không lộ IP Umami
+end note
+
+deactivate FE
+
+== Tracking trang (Pageview) ==
+
+User -> FE : điều hướng\n/map, /stores, /stores/:id
+activate FE
+FE -> FE : umami script detect\nURL thay đổi
+FE -> Umami : POST /umami/api/send\n{\n  type: "event",\n  payload: {\n    website: "WEBSITE_ID",\n    url: "/map",\n    referrer: "",\n    hostname: "localhost"\n  }\n}
+activate Umami
+Umami -> DB : INSERT INTO website_event\n(website_id, url, created_at, ...)
+DB --> Umami : ok
+Umami --> FE : { "ok": true }
+deactivate Umami
+deactivate FE
+
+== Tracking sự kiện tuỳ chỉnh ==
+
+User -> FE : quét QR thành công
+activate FE
+FE -> FE : umami.track("qr_scan_success",\n  { type: "store" })
+FE -> Umami : POST /umami/api/send\n{\n  type: "event",\n  payload: {\n    website: "WEBSITE_ID",\n    name: "qr_scan_success",\n    data: { type: "store" }\n  }\n}
+activate Umami
+Umami -> DB : INSERT INTO website_event\n(event_name, event_data, ...)
+DB --> Umami : ok
+Umami --> FE : { "ok": true }
+deactivate Umami
+deactivate FE
+
+note right of FE
+  Các event tuỳ chỉnh:
+  • map_view
+  • pin_select
+  • directions_request
+  • navigation_start
+  • qr_scan_success
+  • qr_scan_fail
+end note
+
+== Xem Dashboard ==
+
+Dev -> Umami : GET http://localhost:3002\n(đăng nhập admin)
+activate Umami
+
+Umami -> DB : SELECT COUNT(*) visitors\nWHERE created_at >= today
+DB --> Umami : data
+
+Umami -> DB : SELECT url, COUNT(*) views\nGROUP BY url
+DB --> Umami : data
+
+Umami -> DB : SELECT COUNT(DISTINCT session_id)\nWHERE last_seen > now()-5min
+DB --> Umami : active_users
+
+Umami --> Dev : Dashboard:\n• Online now (realtime)\n• Visitors / Views / Bounce rate\n• Top pages\n• Custom events
+
+deactivate Umami
+
+
+@enduml
