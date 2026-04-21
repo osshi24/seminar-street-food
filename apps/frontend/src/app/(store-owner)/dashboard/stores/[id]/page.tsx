@@ -3,6 +3,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import {
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  Info,
+  MoreVertical,
+  Pencil,
+  QrCode,
+  Trash2,
+  UtensilsCrossed,
+  X,
+} from 'lucide-react';
+import {
   getStoreById,
   updateStoreInfoById,
   saveDraftById,
@@ -19,17 +31,29 @@ import StoreDetailEditForm from '../../../../../components/stores/StoreDetailEdi
 import ImageUploader from '../../../../../components/stores/ImageUploader';
 import StoreQrSection from '../../../../../components/stores/StoreQrSection';
 import StoreMenuTab from '../../../../../components/stores/StoreMenuTab';
+import StoreOwnerPageHeader from '../../../../../components/dashboard/common/StoreOwnerPageHeader';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../../components/ui/card';
+import { Button } from '../../../../../components/ui/button';
+import { Badge } from '../../../../../components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../../../../../components/ui/dropdown-menu';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '../../../../../components/ui/dialog';
-import { Button } from '../../../../../components/ui/button';
+import { cn } from '../../../../../lib/cn';
 
-type TabKey = 'info' | 'images' | 'qr' | 'menu';
+type TabKey = 'overview' | 'menu' | 'qr';
 
 interface StoreData {
   id: string;
@@ -46,12 +70,23 @@ interface StoreData {
   images: StoreImageItem[];
 }
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: 'info', label: 'Thông tin' },
-  { key: 'menu', label: 'Thực đơn' },
-  { key: 'images', label: 'Hình ảnh' },
-  { key: 'qr', label: 'QR Code' },
+const TABS: { key: TabKey; label: string; icon: typeof Info }[] = [
+  { key: 'overview', label: 'Thông tin', icon: Info },
+  { key: 'menu', label: 'Thực đơn', icon: UtensilsCrossed },
+  { key: 'qr', label: 'QR Code', icon: QrCode },
 ];
+
+const APPROVAL_VARIANT = {
+  pending: 'warning',
+  approved: 'info',
+  rejected: 'danger',
+} as const;
+
+const APPROVAL_LABEL = {
+  pending: 'Chờ duyệt',
+  approved: 'Đã duyệt',
+  rejected: 'Bị từ chối',
+} as const;
 
 export default function StoreDetailPage() {
   const params = useParams();
@@ -59,7 +94,7 @@ export default function StoreDetailPage() {
 
   const [store, setStore] = useState<StoreData | null>(null);
   const [draft, setDraft] = useState<StoreDraft | null>(null);
-  const [tab, setTab] = useState<TabKey>('info');
+  const [tab, setTab] = useState<TabKey>('overview');
   const [editingDraft, setEditingDraft] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -124,9 +159,14 @@ export default function StoreDetailPage() {
         phone: phone || undefined,
         address: address || undefined,
         openingHours: openingHours || undefined,
-        socialLinks: (facebook || instagram || tiktok)
-          ? { facebook: facebook || undefined, instagram: instagram || undefined, tiktok: tiktok || undefined }
-          : undefined,
+        socialLinks:
+          facebook || instagram || tiktok
+            ? {
+                facebook: facebook || undefined,
+                instagram: instagram || undefined,
+                tiktok: tiktok || undefined,
+              }
+            : undefined,
       };
       await updateStoreInfoById(storeId, dto);
       await load();
@@ -146,7 +186,8 @@ export default function StoreDetailPage() {
     setConfirmDialog({
       open: true,
       title: 'Rút lại bản nháp',
-      description: 'Bạn có chắc muốn rút lại bản nháp này? Các thay đổi chưa được phê duyệt sẽ bị hủy.',
+      description:
+        'Bạn có chắc muốn rút lại bản nháp này? Các thay đổi chưa được phê duyệt sẽ bị huỷ.',
       confirmLabel: 'Rút bản nháp',
       danger: true,
       onConfirm: async () => {
@@ -166,8 +207,8 @@ export default function StoreDetailPage() {
     if (!store) return;
     setConfirmDialog({
       open: true,
-      title: 'Yêu cầu xóa gian hàng',
-      description: `Gửi yêu cầu xóa gian hàng "${store.name}" đến Admin? Gian hàng sẽ bị ẩn khỏi bản đồ sau khi Admin phê duyệt.`,
+      title: 'Yêu cầu xoá gian hàng',
+      description: `Gửi yêu cầu xoá gian hàng "${store.name}" đến Admin? Gian hàng sẽ bị ẩn khỏi bản đồ sau khi Admin phê duyệt.`,
       confirmLabel: 'Gửi yêu cầu',
       danger: true,
       onConfirm: async () => {
@@ -196,43 +237,49 @@ export default function StoreDetailPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-3xl px-6 py-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 w-48 bg-gray-200 rounded" />
-          <div className="h-64 bg-gray-100 rounded-lg" />
-        </div>
+      <div className="space-y-5">
+        <div className="h-20 animate-pulse rounded-xl bg-white" />
+        <div className="h-12 animate-pulse rounded-xl bg-white" />
+        <div className="h-96 animate-pulse rounded-xl bg-white" />
       </div>
     );
   }
 
-  if (!store) return <p className="p-6 text-red-600">Không tìm thấy gian hàng</p>;
+  if (!store) {
+    return (
+      <Card className="border-rose-200 bg-rose-50">
+        <CardContent className="p-5 text-sm text-rose-700">
+          Không tìm thấy gian hàng.
+        </CardContent>
+      </Card>
+    );
+  }
 
-  // Single banner — ưu tiên: draft pending > draft rejected > store pending > store rejected > (không cần banner khi approved)
   const banner = (() => {
     if (store.hasPendingDraft && draft) {
       return {
-        bg: 'bg-yellow-50 border-yellow-200',
-        text: 'Có bản nháp tên/mô tả đang chờ admin phê duyệt.',
+        tone: 'amber' as const,
+        text: 'Có bản nháp tên/thuyết minh đang chờ Admin phê duyệt.',
         showRevoke: true,
       };
     }
     if (draft?.status === 'rejected') {
       return {
-        bg: 'bg-red-50 border-red-200',
+        tone: 'rose' as const,
         text: `Bản nháp bị từ chối${draft.rejectionReason ? `: ${draft.rejectionReason}` : '.'}`,
         showRevoke: false,
       };
     }
     if (store.approvalStatus === 'pending') {
       return {
-        bg: 'bg-yellow-50 border-yellow-200',
-        text: 'Gian hàng đang chờ admin phê duyệt lần đầu.',
+        tone: 'amber' as const,
+        text: 'Gian hàng đang chờ Admin phê duyệt lần đầu.',
         showRevoke: false,
       };
     }
     if (store.approvalStatus === 'rejected') {
       return {
-        bg: 'bg-red-50 border-red-200',
+        tone: 'rose' as const,
         text: 'Gian hàng đã bị từ chối.',
         showRevoke: false,
       };
@@ -241,199 +288,350 @@ export default function StoreDetailPage() {
   })();
 
   const canEditNameDesc = store.approvalStatus === 'approved' && !store.hasPendingDraft;
+  const isActive = store.status === 'active';
+  const hasDeletionRequest = !!store.deletionRequestedAt;
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8 space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">{store.name}</h1>
+    <div className="space-y-5">
+      <StoreOwnerPageHeader
+        badge="Chi tiết gian hàng"
+        title={store.name}
+        description={
+          store.description || (
+            <span className="italic text-slate-400">Chưa có nội dung thuyết minh</span>
+          )
+        }
+        action={
+          <div className="flex items-center gap-2">
+            <Badge variant={APPROVAL_VARIANT[store.approvalStatus]}>
+              {APPROVAL_LABEL[store.approvalStatus]}
+            </Badge>
+            {store.approvalStatus === 'approved' && (
+              <Badge variant={isActive ? 'success' : 'muted'}>
+                {isActive ? 'Hoạt động' : 'Tạm ẩn'}
+              </Badge>
+            )}
+            {hasDeletionRequest && (
+              <Badge variant="warning" className="gap-1">
+                <Clock className="h-3 w-3" />
+                Chờ xoá
+              </Badge>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Tuỳ chọn"
+                  className="grid h-9 w-9 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Tác vụ gian hàng</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {hasDeletionRequest ? (
+                  <DropdownMenuItem
+                    onSelect={handleRevokeDeletion}
+                    disabled={deletionLoading}
+                  >
+                    <X />
+                    Huỷ yêu cầu xoá
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    onSelect={handleRequestDeletion}
+                    disabled={deletionLoading}
+                    className="text-rose-600 focus:bg-rose-50 focus:text-rose-700"
+                  >
+                    <Trash2 />
+                    Yêu cầu xoá gian hàng
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        }
+      />
 
       {banner && (
-        <div className={`rounded-lg border p-4 flex items-start justify-between gap-4 ${banner.bg}`}>
-          <p className="text-sm font-medium text-gray-800">{banner.text}</p>
-          {banner.showRevoke && (
-            <button
-              onClick={handleRevokeDraft}
-              disabled={revoking}
-              className="shrink-0 text-sm text-red-600 hover:underline disabled:opacity-50"
-            >
-              {revoking ? 'Đang rút...' : 'Rút bản nháp'}
-            </button>
+        <Card
+          className={cn(
+            banner.tone === 'amber' && 'border-amber-200 bg-amber-50',
+            banner.tone === 'rose' && 'border-rose-200 bg-rose-50',
           )}
-        </div>
+        >
+          <CardContent className="flex items-start justify-between gap-3 p-4">
+            <div className="flex items-start gap-3">
+              <div
+                className={cn(
+                  'grid h-8 w-8 shrink-0 place-items-center rounded-full',
+                  banner.tone === 'amber' && 'bg-amber-100 text-amber-700',
+                  banner.tone === 'rose' && 'bg-rose-100 text-rose-700',
+                )}
+              >
+                <AlertTriangle className="h-4 w-4" />
+              </div>
+              <p
+                className={cn(
+                  'text-sm font-medium',
+                  banner.tone === 'amber' && 'text-amber-800',
+                  banner.tone === 'rose' && 'text-rose-800',
+                )}
+              >
+                {banner.text}
+              </p>
+            </div>
+            {banner.showRevoke && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRevokeDraft}
+                disabled={revoking}
+                className="shrink-0"
+              >
+                {revoking ? 'Đang rút...' : 'Rút bản nháp'}
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {hasDeletionRequest && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="flex items-start justify-between gap-3 p-4">
+            <div className="flex items-start gap-3">
+              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-700">
+                <Clock className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-amber-800">
+                  Yêu cầu xoá đang chờ Admin xử lý
+                </p>
+                <p className="mt-0.5 text-xs text-amber-700">
+                  Gửi lúc {new Date(store.deletionRequestedAt!).toLocaleString('vi-VN')}.
+                  Gian hàng sẽ bị ẩn sau khi Admin phê duyệt.
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRevokeDeletion}
+              disabled={deletionLoading}
+              className="shrink-0"
+            >
+              {deletionLoading ? 'Đang xử lý...' : 'Huỷ yêu cầu'}
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
       {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="flex gap-6">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
-                tab === t.key
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {t.label}
-              {t.key === 'images' && store.images.length > 0 && (
-                <span className="ml-1.5 rounded-full bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">
-                  {store.images.length}
-                </span>
-              )}
-            </button>
-          ))}
+      <div className="rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm">
+        <nav className="flex gap-1">
+          {TABS.map((t) => {
+            const Icon = t.icon;
+            const active = tab === t.key;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className={cn(
+                  'flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  active
+                    ? 'bg-orange-500 text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {t.label}
+              </button>
+            );
+          })}
         </nav>
       </div>
 
-      {tab === 'info' && (
-        <div className="space-y-6">
-          {/* Tên & Thuyết minh */}
-          <div className="rounded-lg bg-white border p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-1">
-              <h2 className="text-base font-semibold text-gray-800">Tên & Thuyết minh</h2>
+      {tab === 'overview' && (
+        <div className="space-y-4">
+          {/* Tên & thuyết minh */}
+          <Card>
+            <CardHeader className="flex-row items-center justify-between space-y-0 border-b border-slate-100">
+              <div>
+                <CardTitle className="text-base">Tên &amp; Thuyết minh</CardTitle>
+                <CardDescription>
+                  Nội dung sẽ được đọc tự động khi khách quét QR.
+                </CardDescription>
+              </div>
               {canEditNameDesc && !editingDraft && (
-                <button onClick={() => setEditingDraft(true)} className="text-sm text-blue-600 hover:underline">
+                <Button variant="outline" size="sm" onClick={() => setEditingDraft(true)}>
+                  <Pencil />
                   Chỉnh sửa
-                </button>
+                </Button>
               )}
-            </div>
+            </CardHeader>
+            <CardContent className="pt-5">
+              {editingDraft ? (
+                <StoreDetailEditForm
+                  storeId={storeId}
+                  initialName={store.name}
+                  initialDescription={store.description}
+                  onSaveDraft={handleSaveDraft}
+                  onCancel={() => setEditingDraft(false)}
+                />
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-lg font-semibold tracking-tight text-slate-900">
+                    {store.name}
+                  </p>
+                  <p className="text-sm leading-6 text-slate-600">
+                    {store.description || (
+                      <span className="italic text-slate-400">
+                        Chưa có nội dung thuyết minh
+                      </span>
+                    )}
+                  </p>
+                  {store.approvalStatus !== 'approved' && (
+                    <p className="rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-500 ring-1 ring-slate-200">
+                      Có thể chỉnh sửa tên và thuyết minh sau khi gian hàng được Admin phê duyệt lần đầu.
+                    </p>
+                  )}
+                  {store.approvalStatus === 'approved' && store.hasPendingDraft && (
+                    <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700 ring-1 ring-amber-200">
+                      Đang có bản nháp chờ duyệt — không thể chỉnh sửa cho đến khi bản nháp được xử lý.
+                    </p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-            <p className="mb-4 text-xs text-gray-400">Nội dung thuyết minh sẽ được đọc tự động khi khách quét QR gian hàng.</p>
-
-            {editingDraft ? (
-              <StoreDetailEditForm
+          {/* Hình ảnh */}
+          <Card>
+            <CardHeader className="flex-row items-center justify-between space-y-0 border-b border-slate-100">
+              <div>
+                <CardTitle className="text-base">Hình ảnh gian hàng</CardTitle>
+                <CardDescription>
+                  Tải ảnh đẹp giúp gian hàng nổi bật trên bản đồ.
+                </CardDescription>
+              </div>
+              {store.images.length > 0 && (
+                <Badge variant="muted">{store.images.length} ảnh</Badge>
+              )}
+            </CardHeader>
+            <CardContent className="pt-5">
+              <ImageUploader
                 storeId={storeId}
-                initialName={store.name}
-                initialDescription={store.description}
-                onSaveDraft={handleSaveDraft}
-                onCancel={() => setEditingDraft(false)}
+                images={store.images}
+                onImagesChange={load}
               />
-            ) : (
-              <div className="space-y-2">
-                <p className="text-lg font-semibold text-gray-900">{store.name}</p>
-                <p className="text-sm text-gray-600">
-                  {store.description || <span className="italic text-gray-400">Chưa có nội dung thuyết minh</span>}
-                </p>
-                {store.approvalStatus !== 'approved' && (
-                  <p className="text-xs text-gray-400 mt-2">
-                    Có thể chỉnh sửa tên và thuyết minh sau khi gian hàng được admin phê duyệt lần đầu.
+            </CardContent>
+          </Card>
+
+          {/* Liên hệ */}
+          <Card>
+            <CardHeader className="border-b border-slate-100">
+              <CardTitle className="text-base">Thông tin liên hệ</CardTitle>
+              <CardDescription>
+                Số điện thoại, địa chỉ, giờ mở cửa và mạng xã hội.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-5">
+              <form onSubmit={handleSaveInfo} className="space-y-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <FieldInput
+                    label="Số điện thoại"
+                    type="tel"
+                    value={phone}
+                    onChange={setPhone}
+                    placeholder="0123 456 789"
+                  />
+                  <FieldInput
+                    label="Giờ mở cửa"
+                    value={openingHours}
+                    onChange={setOpeningHours}
+                    placeholder="6:00 - 22:00"
+                  />
+                </div>
+
+                <FieldInput
+                  label="Địa chỉ"
+                  value={address}
+                  onChange={setAddress}
+                  placeholder="Số nhà, đường, phường..."
+                />
+
+                <div className="border-t border-slate-100 pt-4">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Mạng xã hội
                   </p>
-                )}
-                {store.approvalStatus === 'approved' && store.hasPendingDraft && (
-                  <p className="text-xs text-yellow-600 mt-2">
-                    Đang có bản nháp chờ duyệt — không thể chỉnh sửa cho đến khi bản nháp được xử lý.
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <FieldInput
+                      label="Facebook"
+                      type="url"
+                      value={facebook}
+                      onChange={setFacebook}
+                      placeholder="https://facebook.com/..."
+                    />
+                    <FieldInput
+                      label="Instagram"
+                      type="url"
+                      value={instagram}
+                      onChange={setInstagram}
+                      placeholder="https://instagram.com/..."
+                    />
+                    <FieldInput
+                      label="TikTok"
+                      type="url"
+                      value={tiktok}
+                      onChange={setTiktok}
+                      placeholder="https://tiktok.com/@..."
+                    />
+                  </div>
+                </div>
 
-          {/* Thông tin liên hệ */}
-          <form onSubmit={handleSaveInfo} className="rounded-lg bg-white border p-5 shadow-sm space-y-4">
-            <h2 className="text-base font-semibold text-gray-800">Thông tin liên hệ</h2>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="0123 456 789"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Giờ mở cửa</label>
-                <input
-                  type="text"
-                  value={openingHours}
-                  onChange={(e) => setOpeningHours(e.target.value)}
-                  placeholder="6:00 - 22:00"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ</label>
-              <input
-                type="text"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="Số nhà, đường, phường..."
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-              />
-            </div>
-
-            <h2 className="text-base font-semibold text-gray-800 pt-2">Mạng xã hội</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Facebook</label>
-                <input
-                  type="url"
-                  value={facebook}
-                  onChange={(e) => setFacebook(e.target.value)}
-                  placeholder="https://facebook.com/..."
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Instagram</label>
-                <input
-                  type="url"
-                  value={instagram}
-                  onChange={(e) => setInstagram(e.target.value)}
-                  placeholder="https://instagram.com/..."
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">TikTok</label>
-                <input
-                  type="url"
-                  value={tiktok}
-                  onChange={(e) => setTiktok(e.target.value)}
-                  placeholder="https://tiktok.com/@..."
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="pt-2">
-              <button
-                type="submit"
-                disabled={saving}
-                className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60 transition-colors"
-              >
-                {saving ? 'Đang lưu...' : 'Lưu thông tin'}
-              </button>
-            </div>
-          </form>
+                <div className="flex justify-end pt-2">
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    className="bg-orange-500 hover:bg-orange-600"
+                    disabled={saving}
+                  >
+                    <CheckCircle2 />
+                    {saving ? 'Đang lưu...' : 'Lưu thông tin'}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
         </div>
       )}
 
       {tab === 'menu' && (
-        <div className="rounded-lg bg-white border p-5 shadow-sm">
-          <h2 className="text-base font-semibold text-gray-800 mb-4">Quản lý thực đơn</h2>
-          <StoreMenuTab storeId={storeId} />
-        </div>
-      )}
-
-      {tab === 'images' && (
-        <div className="rounded-lg bg-white border p-5 shadow-sm">
-          <h2 className="text-base font-semibold text-gray-800 mb-4">Hình ảnh gian hàng</h2>
-          <ImageUploader storeId={storeId} images={store.images} onImagesChange={load} />
-        </div>
+        <Card>
+          <CardHeader className="border-b border-slate-100">
+            <CardTitle className="text-base">Quản lý thực đơn</CardTitle>
+            <CardDescription>Thêm, chỉnh sửa món, giá tiền và mô tả.</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-5">
+            <StoreMenuTab storeId={storeId} />
+          </CardContent>
+        </Card>
       )}
 
       {tab === 'qr' && (
-        <StoreQrSection storeId={storeId} storeName={store.name} storeStatus={store.status} />
+        <StoreQrSection
+          storeId={storeId}
+          storeName={store.name}
+          storeStatus={store.status}
+        />
       )}
 
       <Dialog
         open={confirmDialog?.open ?? false}
-        onOpenChange={(open) => { if (!open) setConfirmDialog(null); }}
+        onOpenChange={(open) => {
+          if (!open) setConfirmDialog(null);
+        }}
       >
         <DialogContent>
           <DialogHeader>
@@ -441,7 +639,9 @@ export default function StoreDetailPage() {
             <DialogDescription>{confirmDialog?.description}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmDialog(null)}>Hủy</Button>
+            <Button variant="outline" onClick={() => setConfirmDialog(null)}>
+              Huỷ
+            </Button>
             <Button
               variant={confirmDialog?.danger ? 'destructive' : 'default'}
               onClick={() => confirmDialog?.onConfirm()}
@@ -451,49 +651,31 @@ export default function StoreDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
 
-      {/* Danger zone */}
-      <div className="rounded-lg border border-red-200 bg-red-50 p-5">
-        <h2 className="text-base font-semibold text-red-800 mb-1">Vùng nguy hiểm</h2>
+interface FieldInputProps {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+}
 
-        {store.deletionRequestedAt ? (
-          <div className="space-y-3">
-            <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 flex items-start gap-3">
-              <svg className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-              </svg>
-              <div>
-                <p className="text-sm font-semibold text-yellow-800">Đang chờ Admin phê duyệt</p>
-                <p className="text-xs text-yellow-700 mt-0.5">
-                  Yêu cầu xóa đã được gửi lúc{' '}
-                  {new Date(store.deletionRequestedAt).toLocaleString('vi-VN')}.
-                  Gian hàng sẽ bị ẩn sau khi Admin xử lý.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={handleRevokeDeletion}
-              disabled={deletionLoading}
-              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
-            >
-              {deletionLoading ? 'Đang xử lý...' : 'Hủy yêu cầu xóa'}
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-sm text-red-600">
-              Yêu cầu xóa sẽ được gửi đến Admin để xem xét. Gian hàng sẽ bị ẩn khỏi bản đồ sau khi được phê duyệt.
-            </p>
-            <button
-              onClick={handleRequestDeletion}
-              disabled={deletionLoading}
-              className="rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50"
-            >
-              {deletionLoading ? 'Đang gửi...' : 'Yêu cầu xóa gian hàng'}
-            </button>
-          </div>
-        )}
-      </div>
+function FieldInput({ label, value, onChange, placeholder, type = 'text' }: FieldInputProps) {
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {label}
+      </label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 transition-colors placeholder:text-slate-400 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-200"
+      />
     </div>
   );
 }
