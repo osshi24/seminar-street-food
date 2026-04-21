@@ -4,6 +4,10 @@ const UMAMI_URL = process.env.UMAMI_URL || 'http://localhost:3002';
 
 const nextConfig = {
   output: 'standalone',
+  // Socket.IO polling requests come in as `/socket.io/?...` — Next would otherwise
+  // 308-redirect to strip the trailing slash, which the socket.io client cannot
+  // follow during the polling handshake. Disable that normalization.
+  skipTrailingSlashRedirect: true,
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'images.unsplash.com' },
@@ -20,10 +24,16 @@ const nextConfig = {
         source: '/api/backend/:path*',
         destination: `${BACKEND_URL}/api/:path*`,
       },
-      // Proxy Socket.IO (HTTP polling; WebSocket upgrade depends on deployment)
+      // Proxy Socket.IO. Two rules because Next collapses the trailing slash on
+      // the destination when `:path*` matches empty — and `/socket.io` (no slash)
+      // is not a valid socket.io endpoint, so polling handshake would 404.
       {
-        source: '/socket.io/:path*',
-        destination: `${BACKEND_URL}/socket.io/:path*`,
+        source: '/socket.io/',
+        destination: `${BACKEND_URL}/socket.io/`,
+      },
+      {
+        source: '/socket.io/:path+',
+        destination: `${BACKEND_URL}/socket.io/:path+`,
       },
       // Proxy Umami — thiết bị LAN dùng cùng origin, không cần biết IP host
       {

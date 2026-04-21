@@ -39,16 +39,16 @@ export default function AdminMetricGrid({ items }: { items: AdminMetricItem[] })
         return (
           <div
             key={item.label}
-            className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+            className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-shadow hover:shadow-md"
           >
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
                 {item.label}
               </p>
               {item.icon ? (
                 <div
                   className={cn(
-                    'grid h-8 w-8 shrink-0 place-items-center rounded-lg [&_svg]:h-4 [&_svg]:w-4',
+                    'grid h-6 w-6 shrink-0 place-items-center rounded-md [&_svg]:h-3.5 [&_svg]:w-3.5',
                     toneClass,
                   )}
                 >
@@ -56,11 +56,11 @@ export default function AdminMetricGrid({ items }: { items: AdminMetricItem[] })
                 </div>
               ) : null}
             </div>
-            <div className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
+            <div className="mt-1.5 text-xl font-semibold tracking-tight text-slate-900">
               {item.value}
             </div>
             {item.description ? (
-              <div className="mt-1 text-xs leading-5 text-slate-500">{item.description}</div>
+              <div className="mt-0.5 text-[11px] leading-4 text-slate-500">{item.description}</div>
             ) : null}
           </div>
         );
