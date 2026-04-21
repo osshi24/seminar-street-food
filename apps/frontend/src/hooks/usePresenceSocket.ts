@@ -15,7 +15,7 @@ function readCookie(name: string): string | null {
 
 function resolveToken(role: PresenceRole): string | null {
   if (role === 'admin') return readCookie('admin_access_token');
-  if (role === 'store_owner') return readCookie('store_owner_access_token');
+  if (role === 'store_owner') return readCookie('access_token');
   return readCookie('customer_access_token');
 }
 
