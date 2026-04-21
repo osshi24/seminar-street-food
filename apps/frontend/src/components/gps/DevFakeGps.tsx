@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const STORAGE_KEY = 'dev_fake_gps';
 
@@ -43,7 +43,11 @@ export default function DevFakeGps() {
   const [open, setOpen] = useState(false);
   const [lat, setLat] = useState('');
   const [lng, setLng] = useState('');
-  const [active, setActive] = useState(() => typeof window !== 'undefined' && !!localStorage.getItem(STORAGE_KEY));
+  const [active, setActive] = useState(false);
+
+  useEffect(() => {
+    setActive(!!localStorage.getItem(STORAGE_KEY));
+  }, []);
 
   if (process.env.NODE_ENV === 'production') return null;
 
