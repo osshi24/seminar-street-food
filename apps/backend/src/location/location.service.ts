@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -30,44 +31,80 @@ export class LocationService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
-  private async resolveStoreId(ownerId: string): Promise<string> {
-    const store = await this.storeRepo.findOne({ where: { ownerId } });
-    if (!store) throw new NotFoundException('Store not found for this account');
-    return store.id;
+  async getActiveBoundary() {
+    return this.boundaryCheckService.getActiveBoundary();
   }
 
-  async getMyLocation(ownerId: string) {
-    const storeId = await this.resolveStoreId(ownerId);
+  private async resolveStore(ownerId: string, storeId?: string): Promise<Store> {
+    if (storeId) {
+      const store = await this.storeRepo.findOne({ where: { id: storeId } });
+      if (!store) throw new NotFoundException('Store not found');
+      if (store.ownerId !== ownerId) throw new ForbiddenException('Access denied');
+      return store;
+    }
+    const store = await this.storeRepo.findOne({ where: { ownerId } });
+    if (!store) throw new NotFoundException('Store not found for this account');
+    return store;
+  }
+
+  async getAllStoresLocation(ownerId: string) {
+    const stores = await this.storeRepo.find({
+      where: { ownerId },
+      order: { createdAt: 'DESC' },
+    });
+
+    return Promise.all(
+      stores.map(async (store) => {
+        const [approved, pending] = await Promise.all([
+          this.pinRepo.findOne({
+            where: { storeId: store.id, status: LocationPinStatus.APPROVED },
+            order: { reviewedAt: 'DESC' },
+          }),
+          this.pinRepo.findOne({
+            where: { storeId: store.id, status: LocationPinStatus.PENDING },
+          }),
+        ]);
+        return {
+          storeId: store.id,
+          storeName: store.name,
+          approvalStatus: store.approvalStatus,
+          approved: approved ?? null,
+          pending: pending ?? null,
+        };
+      }),
+    );
+  }
+
+  async getMyLocation(ownerId: string, storeId?: string) {
+    const store = await this.resolveStore(ownerId, storeId);
     const [approved, pending] = await Promise.all([
       this.pinRepo.findOne({
-        where: { storeId, status: LocationPinStatus.APPROVED },
+        where: { storeId: store.id, status: LocationPinStatus.APPROVED },
         order: { reviewedAt: 'DESC' },
       }),
       this.pinRepo.findOne({
-        where: { storeId, status: LocationPinStatus.PENDING },
+        where: { storeId: store.id, status: LocationPinStatus.PENDING },
       }),
     ]);
     return { approved, pending };
   }
 
-  async submitLocation(ownerId: string, dto: SubmitLocationDto): Promise<LocationPin> {
-    const storeId = await this.resolveStoreId(ownerId);
-    // Check for existing pending
+  async submitLocation(ownerId: string, dto: SubmitLocationDto, storeId?: string): Promise<LocationPin> {
+    const store = await this.resolveStore(ownerId, storeId);
+
     const existingPending = await this.pinRepo.findOne({
-      where: { storeId, status: LocationPinStatus.PENDING },
+      where: { storeId: store.id, status: LocationPinStatus.PENDING },
     });
     if (existingPending) {
       throw new ConflictException({ code: 'PENDING_EXISTS', message: 'A pending location already exists' });
     }
 
-    // Boundary check — may throw NO_ACTIVE_BOUNDARY
     let withinBoundary: boolean;
     try {
       withinBoundary = await this.boundaryCheckService.isWithinBoundary(dto.lat, dto.lng);
     } catch (err: unknown) {
       const e = err as Error & { code?: string };
       if (e.code === 'NO_ACTIVE_BOUNDARY') {
-        // No boundary configured — skip boundary check (allow submission)
         withinBoundary = true;
       } else {
         throw err;
@@ -82,14 +119,13 @@ export class LocationService {
     }
 
     const pin = this.pinRepo.create({
-      storeId,
+      storeId: store.id,
       latitude: dto.lat,
       longitude: dto.lng,
       status: LocationPinStatus.PENDING,
     });
     const saved = await this.pinRepo.save(pin);
 
-    // Notify all admins
     try {
       const admins = await this.adminRepo.find();
       for (const admin of admins) {
@@ -98,7 +134,7 @@ export class LocationService {
           recipientId: admin.id,
           eventType: 'LOCATION_PIN_SUBMITTED',
           title: 'Gian hàng gửi vị trí mới',
-          body: `Một gian hàng đã gửi vị trí cần xét duyệt.`,
+          body: `Gian hàng "${store.name}" đã gửi vị trí cần xét duyệt.`,
         });
       }
     } catch (err) {
@@ -108,10 +144,10 @@ export class LocationService {
     return saved;
   }
 
-  async revokePending(ownerId: string): Promise<void> {
-    const storeId = await this.resolveStoreId(ownerId);
+  async revokePending(ownerId: string, storeId?: string): Promise<void> {
+    const store = await this.resolveStore(ownerId, storeId);
     const pending = await this.pinRepo.findOne({
-      where: { storeId, status: LocationPinStatus.PENDING },
+      where: { storeId: store.id, status: LocationPinStatus.PENDING },
     });
     if (!pending) {
       throw new NotFoundException({ code: 'NO_PENDING_FOUND', message: 'No pending location pin found' });

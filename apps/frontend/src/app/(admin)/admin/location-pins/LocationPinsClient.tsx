@@ -258,8 +258,8 @@ export default function LocationPinsClient() {
               setApproveModal(false);
               setApprovingId(null);
             }}
-            currentLat={selectedPin.latitude}
-            currentLng={selectedPin.longitude}
+            currentLat={Number(selectedPin.latitude)}
+            currentLng={Number(selectedPin.longitude)}
             storeName={selectedPin.store?.name || 'Ghim vị trí'}
           />
           <RejectPinModal

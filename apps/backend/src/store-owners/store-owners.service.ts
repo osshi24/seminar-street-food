@@ -7,7 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { StoreOwnerAccount, StoreOwnerStatus } from '../entities/store-owner-account.entity';
-import { Store } from '../entities/store.entity';
+import { Store } from '../stores/entities/store.entity';
 import { Notification, NotificationRecipientType } from '../entities/notification.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { MailService } from '../mail/mail.service';
@@ -33,7 +33,7 @@ export class StoreOwnersService {
 
     const qb = this.storeOwnerRepo
       .createQueryBuilder('soa')
-      .leftJoinAndSelect('soa.store', 'store');
+      .leftJoinAndSelect('soa.stores', 'store');
 
     if (status) {
       qb.andWhere('soa.status = :status', { status });
@@ -66,7 +66,7 @@ export class StoreOwnersService {
   async findOne(id: string): Promise<StoreOwnerAccount> {
     const account = await this.storeOwnerRepo.findOne({
       where: { id },
-      relations: ['store'],
+      relations: ['stores'],
     });
     if (!account) {
       throw new NotFoundException('Store owner not found');

@@ -43,13 +43,18 @@ export default function StoreOwnerTableRow({ owner, onQuickAction }: StoreOwnerT
       </td>
       <td className="px-4 py-3 text-sm text-slate-600">{owner.email}</td>
       <td className="px-4 py-3 text-sm">
-        {owner.store?.name ? (
-          <Link
-            href={`/admin/stores/${owner.store.id}`}
-            className="font-medium text-cyan-700 transition-colors hover:text-cyan-800"
-          >
-            {owner.store.name}
-          </Link>
+        {owner.stores && owner.stores.length > 0 ? (
+          <div className="flex flex-col gap-0.5">
+            <Link
+              href={`/admin/stores/${owner.stores[0].id}`}
+              className="font-medium text-cyan-700 transition-colors hover:text-cyan-800"
+            >
+              {owner.stores[0].name}
+            </Link>
+            {owner.stores.length > 1 && (
+              <span className="text-[11px] text-slate-400">+{owner.stores.length - 1} gian hàng khác</span>
+            )}
+          </div>
         ) : (
           <span className="text-slate-400">—</span>
         )}

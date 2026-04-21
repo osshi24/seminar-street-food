@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
-import { Store, StoreStatus } from '../stores/entities/store.entity';
+import { Store, StoreStatus, StoreApprovalStatus } from '../stores/entities/store.entity';
 import { StoreContentDraft, DraftStatus } from '../stores/entities/store-content-draft.entity';
 import { MenuItem } from '../stores/entities/menu-item.entity';
 import { StoreImage } from '../stores/entities/store-image.entity';
@@ -125,6 +125,7 @@ export class AdminStoresService {
         name: draft.name,
         description: draft.description,
         status: StoreStatus.ACTIVE,
+        approvalStatus: StoreApprovalStatus.APPROVED,
       });
 
       // Commit menu items: remove is_in_draft items, delete ones not in draft
