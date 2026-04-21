@@ -8,6 +8,23 @@ interface Props {
   onClose: () => void;
 }
 
+function extractQrToken(raw: string): string | null {
+  const trimmed = raw.trim();
+  const directToken = trimmed.match(/^[a-f0-9-]{36}$/i);
+  if (directToken) return directToken[0];
+
+  try {
+    const url = new URL(trimmed);
+    const tokenInPath = url.pathname.match(/\/qr\/([a-f0-9-]{36})$/i);
+    if (tokenInPath) return tokenInPath[1];
+  } catch {
+    const fallbackToken = trimmed.match(/\/qr\/([a-f0-9-]{36})(?:[/?#]|$)/i);
+    if (fallbackToken) return fallbackToken[1];
+  }
+
+  return null;
+}
+
 export default function QrScannerModal({ onResult, onClose }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -73,10 +90,10 @@ export default function QrScannerModal({ onResult, onClose }: Props) {
     async function handleQrData(raw: string) {
       setScanning(false);
       stopCamera();
-      const match = raw.match(/\/qr\/([a-f0-9-]{36})/i);
-      if (!match) { onResult({ type: 'unavailable' }); return; }
+      const token = extractQrToken(raw);
+      if (!token) { onResult({ type: 'unavailable' }); return; }
       try {
-        const result = await resolveQrToken(match[1]);
+        const result = await resolveQrToken(token);
         onResult(result);
       } catch {
         onResult({ type: 'unavailable' });
