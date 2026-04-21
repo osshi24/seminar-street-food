@@ -1,0 +1,44 @@
+@startuml proximity-between-two-stores
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 8
+skinparam sequenceParticipantBorderColor #555
+skinparam sequenceParticipantBackgroundColor #FFF
+skinparam noteBorderColor #888
+skinparam noteBackgroundColor #FFFDE7
+
+title Case: User đứng giữa 2 gian hàng (mỗi gian cách 3m)
+
+actor "User" as User
+participant "useProximity\nDetection" as Prox
+participant "GpsAutoPlay\nController" as Ctrl
+participant "useAutoPlay" as Play
+
+note over User
+  Gian hàng 1 ←── 3m ──── User ──── 3m ──→ Gian hàng 2
+  (chưa phát)                              (chưa phát)
+end note
+
+== Lần 1: User vừa vào vùng ==
+
+User -> Prox : vị trí GPS mới
+Prox -> Prox : cả 2 gian hàng trong 3m\nsort tăng dần → [GH1, GH2]
+Prox --> Ctrl : nearbyStores = [GH1, GH2]
+
+Ctrl -> Ctrl : find(s => !session.get(s))\n→ GH1 chưa phát → chọn GH1
+Ctrl -> Play : tryPlay(GH1)
+Play --> User : 🔊 phát thuyết minh GH1
+Ctrl -> Ctrl : session.set(GH1, true)
+
+== Lần 2: GH1 đã phát, User vẫn đứng yên ==
+
+User -> Prox : vị trí GPS (không đổi)
+Prox --> Ctrl : nearbyStores = [GH1, GH2]
+
+Ctrl -> Ctrl : find(s => !session.get(s))\n→ GH1 đã phát → bỏ qua\n→ GH2 chưa phát → chọn GH2
+Ctrl -> Play : tryPlay(GH2)
+Play --> User : 🔊 phát thuyết minh GH2
+Ctrl -> Ctrl : session.set(GH2, true)
+
+@enduml
