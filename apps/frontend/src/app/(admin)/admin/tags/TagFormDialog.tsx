@@ -1,30 +1,18 @@
 'use client';
 
 import { useState } from 'react';
+import { X, Check } from 'lucide-react';
+import { Button } from '../../../../components/ui/button';
+import { Badge } from '../../../../components/ui/badge';
+import { cn } from '../../../../lib/cn';
 import apiClient from '../../../../lib/api/client';
 
 type GroupType = 'dish_type' | 'flavor' | 'allergen';
 
-const GROUP_OPTIONS: Array<{
-  value: GroupType;
-  label: string;
-  description: string;
-}> = [
-  {
-    value: 'dish_type',
-    label: 'Loại món ăn',
-    description: 'Dùng để phân loại dòng món như cơm, bún, lẩu, bánh mì.',
-  },
-  {
-    value: 'flavor',
-    label: 'Khẩu vị',
-    description: 'Dùng cho đặc tính vị giác như cay, ngọt, béo hoặc thanh.',
-  },
-  {
-    value: 'allergen',
-    label: 'Dị ứng thực phẩm',
-    description: 'Dùng để cảnh báo nguyên liệu có thể gây dị ứng hoặc cần tránh.',
-  },
+const GROUP_OPTIONS: Array<{ value: GroupType; label: string; description: string }> = [
+  { value: 'dish_type', label: 'Loại món ăn', description: 'Phân loại dòng món như cơm, bún, lẩu, bánh mì.' },
+  { value: 'flavor', label: 'Khẩu vị', description: 'Đặc tính vị giác như cay, ngọt, béo, thanh.' },
+  { value: 'allergen', label: 'Dị ứng thực phẩm', description: 'Cảnh báo nguyên liệu gây dị ứng hoặc cần tránh.' },
 ];
 
 interface TagData {
@@ -59,18 +47,12 @@ export default function TagFormDialog({ initial, onClose, onSaved }: Props) {
     setError(null);
 
     try {
-      const payload = {
-        nameVi: nameVi.trim(),
-        nameEn: nameEn.trim(),
-        groupType,
-      };
-
+      const payload = { nameVi: nameVi.trim(), nameEn: nameEn.trim(), groupType };
       if (initial?.id) {
         await apiClient.put(`/admin/tags/${initial.id}`, payload);
       } else {
         await apiClient.post('/admin/tags', payload);
       }
-
       onSaved();
     } catch (unknownError: unknown) {
       const message =
@@ -83,85 +65,83 @@ export default function TagFormDialog({ initial, onClose, onSaved }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-8 backdrop-blur-sm">
-      <div className="w-full max-w-2xl overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-[0_40px_100px_-50px_rgba(15,23,42,0.75)]">
-        <div className="border-b border-slate-200 bg-[radial-gradient(circle_at_top_right,_rgba(56,189,248,0.16),_transparent_35%),linear-gradient(180deg,_#ffffff_0%,_#f8fbff_100%)] px-6 py-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-700">
-                Tag editor
-              </p>
-              <h2 className="mt-2 text-2xl font-semibold text-slate-950">
-                {initial?.id ? 'Cập nhật nhãn hiện có' : 'Tạo nhãn mới cho hệ thống'}
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">
-                Nhãn sẽ được dùng trực tiếp ở menu món ăn và các luồng gợi ý. Hãy đặt tên rõ ràng, ngắn gọn và nhất quán.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="grid h-11 w-11 place-items-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50"
-            >
-              ✕
-            </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 py-8 backdrop-blur-sm">
+      <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+        <div className="flex items-start justify-between border-b border-slate-200 px-5 py-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-cyan-700">
+              Trình soạn nhãn
+            </p>
+            <h2 className="mt-1 text-lg font-semibold text-slate-900">
+              {initial?.id ? 'Cập nhật nhãn' : 'Tạo nhãn mới'}
+            </h2>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid h-8 w-8 place-items-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="grid gap-6 px-6 py-6 lg:grid-cols-[1.25fr_0.75fr]">
-          <div className="space-y-5">
+        <form onSubmit={handleSubmit} className="grid gap-5 px-5 py-5 lg:grid-cols-[1.25fr_0.75fr]">
+          <div className="space-y-4">
             <label className="block">
-              <span className="mb-2 block text-sm font-semibold text-slate-700">Tên tiếng Việt</span>
+              <span className="mb-1.5 block text-sm font-medium text-slate-700">Tên tiếng Việt</span>
               <input
                 value={nameVi}
                 onChange={(event) => setNameVi(event.target.value)}
                 maxLength={100}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-cyan-300 focus:bg-white"
+                className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-slate-400"
                 placeholder="Ví dụ: Cay"
               />
             </label>
 
             <label className="block">
-              <span className="mb-2 block text-sm font-semibold text-slate-700">Tên tiếng Anh</span>
+              <span className="mb-1.5 block text-sm font-medium text-slate-700">Tên tiếng Anh</span>
               <input
                 value={nameEn}
                 onChange={(event) => setNameEn(event.target.value)}
                 maxLength={100}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-cyan-300 focus:bg-white"
+                className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-slate-400"
                 placeholder="Example: Spicy"
               />
             </label>
 
             <div>
-              <span className="mb-2 block text-sm font-semibold text-slate-700">Nhóm nhãn</span>
-              <div className="space-y-3">
+              <span className="mb-1.5 block text-sm font-medium text-slate-700">Nhóm nhãn</span>
+              <div className="space-y-2">
                 {GROUP_OPTIONS.map((option) => {
                   const active = option.value === groupType;
-
                   return (
                     <button
                       key={option.value}
                       type="button"
                       onClick={() => setGroupType(option.value)}
-                      className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
+                      className={cn(
+                        'w-full rounded-md border p-3 text-left transition-colors',
                         active
-                          ? 'border-cyan-300 bg-cyan-50'
-                          : 'border-slate-200 bg-white hover:bg-slate-50'
-                      }`}
+                          ? 'border-cyan-500 bg-cyan-50'
+                          : 'border-slate-200 bg-white hover:bg-slate-50',
+                      )}
                     >
-                      <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="font-semibold text-slate-900">{option.label}</p>
-                          <p className="mt-1 text-sm leading-6 text-slate-500">{option.description}</p>
+                          <p className="text-sm font-medium text-slate-900">{option.label}</p>
+                          <p className="mt-0.5 text-xs leading-5 text-slate-500">
+                            {option.description}
+                          </p>
                         </div>
                         <span
-                          className={`mt-1 grid h-5 w-5 shrink-0 place-items-center rounded-full border text-[10px] ${
+                          className={cn(
+                            'mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border',
                             active
                               ? 'border-cyan-500 bg-cyan-500 text-white'
-                              : 'border-slate-300 text-transparent'
-                          }`}
+                              : 'border-slate-300 text-transparent',
+                          )}
                         >
-                          ●
+                          <Check className="h-3 w-3" />
                         </span>
                       </div>
                     </button>
@@ -171,50 +151,36 @@ export default function TagFormDialog({ initial, onClose, onSaved }: Props) {
             </div>
           </div>
 
-          <div className="space-y-5">
-            <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+          <div className="space-y-3">
+            <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
                 Xem trước
               </p>
-              <div className="mt-4 rounded-[24px] bg-white p-4 shadow-sm ring-1 ring-slate-200">
-                <span className="inline-flex rounded-full bg-slate-950 px-3 py-1 text-xs font-semibold text-white">
+              <div className="mt-3 rounded-md border border-slate-200 bg-white p-3">
+                <Badge variant="default">
                   {GROUP_OPTIONS.find((option) => option.value === groupType)?.label}
-                </span>
-                <h3 className="mt-4 text-2xl font-semibold text-slate-950">
+                </Badge>
+                <h3 className="mt-3 text-lg font-semibold text-slate-900">
                   {nameVi.trim() || 'Tên tiếng Việt'}
                 </h3>
-                <p className="mt-1 text-sm text-slate-500">{nameEn.trim() || 'English name'}</p>
+                <p className="mt-0.5 text-sm text-slate-500">{nameEn.trim() || 'English name'}</p>
               </div>
             </div>
 
             {error ? (
-              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
                 {error}
               </div>
             ) : null}
-
-            <div className="rounded-[28px] border border-slate-200 bg-white p-5">
-              <p className="text-sm leading-6 text-slate-500">
-                Chỉ thêm mới khi thật sự thiếu. Nếu một nhãn có thể tái sử dụng từ taxonomy hiện tại, ưu tiên sửa hoặc chuẩn hóa nhãn cũ để giữ dữ liệu đồng nhất.
-              </p>
-            </div>
           </div>
 
-          <div className="flex justify-end gap-3 lg:col-span-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-            >
+          <div className="flex justify-end gap-2 lg:col-span-2">
+            <Button type="button" variant="outline" onClick={onClose}>
               Hủy
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
-            >
-              {submitting ? 'Đang lưu...' : initial?.id ? 'Lưu cập nhật' : 'Tạo nhãn'}
-            </button>
+            </Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? 'Đang lưu...' : initial?.id ? 'Lưu' : 'Tạo nhãn'}
+            </Button>
           </div>
         </form>
       </div>

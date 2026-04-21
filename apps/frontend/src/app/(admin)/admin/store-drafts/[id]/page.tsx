@@ -6,6 +6,8 @@ import apiClient from '@/lib/api/client';
 import DraftCompareView from '@/components/admin/DraftCompareView';
 import RejectReasonModal from '@/components/admin/RejectReasonModal';
 import AdminPageHeader from '@/components/admin/common/AdminPageHeader';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 export default function StoreDraftDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -23,9 +25,7 @@ export default function StoreDraftDetailPage() {
   useEffect(() => {
     apiClient
       .get(`/admin/store-drafts/${id}`)
-      .then((res) => {
-        setDetail(res.data?.data);
-      })
+      .then((res) => setDetail(res.data?.data))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -59,11 +59,11 @@ export default function StoreDraftDetailPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="h-44 animate-pulse rounded-[32px] bg-white/70" />
-        <div className="grid gap-6 xl:grid-cols-2">
-          <div className="h-[420px] animate-pulse rounded-[32px] bg-white/70" />
-          <div className="h-[420px] animate-pulse rounded-[32px] bg-white/70" />
+      <div className="space-y-5">
+        <div className="h-24 animate-pulse rounded-xl bg-white" />
+        <div className="grid gap-4 xl:grid-cols-2">
+          <div className="h-96 animate-pulse rounded-xl bg-white" />
+          <div className="h-96 animate-pulse rounded-xl bg-white" />
         </div>
       </div>
     );
@@ -71,16 +71,16 @@ export default function StoreDraftDetailPage() {
 
   if (!detail) {
     return (
-      <div className="rounded-[32px] border border-rose-200 bg-rose-50 p-6 text-rose-700">
-        Không tìm thấy bản nháp.
-      </div>
+      <Card className="border-rose-200 bg-rose-50">
+        <CardContent className="p-5 text-sm text-rose-700">Không tìm thấy bản nháp.</CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {toast ? (
-        <div className="fixed right-6 top-6 z-50 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg">
+        <div className="fixed right-6 top-6 z-50 rounded-md bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg">
           {toast}
         </div>
       ) : null}
@@ -94,46 +94,48 @@ export default function StoreDraftDetailPage() {
       ) : null}
 
       <AdminPageHeader
-        badge="Draft review"
+        badge="Duyệt bản nháp"
         title="Chi tiết bản nháp chờ duyệt"
-        description="So sánh nội dung hiện tại với phiên bản được đề xuất trước khi chấp thuận publish. Ưu tiên đánh giá tính đầy đủ, độ rõ ràng và tính nhất quán dữ liệu."
+        description="So sánh nội dung hiện tại với phiên bản đề xuất trước khi chấp thuận publish."
         meta={`Draft ID: ${detail.draft.id}`}
         action={
-          <button
-            onClick={() => router.push('/admin/store-drafts')}
-            className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-          >
+          <Button variant="outline" onClick={() => router.push('/admin/store-drafts')}>
             Quay lại hàng chờ
-          </button>
+          </Button>
         }
       />
 
       <DraftCompareView current={detail.current} proposed={detail.proposed} />
 
-      <section className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.45)]">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <Card>
+        <CardContent className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-700">Hành động duyệt</p>
-            <h2 className="mt-2 text-2xl font-semibold text-slate-950">Ra quyết định cho bản nháp này</h2>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-cyan-700">
+              Hành động duyệt
+            </p>
+            <h2 className="mt-1 text-base font-semibold text-slate-900">
+              Ra quyết định cho bản nháp này
+            </h2>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <button
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
               onClick={() => setShowRejectModal(true)}
               disabled={actionLoading}
-              className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-60"
+              className="border-rose-200 text-rose-700 hover:bg-rose-50"
             >
               Từ chối
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleApprove}
               disabled={actionLoading}
-              className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+              className="bg-emerald-600 hover:bg-emerald-700"
             >
               {actionLoading ? 'Đang xử lý...' : 'Phê duyệt'}
-            </button>
+            </Button>
           </div>
-        </div>
-      </section>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -1,6 +1,10 @@
 'use client';
 
+import { MessageSquare } from 'lucide-react';
 import StarRating from '../reviews/StarRating';
+import AdminEmptyState from './common/AdminEmptyState';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
 
 interface ReviewRow {
   id: string;
@@ -41,136 +45,136 @@ export default function AdminReviewTable({
 }: AdminReviewTableProps) {
   if (reviews.length === 0) {
     return (
-      <div className="rounded-[32px] border border-slate-200 bg-white px-6 py-14 text-center shadow-[0_24px_60px_-40px_rgba(15,23,42,0.45)]">
-        <div className="mx-auto grid h-16 w-16 place-items-center rounded-3xl bg-slate-50 text-2xl">
-          💬
-        </div>
-        <h3 className="mt-4 text-lg font-semibold text-slate-900">Không có bình luận phù hợp</h3>
-        <p className="mt-2 text-sm leading-6 text-slate-500">
-          Hãy đổi bộ lọc hoặc quay lại sau khi hệ thống có thêm phản hồi từ khách hàng.
-        </p>
-      </div>
+      <AdminEmptyState
+        icon={MessageSquare}
+        title="Không có bình luận phù hợp"
+        description="Đổi bộ lọc hoặc quay lại sau khi hệ thống có thêm phản hồi từ khách hàng."
+      />
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-[0_24px_60px_-40px_rgba(15,23,42,0.45)]">
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="overflow-x-auto">
         <table className="min-w-full">
-          <thead className="bg-slate-50">
-            <tr className="text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              <th className="px-5 py-4">Khách hàng</th>
-              <th className="px-5 py-4">Nội dung</th>
-              <th className="px-5 py-4">Gian hàng</th>
-              <th className="px-5 py-4">Trạng thái</th>
-              <th className="px-5 py-4">Báo cáo</th>
-              <th className="px-5 py-4 text-right">Hành động</th>
+          <thead className="border-b border-slate-200 bg-slate-50/50">
+            <tr>
+              {['Khách hàng', 'Nội dung', 'Gian hàng', 'Trạng thái', 'Báo cáo', 'Tác vụ'].map(
+                (h, i) => (
+                  <th
+                    key={h}
+                    className={`px-4 py-3 text-xs font-medium uppercase tracking-wide text-slate-500 ${
+                      i === 5 ? 'text-right' : 'text-left'
+                    }`}
+                  >
+                    {h}
+                  </th>
+                ),
+              )}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-200">
             {reviews.map((review) => {
               const busy = processingId === review.id;
 
               return (
-                <tr key={review.id} className="transition hover:bg-cyan-50/40">
-                  <td className="px-5 py-4 align-top">
-                    <div className="flex min-w-[220px] items-start gap-3">
+                <tr key={review.id} className="transition-colors hover:bg-slate-50">
+                  <td className="px-4 py-3 align-top">
+                    <div className="flex min-w-[200px] items-start gap-2.5">
                       {review.customer?.avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={review.customer.avatarUrl}
                           alt={review.customer.displayName}
                           referrerPolicy="no-referrer"
-                          className="h-12 w-12 rounded-2xl object-cover ring-1 ring-slate-200"
+                          className="h-9 w-9 rounded-md object-cover ring-1 ring-slate-200"
                         />
                       ) : (
-                        <div className="grid h-12 w-12 place-items-center rounded-2xl bg-slate-950 text-sm font-semibold text-white">
+                        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-slate-900 text-xs font-semibold text-white">
                           {getInitials(review.customer?.displayName)}
                         </div>
                       )}
-                      <div>
-                        <p className="font-semibold text-slate-900">
-                          {review.customer?.displayName ?? 'Khách hàng ẩn danh'}
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-slate-900">
+                          {review.customer?.displayName ?? 'Khách ẩn danh'}
                         </p>
-                        <div className="mt-1">
+                        <div className="mt-0.5">
                           <StarRating value={review.stars} readonly />
                         </div>
-                        <p className="mt-2 text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
+                        <p className="mt-1 text-[11px] uppercase tracking-wider text-slate-400">
                           {new Date(review.createdAt).toLocaleString('vi-VN')}
                         </p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-5 py-4 align-top">
-                    <div className="max-w-[420px]">
-                      <p className="line-clamp-3 text-sm leading-6 text-slate-600">
-                        {review.content || 'Bình luận chỉ có điểm sao, chưa có nội dung chữ.'}
-                      </p>
-                    </div>
+                  <td className="px-4 py-3 align-top">
+                    <p className="line-clamp-3 max-w-[380px] text-sm leading-5 text-slate-600">
+                      {review.content || 'Bình luận chỉ có điểm sao.'}
+                    </p>
                   </td>
-                  <td className="px-5 py-4 align-top">
-                    <div className="min-w-[180px]">
-                      <p className="font-semibold text-slate-900">
-                        {review.store?.name ?? 'Chưa gắn gian hàng'}
-                      </p>
-                      <p className="mt-1 text-sm text-slate-500">
-                        ID: {review.store?.id ? `${review.store.id.slice(0, 8)}...` : 'N/A'}
-                      </p>
-                    </div>
+                  <td className="px-4 py-3 align-top">
+                    <p className="text-sm font-medium text-slate-900">
+                      {review.store?.name ?? 'Chưa gắn'}
+                    </p>
+                    <p className="mt-0.5 text-[11px] uppercase tracking-wider text-slate-400">
+                      {review.store?.id ? review.store.id.slice(0, 8) : 'N/A'}
+                    </p>
                   </td>
-                  <td className="px-5 py-4 align-top">
-                    <span
-                      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${
-                        review.isHidden
-                          ? 'bg-slate-950 text-white ring-slate-900'
-                          : 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-                      }`}
-                    >
+                  <td className="px-4 py-3 align-top">
+                    <Badge variant={review.isHidden ? 'default' : 'success'}>
                       {review.isHidden ? 'Đang ẩn' : 'Hiển thị'}
-                    </span>
+                    </Badge>
                   </td>
-                  <td className="px-5 py-4 align-top">
+                  <td className="px-4 py-3 align-top">
                     {review.reportCount > 0 ? (
-                      <span className="inline-flex rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 ring-1 ring-amber-200">
-                        {review.reportCount} báo cáo
-                      </span>
+                      <Badge variant="warning">{review.reportCount} báo cáo</Badge>
                     ) : (
-                      <span className="text-sm text-slate-400">Không có</span>
+                      <span className="text-xs text-slate-400">Không có</span>
                     )}
                   </td>
-                  <td className="px-5 py-4 align-top">
-                    <div className="flex justify-end gap-2">
+                  <td className="px-4 py-3 align-top">
+                    <div className="flex justify-end gap-1">
                       {review.isHidden ? (
-                        <button
+                        <Button
+                          size="sm"
+                          variant="ghost"
                           onClick={() => onUnhide(review.id)}
                           disabled={busy}
-                          className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60"
+                          className="text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
                         >
-                          {busy ? 'Đang xử lý...' : 'Bỏ ẩn'}
-                        </button>
+                          {busy ? 'Đang...' : 'Bỏ ẩn'}
+                        </Button>
                       ) : (
-                        <button
+                        <Button
+                          size="sm"
+                          variant="ghost"
                           onClick={() => {
                             if (window.confirm('Ẩn bình luận này khỏi giao diện khách?')) {
                               void onHide(review.id);
                             }
                           }}
                           disabled={busy}
-                          className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-60"
+                          className="text-amber-700 hover:bg-amber-50 hover:text-amber-800"
                         >
-                          {busy ? 'Đang xử lý...' : 'Ẩn'}
-                        </button>
+                          {busy ? 'Đang...' : 'Ẩn'}
+                        </Button>
                       )}
-                      <button
+                      <Button
+                        size="sm"
+                        variant="destructive"
                         onClick={() => {
-                          if (window.confirm('Xóa vĩnh viễn bình luận này? Hành động không thể hoàn tác.')) {
+                          if (
+                            window.confirm(
+                              'Xóa vĩnh viễn bình luận này? Hành động không thể hoàn tác.',
+                            )
+                          ) {
                             void onDelete(review.id);
                           }
                         }}
                         disabled={busy}
-                        className="rounded-2xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-60"
                       >
-                        {busy ? 'Đang xử lý...' : 'Xóa'}
-                      </button>
+                        {busy ? 'Đang...' : 'Xóa'}
+                      </Button>
                     </div>
                   </td>
                 </tr>

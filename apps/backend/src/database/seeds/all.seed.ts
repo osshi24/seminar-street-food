@@ -22,6 +22,10 @@ import { LocationPin, LocationPinStatus } from '../../location/entities/location
 import { FoodStreetBoundary } from '../../admin/entities/food-street-boundary.entity';
 import { COMMENTARY_QUEUE } from '../../commentary/commentary.constants';
 import { seedPreferenceTags } from './preference-tags.seed';
+import { seedMonitoring } from './monitoring.seed';
+import { SystemMetric } from '../../monitoring/entities/system-metric.entity';
+import { RequestLog } from '../../monitoring/entities/request-log.entity';
+import { AuditLog } from '../../monitoring/entities/audit-log.entity';
 
 // ---------------------------------------------------------------------------
 // Seed data definitions
@@ -383,6 +387,14 @@ async function seedAll() {
   // ── 5. Preference Tags ────────────────────────────────────────────────────
   console.log('\n📌 Spec 006 — Preference Tags');
   await seedPreferenceTags(dataSource);
+
+  // ── 6. Monitoring synthetic data (24h history) ────────────────────────────
+  console.log('\n📌 Monitoring — Synthetic 24h data');
+  await seedMonitoring({
+    metricRepo: app.get<Repository<SystemMetric>>(getRepositoryToken(SystemMetric)),
+    requestRepo: app.get<Repository<RequestLog>>(getRepositoryToken(RequestLog)),
+    auditRepo: app.get<Repository<AuditLog>>(getRepositoryToken(AuditLog)),
+  });
 
   // ── Done ──────────────────────────────────────────────────────────────────
   console.log('\n✅ Seed complete!\n');

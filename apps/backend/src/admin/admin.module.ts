@@ -32,6 +32,7 @@ import { MailModule } from '../mail/mail.module';
 import { PreferenceTag } from '../tags/entities/preference-tag.entity';
 import { AdminOverviewService } from './admin-overview.service';
 import { AdminOverviewController } from './admin-overview.controller';
+import { MonitoringModule } from '../monitoring/monitoring.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { AdminOverviewController } from './admin-overview.controller';
     NotificationsModule,
     MailModule,
     AdminTagsModule,
+    MonitoringModule,
   ],
   providers: [
     AdminStoresService,

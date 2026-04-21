@@ -21,6 +21,7 @@ import { ReportReasonsModule } from './report-reasons/report-reasons.module';
 import { QrModule } from './qr/qr.module';
 import { TagsModule } from './tags/tags.module';
 import { RecommendationsModule } from './recommendations/recommendations.module';
+import { MonitoringModule } from './monitoring/monitoring.module';
 
 @Module({
   imports: [
@@ -81,6 +82,7 @@ import { RecommendationsModule } from './recommendations/recommendations.module'
     QrModule,
     TagsModule,
     RecommendationsModule,
+    MonitoringModule,
   ],
 })
 export class AppModule {}

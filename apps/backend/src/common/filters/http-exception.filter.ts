@@ -6,7 +6,8 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { Response } from 'express';
+import { Request, Response } from 'express';
+import { captureException } from '../../monitoring/sentry';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -14,6 +15,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
+    const request = ctx.getRequest<Request>();
     const response = ctx.getResponse<Response>();
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
@@ -35,7 +37,21 @@ export class HttpExceptionFilter implements ExceptionFilter {
         extra = rest;
       }
     } else {
-      this.logger.error('Unhandled exception', exception instanceof Error ? exception.stack : String(exception));
+      this.logger.error(
+        `Unhandled exception at ${request.method} ${request.originalUrl || request.url}`,
+        exception instanceof Error ? exception.stack : String(exception),
+      );
+      captureException(exception, {
+        method: request.method,
+        url: request.originalUrl || request.url,
+      });
+    }
+
+    if (status >= 500 && exception instanceof HttpException) {
+      captureException(exception, {
+        method: request.method,
+        url: request.originalUrl || request.url,
+      });
     }
 
     response.status(status).json({

@@ -1,5 +1,6 @@
 'use client';
 
+import { Store, CheckCircle2, Ban } from 'lucide-react';
 import AdminMetricGrid from '../common/AdminMetricGrid';
 
 interface StatsHeaderProps {
@@ -16,22 +17,22 @@ export default function StatsHeader({ total, activeCount, inactiveCount }: Stats
           label: 'Tổng gian hàng',
           value: total,
           tone: 'blue',
-          icon: '🏪',
-          description: 'Tổng số gian hàng đang được quản lý trong danh mục admin.',
+          icon: <Store />,
+          description: 'Tổng số gian hàng đang quản lý.',
         },
         {
           label: 'Đang hoạt động',
           value: activeCount,
           tone: 'emerald',
-          icon: '✅',
-          description: 'Các gian hàng hiện đang hiển thị và vận hành bình thường.',
+          icon: <CheckCircle2 />,
+          description: 'Gian hàng đang hiển thị và vận hành.',
         },
         {
           label: 'Vô hiệu hóa',
           value: inactiveCount,
           tone: 'slate',
-          icon: '⛔',
-          description: 'Các gian hàng đã bị tạm khóa hoặc chưa được kích hoạt.',
+          icon: <Ban />,
+          description: 'Gian hàng tạm khóa hoặc chưa kích hoạt.',
         },
       ]}
     />

@@ -3,9 +3,14 @@
 /* eslint-disable react/no-unescaped-entities */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Megaphone, FileEdit, MailCheck, RefreshCw } from 'lucide-react';
 import AnnouncementFormSection from '../../../../components/admin/announcements/AnnouncementFormSection';
 import AdminMetricGrid from '../../../../components/admin/common/AdminMetricGrid';
 import AdminPageHeader from '../../../../components/admin/common/AdminPageHeader';
+import AdminEmptyState from '../../../../components/admin/common/AdminEmptyState';
+import { Button } from '../../../../components/ui/button';
+import { Badge } from '../../../../components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '../../../../components/ui/card';
 import { listAdminStores, type AdminStoreListItem } from '../../../../lib/api/admin-stores';
 import {
   createAnnouncement,
@@ -47,16 +52,19 @@ export default function AdminAnnouncementsPage() {
     }
   }, [storeIds.length]);
 
-  const loadHistory = useCallback(async (page = historyPage) => {
-    setHistoryLoading(true);
-    try {
-      const res = await listAnnouncements({ page, limit: historyLimit });
-      setHistory(res.data.items ?? []);
-      setHistoryTotal(res.data.total ?? 0);
-    } finally {
-      setHistoryLoading(false);
-    }
-  }, [historyLimit, historyPage]);
+  const loadHistory = useCallback(
+    async (page = historyPage) => {
+      setHistoryLoading(true);
+      try {
+        const res = await listAnnouncements({ page, limit: historyLimit });
+        setHistory(res.data.items ?? []);
+        setHistoryTotal(res.data.total ?? 0);
+      } finally {
+        setHistoryLoading(false);
+      }
+    },
+    [historyLimit, historyPage],
+  );
 
   useEffect(() => {
     void loadStores();
@@ -67,12 +75,8 @@ export default function AdminAnnouncementsPage() {
   }, [historyPage, loadHistory]);
 
   const canSubmit = useMemo(() => {
-    if (!title.trim() || !body.trim()) {
-      return false;
-    }
-    if (mode === 'all_stores') {
-      return true;
-    }
+    if (!title.trim() || !body.trim()) return false;
+    if (mode === 'all_stores') return true;
     return storeIds.length > 0;
   }, [body, mode, storeIds.length, title]);
 
@@ -81,27 +85,9 @@ export default function AdminAnnouncementsPage() {
   const sentCount = history.filter((item) => item.status === 'sent').length;
 
   const stats = [
-    {
-      label: 'Tổng thông báo',
-      value: historyTotal,
-      tone: 'blue' as const,
-      icon: '📣',
-      description: 'Tổng số thông báo đã được soạn trong hệ thống admin.',
-    },
-    {
-      label: 'Nháp trên trang',
-      value: draftCount,
-      tone: 'amber' as const,
-      icon: '📝',
-      description: 'Các thông báo đang ở trạng thái nháp trong danh sách hiện tại.',
-    },
-    {
-      label: 'Đã gửi trên trang',
-      value: sentCount,
-      tone: 'emerald' as const,
-      icon: '✉️',
-      description: 'Số thông báo đã gửi thành công trong trang lịch sử đang xem.',
-    },
+    { label: 'Tổng thông báo', value: historyTotal, tone: 'blue' as const, icon: <Megaphone />, description: 'Đã soạn trong hệ thống.' },
+    { label: 'Nháp trên trang', value: draftCount, tone: 'amber' as const, icon: <FileEdit />, description: 'Đang ở trạng thái nháp.' },
+    { label: 'Đã gửi trên trang', value: sentCount, tone: 'emerald' as const, icon: <MailCheck />, description: 'Đã gửi thành công.' },
   ];
 
   const refreshFirstPage = async () => {
@@ -109,7 +95,6 @@ export default function AdminAnnouncementsPage() {
       setHistoryPage(1);
       return;
     }
-
     await loadHistory(1);
   };
 
@@ -210,15 +195,15 @@ export default function AdminAnnouncementsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <AdminPageHeader
-        badge="Outreach"
+        badge="Truyền thông"
         title="Gửi thông báo"
-        description="Soạn, lưu nháp và phát hành thông báo đến các chủ gian hàng. Mọi nội dung đều được gom về cùng một luồng để admin theo dõi lịch sử gửi dễ hơn."
+        description="Soạn, lưu nháp và phát hành thông báo đến chủ gian hàng."
         meta={
           historyTotal > 0
             ? `Trang ${historyPage}/${historyTotalPages} · tổng ${historyTotal} thông báo`
-            : 'Chưa có thông báo nào được tạo'
+            : 'Chưa có thông báo nào'
         }
       />
 
@@ -226,34 +211,25 @@ export default function AdminAnnouncementsPage() {
 
       {error || success ? (
         <div
-          className={`rounded-[28px] border px-5 py-4 text-sm shadow-[0_24px_60px_-40px_rgba(15,23,42,0.45)] ${
+          className={`rounded-md border px-4 py-2.5 text-sm ${
             error
               ? 'border-rose-200 bg-rose-50 text-rose-700'
               : 'border-emerald-200 bg-emerald-50 text-emerald-700'
           }`}
         >
-          <p className="font-semibold">{error ? 'Có lỗi xảy ra' : 'Thao tác thành công'}</p>
-          <p className="mt-1">{error ?? success}</p>
+          <p className="font-medium">{error ? 'Có lỗi xảy ra' : 'Thao tác thành công'}</p>
+          <p className="mt-0.5 text-xs">{error ?? success}</p>
         </div>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <section className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.45)] sm:p-8">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-700">
-                Soạn nội dung
-              </p>
-              <h2 className="mt-2 text-2xl font-semibold text-slate-950">
-                {editingId ? 'Chỉnh sửa bản nháp' : 'Tạo thông báo mới'}
-              </h2>
-            </div>
-            <p className="max-w-xl text-sm leading-6 text-slate-500">
-              Thông báo sẽ được gửi qua email và in-app notification theo nhóm người nhận bạn chọn.
-            </p>
-          </div>
-
-          <div className="mt-6">
+      <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+        <Card>
+          <CardHeader className="border-b border-slate-100">
+            <CardTitle className="text-base">
+              {editingId ? 'Chỉnh sửa bản nháp' : 'Tạo thông báo mới'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-5">
             <AnnouncementFormSection
               editingId={editingId}
               title={title}
@@ -272,123 +248,117 @@ export default function AdminAnnouncementsPage() {
               onCancelEdit={handleCancelEdit}
               canSubmit={canSubmit}
             />
-          </div>
-        </section>
+          </CardContent>
+        </Card>
 
-        <aside className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.45)]">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-700">
-                Lịch sử
-              </p>
-              <h3 className="mt-2 text-xl font-semibold text-slate-950">Thông báo gần đây</h3>
-            </div>
-            <button
+        <Card>
+          <CardHeader className="flex-row items-center justify-between space-y-0 border-b border-slate-100">
+            <CardTitle className="text-base">Lịch sử gần đây</CardTitle>
+            <Button
+              size="sm"
+              variant="ghost"
               onClick={() => void loadHistory(historyPage)}
               disabled={historyLoading}
-              className="rounded-full border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
             >
+              <RefreshCw />
               Tải lại
-            </button>
-          </div>
-
-          <div className="mt-6 space-y-4">
-            {historyLoading ? (
-              Array.from({ length: 4 }).map((_, index) => (
-                <div key={index} className="h-28 animate-pulse rounded-[24px] bg-slate-100" />
-              ))
-            ) : history.length === 0 ? (
-              <div className="rounded-[24px] border border-dashed border-slate-200 px-6 py-12 text-center">
-                <p className="text-lg font-semibold text-slate-900">Chưa có thông báo nào</p>
-                <p className="mt-2 text-sm leading-6 text-slate-500">
-                  Soạn nội dung đầu tiên ở cột bên trái để bắt đầu lịch sử gửi.
-                </p>
-              </div>
-            ) : (
-              history.map((item) => {
-                const isDraft = item.status === 'draft';
-
-                return (
-                  <div
-                    key={item.id}
-                    className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-5"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-slate-900">{item.title}</p>
-                        <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-500">
-                          {item.body}
-                        </p>
+            </Button>
+          </CardHeader>
+          <CardContent className="pt-5">
+            <div className="space-y-2">
+              {historyLoading ? (
+                Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="h-20 animate-pulse rounded-md bg-slate-100" />
+                ))
+              ) : history.length === 0 ? (
+                <AdminEmptyState
+                  icon={Megaphone}
+                  title="Chưa có thông báo"
+                  description="Soạn nội dung đầu tiên ở cột bên trái để bắt đầu."
+                />
+              ) : (
+                history.map((item) => {
+                  const isDraft = item.status === 'draft';
+                  return (
+                    <div key={item.id} className="rounded-md border border-slate-200 bg-white p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-slate-900">
+                            {item.title}
+                          </p>
+                          <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
+                            {item.body}
+                          </p>
+                        </div>
+                        <Badge variant={isDraft ? 'warning' : 'success'}>
+                          {isDraft ? 'Nháp' : 'Đã gửi'}
+                        </Badge>
                       </div>
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                          isDraft
-                            ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
-                            : 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-                        }`}
-                      >
-                        {isDraft ? 'Nháp' : 'Đã gửi'}
-                      </span>
-                    </div>
 
-                    <div className="mt-4 flex flex-wrap items-center gap-3 text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
-                      <span>{new Date(item.createdAt).toLocaleDateString('vi-VN')}</span>
-                      <span>{item.recipientCount} người nhận</span>
-                      {item.failedEmailDetails?.length ? (
-                        <span className="text-rose-500">
-                          {item.failedEmailDetails.length} email lỗi
-                        </span>
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wider text-slate-400">
+                        <span>{new Date(item.createdAt).toLocaleDateString('vi-VN')}</span>
+                        <span>·</span>
+                        <span>{item.recipientCount} người nhận</span>
+                        {item.failedEmailDetails?.length ? (
+                          <>
+                            <span>·</span>
+                            <span className="text-rose-500">
+                              {item.failedEmailDetails.length} email lỗi
+                            </span>
+                          </>
+                        ) : null}
+                      </div>
+
+                      {isDraft ? (
+                        <div className="mt-3 flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleStartEdit(item)}
+                            disabled={submitting}
+                          >
+                            Chỉnh sửa
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => void handleQuickSend(item)}
+                            disabled={submitting}
+                          >
+                            Gửi ngay
+                          </Button>
+                        </div>
                       ) : null}
                     </div>
-
-                    {isDraft ? (
-                      <div className="mt-4 flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleStartEdit(item)}
-                          disabled={submitting}
-                          className="rounded-full border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-white disabled:opacity-50"
-                        >
-                          Chỉnh sửa
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void handleQuickSend(item)}
-                          disabled={submitting}
-                          className="rounded-full bg-slate-950 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
-                        >
-                          Gửi ngay
-                        </button>
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          {!historyLoading && historyTotalPages > 1 ? (
-            <div className="mt-6 flex items-center justify-between gap-3 border-t border-slate-200 pt-5">
-              <button
-                onClick={() => setHistoryPage((page) => Math.max(1, page - 1))}
-                disabled={historyPage === 1}
-                className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
-              >
-                Trang trước
-              </button>
-              <span className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white">
-                Trang {historyPage}/{historyTotalPages}
-              </span>
-              <button
-                onClick={() => setHistoryPage((page) => Math.min(historyTotalPages, page + 1))}
-                disabled={historyPage >= historyTotalPages}
-                className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
-              >
-                Trang sau
-              </button>
+                  );
+                })
+              )}
             </div>
-          ) : null}
-        </aside>
+
+            {!historyLoading && historyTotalPages > 1 ? (
+              <div className="mt-4 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setHistoryPage((page) => Math.max(1, page - 1))}
+                  disabled={historyPage === 1}
+                >
+                  Trước
+                </Button>
+                <span className="text-xs text-slate-500">
+                  Trang {historyPage}/{historyTotalPages}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setHistoryPage((page) => Math.min(historyTotalPages, page + 1))}
+                  disabled={historyPage >= historyTotalPages}
+                >
+                  Tiếp
+                </Button>
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

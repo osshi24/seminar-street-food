@@ -1,5 +1,8 @@
 'use client';
 
+import { ArrowLeft } from 'lucide-react';
+import { Badge } from '../../ui/badge';
+import type { BadgeProps } from '../../ui/badge';
 import type { StoreOwner } from '../../../types/store-owner';
 
 interface StoreOwnerDetailHeaderProps {
@@ -14,46 +17,43 @@ const STATUS_LABELS: Record<string, string> = {
   rejected: 'Đã từ chối',
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-amber-100 text-amber-800',
-  active: 'bg-emerald-100 text-emerald-800',
-  inactive: 'bg-slate-100 text-slate-800',
-  rejected: 'bg-red-100 text-red-800',
+const STATUS_VARIANT: Record<string, NonNullable<BadgeProps['variant']>> = {
+  pending: 'warning',
+  active: 'success',
+  inactive: 'muted',
+  rejected: 'danger',
 };
 
-export default function StoreOwnerDetailHeader({
-  owner,
-  onBack,
-}: StoreOwnerDetailHeaderProps) {
+export default function StoreOwnerDetailHeader({ owner, onBack }: StoreOwnerDetailHeaderProps) {
   return (
-    <div className="rounded-lg bg-white border border-gray-200 p-6 mb-6">
+    <div className="space-y-4">
       <button
+        type="button"
         onClick={onBack}
-        className="mb-4 text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
       >
-        ← Quay lại danh sách
+        <ArrowLeft className="h-4 w-4" />
+        Quay lại danh sách
       </button>
 
-      <div className="flex items-start gap-4">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
-          <span className="text-2xl font-bold text-blue-700">
+      <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-4">
+          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-slate-100 text-xl font-semibold text-slate-700">
             {owner.fullName.charAt(0).toUpperCase()}
-          </span>
-        </div>
-
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-2xl font-bold text-gray-900">{owner.fullName}</h1>
-            <span className={`rounded-full px-3 py-1 text-sm font-medium ${STATUS_COLORS[owner.status]}`}>
-              {STATUS_LABELS[owner.status]}
-            </span>
           </div>
-          <p className="text-gray-600 text-sm">{owner.email}</p>
-          {owner.phone && <p className="text-gray-600 text-sm">{owner.phone}</p>}
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl font-semibold tracking-tight text-slate-900">
+                {owner.fullName}
+              </h1>
+              <Badge variant={STATUS_VARIANT[owner.status]}>{STATUS_LABELS[owner.status]}</Badge>
+            </div>
+            <p className="mt-1 text-sm text-slate-500">{owner.email}</p>
+            {owner.phone ? <p className="text-sm text-slate-500">{owner.phone}</p> : null}
+          </div>
         </div>
-
-        <div className="text-right text-sm text-gray-600">
-          <div className="font-medium">Đăng ký: {new Date(owner.createdAt).toLocaleDateString('vi-VN')}</div>
+        <div className="text-xs text-slate-500 sm:text-right">
+          Đăng ký: {new Date(owner.createdAt).toLocaleDateString('vi-VN')}
         </div>
       </div>
     </div>

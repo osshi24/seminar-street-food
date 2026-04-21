@@ -1,16 +1,21 @@
 'use client';
 
+import { Star } from 'lucide-react';
 import { AdminReport } from '../../../lib/api/reports';
+import { Badge } from '../../ui/badge';
+import { Button } from '../../ui/button';
+import type { BadgeProps } from '../../ui/badge';
+import { cn } from '../../../lib/cn';
 
 interface ReportTableProps {
   reports: AdminReport[];
   onQuickAction?: (action: 'resolve' | 'dismiss', id: string) => void;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-amber-50 text-amber-700 ring-amber-200',
-  resolved: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  dismissed: 'bg-violet-50 text-violet-700 ring-violet-200',
+const STATUS_VARIANT: Record<string, NonNullable<BadgeProps['variant']>> = {
+  pending: 'warning',
+  resolved: 'success',
+  dismissed: 'info',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -21,87 +26,100 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default function ReportTable({ reports, onQuickAction }: ReportTableProps) {
   return (
-    <div className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-[0_24px_60px_-40px_rgba(15,23,42,0.45)]">
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="overflow-x-auto">
         <table className="min-w-full">
-          <thead className="bg-slate-50">
-            <tr className="text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              <th className="px-5 py-4">Nguồn báo cáo</th>
-              <th className="px-5 py-4">Bình luận</th>
-              <th className="px-5 py-4">Lý do</th>
-              <th className="px-5 py-4">Trạng thái</th>
-              <th className="px-5 py-4">Ngày báo cáo</th>
-              <th className="px-5 py-4 text-right">Hành động</th>
+          <thead className="border-b border-slate-200 bg-slate-50/50">
+            <tr>
+              {['Nguồn báo cáo', 'Bình luận', 'Lý do', 'Trạng thái', 'Ngày', 'Tác vụ'].map(
+                (h, i) => (
+                  <th
+                    key={h}
+                    className={`px-4 py-3 text-xs font-medium uppercase tracking-wide text-slate-500 ${
+                      i === 5 ? 'text-right' : 'text-left'
+                    }`}
+                  >
+                    {h}
+                  </th>
+                ),
+              )}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-200">
             {reports.map((report) => {
               const stars = report.review?.stars || 0;
-
               return (
-                <tr key={report.id} className="transition hover:bg-cyan-50/40">
-                  <td className="px-5 py-4 align-top">
-                    <div className="min-w-[220px]">
-                      <p className="font-semibold text-slate-900">
-                        {report.review?.store?.name || 'Không xác định'}
-                      </p>
-                      <p className="mt-1 text-sm text-slate-500">
-                        Người báo cáo: {report.reporter?.fullName || 'Ẩn danh'}
-                      </p>
-                      <p className="mt-1 text-sm text-slate-500">
-                        Khách hàng: {report.review?.customer?.displayName || 'Ẩn danh'}
-                      </p>
-                    </div>
+                <tr key={report.id} className="transition-colors hover:bg-slate-50">
+                  <td className="px-4 py-3 align-top">
+                    <p className="text-sm font-medium text-slate-900">
+                      {report.review?.store?.name || 'Không xác định'}
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      Người báo cáo: {report.reporter?.fullName || 'Ẩn danh'}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Khách: {report.review?.customer?.displayName || 'Ẩn danh'}
+                    </p>
                   </td>
-                  <td className="px-5 py-4 align-top">
-                    <div className="max-w-[360px]">
-                      <div className="mb-2 flex gap-1 text-sm">
+                  <td className="px-4 py-3 align-top">
+                    <div className="max-w-[320px]">
+                      <div className="mb-1 flex gap-0.5">
                         {[...Array(5)].map((_, index) => (
-                          <span key={index} className={index < stars ? 'text-amber-400' : 'text-slate-300'}>
-                            ★
-                          </span>
+                          <Star
+                            key={index}
+                            className={cn(
+                              'h-3.5 w-3.5',
+                              index < stars
+                                ? 'fill-amber-400 text-amber-400'
+                                : 'text-slate-300',
+                            )}
+                          />
                         ))}
                       </div>
-                      <p className="line-clamp-3 text-sm leading-6 text-slate-600">
+                      <p className="line-clamp-3 text-sm leading-5 text-slate-600">
                         {report.review?.content || '(không có nội dung)'}
                       </p>
                       {report.review?.isHidden ? (
-                        <span className="mt-3 inline-flex rounded-full bg-slate-950 px-3 py-1 text-xs font-semibold text-white">
-                          Bình luận đã bị ẩn
-                        </span>
+                        <Badge variant="default" className="mt-2">
+                          Đã ẩn
+                        </Badge>
                       ) : null}
                     </div>
                   </td>
-                  <td className="px-5 py-4 align-top text-sm text-slate-600">
+                  <td className="px-4 py-3 align-top text-sm text-slate-600">
                     {report.reason?.labelVi || 'Không xác định'}
                   </td>
-                  <td className="px-5 py-4 align-top">
-                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ${STATUS_COLORS[report.status]}`}>
+                  <td className="px-4 py-3 align-top">
+                    <Badge variant={STATUS_VARIANT[report.status]}>
                       {STATUS_LABELS[report.status]}
-                    </span>
+                    </Badge>
                   </td>
-                  <td className="px-5 py-4 align-top text-sm text-slate-500">
+                  <td className="px-4 py-3 align-top text-sm text-slate-500">
                     {new Date(report.createdAt).toLocaleDateString('vi-VN')}
                   </td>
-                  <td className="px-5 py-4 align-top">
-                    <div className="flex justify-end gap-2">
+                  <td className="px-4 py-3 align-top">
+                    <div className="flex justify-end gap-1">
                       {report.status === 'pending' ? (
                         <>
-                          <button
+                          <Button
+                            size="sm"
+                            variant="ghost"
                             onClick={() => onQuickAction?.('resolve', report.id)}
-                            className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                            className="text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
                           >
                             Xử lý
-                          </button>
-                          <button
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
                             onClick={() => onQuickAction?.('dismiss', report.id)}
-                            className="rounded-2xl border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-semibold text-violet-700 transition hover:bg-violet-100"
+                            className="text-violet-700 hover:bg-violet-50 hover:text-violet-800"
                           >
                             Bác bỏ
-                          </button>
+                          </Button>
                         </>
                       ) : (
-                        <span className="text-sm text-slate-400">Đã hoàn tất</span>
+                        <span className="text-xs text-slate-400">Hoàn tất</span>
                       )}
                     </div>
                   </td>

@@ -10,29 +10,21 @@ interface StoreOwnerTableProps {
 
 export default function StoreOwnerTable({ owners, onQuickAction }: StoreOwnerTableProps) {
   return (
-    <div className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-[0_24px_60px_-40px_rgba(15,23,42,0.45)]">
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="overflow-x-auto">
         <table className="min-w-full">
-          <thead className="bg-slate-50/80">
-            <tr className="border-b border-slate-200">
-              <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Tên
-              </th>
-              <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Email
-              </th>
-              <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Gian hàng
-              </th>
-              <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Trạng thái
-              </th>
-              <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Ngày đăng ký
-              </th>
-              <th className="px-5 py-4 text-right text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                Tác vụ
-              </th>
+          <thead className="border-b border-slate-200 bg-slate-50/50">
+            <tr>
+              {['Tên', 'Email', 'Gian hàng', 'Trạng thái', 'Đăng ký', 'Tác vụ'].map((h, i) => (
+                <th
+                  key={h}
+                  className={`px-4 py-3 text-xs font-medium uppercase tracking-wide text-slate-500 ${
+                    i === 5 ? 'text-right' : 'text-left'
+                  }`}
+                >
+                  {h}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">

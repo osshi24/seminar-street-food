@@ -21,6 +21,8 @@ import { Store } from '../stores/entities/store.entity';
 import { CommentReport } from '../entities/comment-report.entity';
 import { AdminJwtGuard } from '../auth/guards/admin-jwt.guard';
 import { ListAdminReviewsQueryDto, ReviewVisibilityFilter } from './dto/list-admin-reviews-query.dto';
+import { AuditLogService } from '../monitoring/audit-log.service';
+import { AdminAccount } from '../entities/admin-account.entity';
 
 @Controller('admin/reviews')
 @UseGuards(AdminJwtGuard)
@@ -33,7 +35,18 @@ export class AdminReviewsController {
     @InjectRepository(CommentReport)
     private readonly reportRepo: Repository<CommentReport>,
     private readonly dataSource: DataSource,
+    private readonly auditLog: AuditLogService,
   ) {}
+
+  private actor(req: Request) {
+    const admin = req.user as AdminAccount;
+    return {
+      actorId: admin?.id ?? null,
+      actorRole: 'admin' as const,
+      actorName: admin?.fullName ?? admin?.email ?? null,
+      ip: req.ip ?? null,
+    };
+  }
 
   @Get()
   async listReviews(@Query() query: ListAdminReviewsQueryDto) {
@@ -104,11 +117,19 @@ export class AdminReviewsController {
       await this.recalcRating(manager, review.storeId);
     });
 
+    await this.auditLog.record({
+      ...this.actor(req),
+      action: 'review.hide',
+      resourceType: 'review',
+      resourceId: id,
+      metadata: { storeId: review.storeId, stars: review.stars },
+    });
+
     return { message: 'Review hidden' };
   }
 
   @Patch(':id/unhide')
-  async unhideReview(@Param('id', ParseUUIDPipe) id: string) {
+  async unhideReview(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
     const review = await this.reviewRepo.findOne({ where: { id } });
     if (!review) throw new NotFoundException({ code: 'REVIEW_NOT_FOUND', message: 'Review not found' });
     if (!review.isHidden) throw new ConflictException({ code: 'REVIEW_NOT_HIDDEN', message: 'Review is not hidden' });
@@ -118,18 +139,34 @@ export class AdminReviewsController {
       await this.recalcRating(manager, review.storeId);
     });
 
+    await this.auditLog.record({
+      ...this.actor(req),
+      action: 'review.unhide',
+      resourceType: 'review',
+      resourceId: id,
+      metadata: { storeId: review.storeId },
+    });
+
     return { message: 'Review unhidden' };
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteReview(@Param('id', ParseUUIDPipe) id: string) {
+  async deleteReview(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
     const review = await this.reviewRepo.findOne({ where: { id } });
     if (!review) throw new NotFoundException({ code: 'REVIEW_NOT_FOUND', message: 'Review not found' });
 
     await this.dataSource.transaction(async (manager) => {
       await manager.delete(Review, id);
       await this.recalcRating(manager, review.storeId);
+    });
+
+    await this.auditLog.record({
+      ...this.actor(req),
+      action: 'review.delete',
+      resourceType: 'review',
+      resourceId: id,
+      metadata: { storeId: review.storeId, stars: review.stars },
     });
   }
 

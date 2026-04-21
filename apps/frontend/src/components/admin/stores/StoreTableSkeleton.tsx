@@ -2,47 +2,46 @@
 
 export default function StoreTableSkeleton() {
   return (
-    <div className="overflow-hidden rounded-lg border bg-white">
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <table className="min-w-full">
-        <thead className="bg-gray-50">
+        <thead className="border-b border-slate-200 bg-slate-50/50">
           <tr>
-            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-              Gian hàng
-            </th>
-            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-              Chủ gian hàng
-            </th>
-            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-              Trạng thái
-            </th>
-            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-              Hành động
-            </th>
+            {['Gian hàng', 'Chủ gian hàng', 'Trạng thái', 'Ngày tạo', 'Tác vụ'].map((h) => (
+              <th
+                key={h}
+                className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500"
+              >
+                {h}
+              </th>
+            ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-200">
+        <tbody className="divide-y divide-slate-200">
           {Array.from({ length: 5 }).map((_, i) => (
             <tr key={i} className="animate-pulse">
-              <td className="px-6 py-4">
-                <div className="flex gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-gray-200"></div>
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 w-24 rounded bg-gray-200"></div>
-                    <div className="h-3 w-20 rounded bg-gray-100"></div>
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-md bg-slate-200" />
+                  <div className="space-y-2">
+                    <div className="h-3.5 w-28 rounded bg-slate-200" />
+                    <div className="h-2.5 w-20 rounded bg-slate-100" />
                   </div>
                 </div>
               </td>
-              <td className="px-6 py-4">
+              <td className="px-4 py-3">
                 <div className="space-y-2">
-                  <div className="h-4 w-32 rounded bg-gray-200"></div>
-                  <div className="h-3 w-40 rounded bg-gray-100"></div>
+                  <div className="h-3.5 w-32 rounded bg-slate-200" />
+                  <div className="h-2.5 w-40 rounded bg-slate-100" />
                 </div>
               </td>
-              <td className="px-6 py-4">
-                <div className="h-6 w-24 rounded-full bg-gray-200"></div>
+              <td className="px-4 py-3">
+                <div className="h-5 w-24 rounded-md bg-slate-200" />
               </td>
-              <td className="px-6 py-4">
-                <div className="h-8 w-20 rounded bg-gray-200"></div>
+              <td className="px-4 py-3">
+                <div className="h-3.5 w-20 rounded bg-slate-200" />
+              </td>
+              <td className="px-4 py-3">
+                <div className="h-7 w-16 rounded-md bg-slate-200" />
               </td>
             </tr>
           ))}
