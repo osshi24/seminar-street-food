@@ -38,6 +38,24 @@ export class StoresController {
     return this.storesService.createStore(req.user.id, dto);
   }
 
+  @Post('stores/:id/deletion-request')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async requestDeletion(
+    @Request() req: { user: StoreOwnerAccount },
+    @Param('id', ParseUUIDPipe) storeId: string,
+  ) {
+    await this.storesService.requestDeletion(req.user.id, storeId);
+  }
+
+  @Delete('stores/:id/deletion-request')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async revokeDeletionRequest(
+    @Request() req: { user: StoreOwnerAccount },
+    @Param('id', ParseUUIDPipe) storeId: string,
+  ) {
+    await this.storesService.revokeDeletionRequest(req.user.id, storeId);
+  }
+
   @Get('stores/:id')
   async getStoreById(
     @Request() req: { user: StoreOwnerAccount },
@@ -154,7 +172,70 @@ export class StoresController {
     return this.storesService.getMyDraft(req.user.id);
   }
 
-  // Menu items
+  // Per-store menu items
+  @Get('stores/:storeId/menu-items')
+  async getMenuItemsByStore(
+    @Request() req: { user: StoreOwnerAccount },
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+  ) {
+    return this.storesService.getMenuItems(req.user.id, storeId);
+  }
+
+  @Post('stores/:storeId/menu-items')
+  async addMenuItemByStore(
+    @Request() req: { user: StoreOwnerAccount },
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Body() dto: CreateMenuItemDto,
+  ) {
+    return this.storesService.addMenuItem(req.user.id, dto, storeId);
+  }
+
+  @Put('stores/:storeId/menu-items/:id')
+  async updateMenuItemByStore(
+    @Request() req: { user: StoreOwnerAccount },
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateMenuItemDto,
+  ) {
+    return this.storesService.updateMenuItem(req.user.id, id, dto, storeId);
+  }
+
+  @Delete('stores/:storeId/menu-items/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async removeMenuItemByStore(
+    @Request() req: { user: StoreOwnerAccount },
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    await this.storesService.removeMenuItem(req.user.id, id, storeId);
+  }
+
+  @Post('stores/:storeId/menu-items/:id/image')
+  async generateMenuItemImageUploadUrlByStore(
+    @Request() req: { user: StoreOwnerAccount },
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: { contentType: string },
+  ) {
+    return this.storesService.generateMenuItemImageUploadUrl(
+      req.user.id,
+      id,
+      body.contentType,
+      storeId,
+    );
+  }
+
+  @Delete('stores/:storeId/menu-items/:id/image')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteMenuItemImageByStore(
+    @Request() req: { user: StoreOwnerAccount },
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    await this.storesService.deleteMenuItemImage(req.user.id, id, storeId);
+  }
+
+  // Menu items (legacy single-store)
   @Get('store/menu-items')
   async getMenuItems(@Request() req: { user: StoreOwnerAccount }) {
     return this.storesService.getMenuItems(req.user.id);

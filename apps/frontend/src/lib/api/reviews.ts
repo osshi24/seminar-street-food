@@ -6,8 +6,12 @@ export async function listReviews(
   storeId: string,
   page = 1,
   limit = 20,
+  filters?: { stars?: number; sort?: 'asc' | 'desc' },
 ): Promise<ReviewListResponse> {
-  const res = await fetch(`${API}/stores/${storeId}/reviews?page=${page}&limit=${limit}`);
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (filters?.stars) params.set('stars', String(filters.stars));
+  if (filters?.sort) params.set('sort', filters.sort);
+  const res = await fetch(`${API}/stores/${storeId}/reviews?${params.toString()}`);
   if (!res.ok) throw new Error('Failed to fetch reviews');
   const json = await res.json() as { data: ReviewListResponse };
   return json.data;

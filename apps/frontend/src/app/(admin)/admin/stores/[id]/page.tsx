@@ -21,6 +21,8 @@ import {
   activateStore,
   deactivateStore,
   getAdminStore,
+  approveDeletion,
+  rejectDeletion,
   type AdminStoreDetail,
 } from '../../../../../lib/api/admin-stores';
 
@@ -255,6 +257,39 @@ export default function AdminStoreDetailPage() {
 
           <AdminInfoCard title="Tác vụ" icon={Wrench}>
             <div className="space-y-2">
+              {data.deletionRequestedAt && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 mb-1">
+                  <p className="text-xs font-semibold text-amber-800">Yêu cầu xóa từ chủ gian hàng</p>
+                  <p className="text-xs text-amber-700 mt-0.5">
+                    {new Date(data.deletionRequestedAt).toLocaleString('vi-VN')}
+                  </p>
+                  <div className="mt-2 flex gap-1.5">
+                    <Button
+                      onClick={async () => {
+                        setActionLoading(true);
+                        try { await approveDeletion(data.id); await load(); } finally { setActionLoading(false); }
+                      }}
+                      disabled={actionLoading}
+                      size="sm"
+                      className="flex-1 bg-amber-600 hover:bg-amber-700 text-white text-xs"
+                    >
+                      Phê duyệt (ẩn)
+                    </Button>
+                    <Button
+                      onClick={async () => {
+                        setActionLoading(true);
+                        try { await rejectDeletion(data.id); await load(); } finally { setActionLoading(false); }
+                      }}
+                      disabled={actionLoading}
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 text-xs"
+                    >
+                      Từ chối
+                    </Button>
+                  </div>
+                </div>
+              )}
               <Button
                 onClick={toggleStatus}
                 disabled={actionLoading}

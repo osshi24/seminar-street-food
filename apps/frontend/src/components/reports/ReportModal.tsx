@@ -1,7 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import ReportReasonSelect from './ReportReasonSelect';
+import { AlertTriangle, CheckCircle2 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '../ui/dialog';
+import { Button } from '../ui/button';
 import { fetchReportReasons, submitReport } from '../../lib/api/reports';
 import type { ReportReason } from '../../types/report';
 
@@ -16,7 +25,7 @@ export default function ReportModal({ reviewId, storeId, token, onClose }: Repor
   const [reasons, setReasons] = useState<ReportReason[]>([]);
   const [selectedReason, setSelectedReason] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -33,51 +42,78 @@ export default function ReportModal({ reviewId, storeId, token, onClose }: Repor
     setError(null);
     try {
       await submitReport(storeId, reviewId, { reasonId: selectedReason }, token);
-      setToast('Báo cáo đã được gửi. Cảm ơn bạn!');
+      setSuccess(true);
       setTimeout(onClose, 2000);
     } catch (err: any) {
-      if (err?.status === 409) {
-        setError('Bạn đã báo cáo bình luận này rồi');
-      } else {
-        setError('Có lỗi xảy ra, vui lòng thử lại');
-      }
+      setError(err?.status === 409 ? 'Bạn đã báo cáo bình luận này rồi.' : 'Có lỗi xảy ra, vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div
-        className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 className="mb-3 text-sm font-semibold text-gray-800">Báo cáo bình luận vi phạm</h3>
-        {toast ? (
-          <p className="text-sm text-green-600">{toast}</p>
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-rose-100">
+              <AlertTriangle className="h-4 w-4 text-rose-600" />
+            </span>
+            <DialogTitle>Báo cáo bình luận</DialogTitle>
+          </div>
+          <DialogDescription>
+            Chọn lý do bạn cho rằng bình luận này vi phạm tiêu chuẩn cộng đồng.
+          </DialogDescription>
+        </DialogHeader>
+
+        {success ? (
+          <div className="flex flex-col items-center gap-2 py-4 text-center">
+            <CheckCircle2 className="h-10 w-10 text-emerald-500" />
+            <p className="text-sm font-medium text-slate-800">Báo cáo đã được gửi!</p>
+            <p className="text-xs text-slate-500">Cảm ơn bạn đã giúp cộng đồng sạch hơn.</p>
+          </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <ReportReasonSelect reasons={reasons} value={selectedReason} onChange={setSelectedReason} />
-            {error && <p className="text-xs text-red-500">{error}</p>}
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 rounded border border-gray-200 py-2 text-sm text-gray-600 hover:bg-gray-50"
-              >
-                Hủy
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 rounded bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600 disabled:opacity-60"
-              >
-                {loading ? 'Đang gửi...' : 'Gửi báo cáo'}
-              </button>
+          <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700">Lý do báo cáo</label>
+              <div className="grid gap-2">
+                {reasons.map((r) => (
+                  <label
+                    key={r.id}
+                    className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
+                      selectedReason === r.id
+                        ? 'border-rose-400 bg-rose-50 text-rose-700'
+                        : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="reason"
+                      value={r.id}
+                      checked={selectedReason === r.id}
+                      onChange={() => { setSelectedReason(r.id); setError(null); }}
+                      className="accent-rose-500"
+                    />
+                    {r.labelVi}
+                  </label>
+                ))}
+              </div>
+              {error && (
+                <p className="text-xs text-rose-500">{error}</p>
+              )}
             </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+                Hủy
+              </Button>
+              <Button type="submit" variant="destructive" disabled={loading || !selectedReason}>
+                {loading ? 'Đang gửi...' : 'Gửi báo cáo'}
+              </Button>
+            </DialogFooter>
           </form>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
