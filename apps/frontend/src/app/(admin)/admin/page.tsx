@@ -245,28 +245,29 @@ export default function AdminOverviewPage() {
 
   return (
     <div className="space-y-5">
-      <AdminPageHeader
-        badge="Bảng điều khiển"
-        title="Tổng quan hệ thống"
-        description="Theo dõi nhanh các hàng chờ kiểm duyệt và hoạt động chính của admin."
-        action={
-          totalPending > 0 ? (
-            <Button asChild>
-              <Link href="/admin/reports?status=pending">
-                {totalPending} mục cần xử lý
-                <ArrowRight />
-              </Link>
-            </Button>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 ring-1 ring-emerald-200">
-              <CheckCircle2 className="h-4 w-4" />
-              Mọi việc đã xử lý
-            </span>
-          )
-        }
-      />
-
-      <OnlinePresenceCard />
+      <div className="flex items-start justify-between gap-4">
+        <AdminPageHeader
+          badge="Bảng điều khiển"
+          title="Tổng quan hệ thống"
+          description="Theo dõi nhanh các hàng chờ kiểm duyệt và hoạt động chính của admin."
+          action={
+            totalPending > 0 ? (
+              <Button asChild>
+                <Link href="/admin/reports?status=pending">
+                  {totalPending} mục cần xử lý
+                  <ArrowRight />
+                </Link>
+              </Button>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 ring-1 ring-emerald-200">
+                <CheckCircle2 className="h-4 w-4" />
+                Mọi việc đã xử lý
+              </span>
+            )
+          }
+        />
+        <OnlinePresenceCard />
+      </div>
 
       {/* Hàng chờ kiểm duyệt — to và rõ ràng nhất */}
       <section>
