@@ -1,0 +1,66 @@
+@startuml 02-gps-proximity
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 8
+skinparam sequenceParticipantBorderColor #555
+skinparam sequenceParticipantBackgroundColor #FFF
+skinparam noteBorderColor #888
+skinparam noteBackgroundColor #FFFDE7
+
+title [02] Định Vị GPS + Phát Hiện Gần Gian Hàng
+
+actor "Khách du lịch" as User
+participant "MapPage\napp/(public)/map/page.tsx" as Page
+participant "useGeolocation\nhooks/useGeolocation.ts" as Geo
+participant "Geolocation API\n(browser)" as GPS
+participant "useProximityDetection\nhooks/useProximityDetection.ts" as Prox
+participant "haversineMeters()\nlib/gps/haversine.ts" as Calc
+participant "MapController\nbackend/src/map/map.controller.ts" as Ctrl
+database "Postgres" as DB
+
+== 1. Khởi động GPS ==
+
+User -> Page : cho phép định vị (GPS permission)
+Page -> Geo : useGeolocation()
+Geo -> GPS : navigator.geolocation.watchPosition()
+GPS --> Geo : coords { lat, lng, accuracy }
+Geo --> Page : position (cập nhật liên tục)
+
+== 2. Load danh sách pins (1 lần duy nhất) ==
+
+Page -> Prox : useProximityDetection(position)
+Prox -> Ctrl : GET /map/pins\n(getPublicPins — chỉ gọi 1 lần khi mount)
+Ctrl -> DB : SELECT location_pins WHERE status = ACTIVE
+DB --> Ctrl : pins[]
+Ctrl --> Prox : { pins[] }
+Prox -> Prox : setPins(data.pins)
+
+== 3. Mỗi lần GPS cập nhật toạ độ mới ==
+
+GPS --> Geo : watchPosition callback
+Geo --> Page : position mới
+Page -> Prox : truyền position prop
+
+note over Prox
+  debounce 500ms
+  (DEBOUNCE_MS = 500)
+  tránh re-trigger khi đứng ranh giới
+end note
+
+loop với mỗi pin trong danh sách
+    Prox -> Calc : haversineMeters(\n  position.latitude, position.longitude,\n  pin.latitude, pin.longitude\n)
+    Calc --> Prox : distanceMeters
+end
+
+Prox -> Prox : filter dist ≤ 4m (PROXIMITY_RADIUS_METERS)\nsort tăng dần theo distanceMeters
+Prox --> Page : nearbyStores = [\n  { storeId, storeName, distanceMeters }\n]
+
+note right of Page
+  nearestStore = nearbyStores[0]
+  (gian hàng gần nhất)
+end note
+
+Page --> User : marker gần nhất được highlight trên bản đồ
+
+@enduml

@@ -1,0 +1,64 @@
+@startuml 04-manual-commentary
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 8
+skinparam sequenceParticipantBorderColor #555
+skinparam sequenceParticipantBackgroundColor #FFF
+skinparam noteBorderColor #888
+skinparam noteBackgroundColor #FFFDE7
+
+title [04] Nghe Thuyết Minh Thủ Công
+
+actor "Khách du lịch" as User
+participant "StorePage\napp/(public)/stores/[id]/page.tsx" as Page
+participant "CommentaryPlayer\n(component trong stores/[id])" as Player
+participant "useCommentary\nhooks/useCommentary.ts" as Hook
+participant "commentary.ts\nlib/api/commentary.ts" as ComAPI
+participant "PublicStoresController\nbackend/src/public/public-stores.controller.ts" as Ctrl
+participant "PublicStoresService\nbackend/src/public/public-stores.service.ts" as Svc
+database "Postgres" as DB
+participant "Web Speech API\n(SpeechSynthesis)" as TTS
+
+User -> Page : truy cập /stores/{id}
+Page -> Player : render <CommentaryPlayer storeId lang />
+
+Player -> Hook : useCommentary(storeId, lang)
+note right of Hook
+  React Query hook
+  staleTime: 30s
+  cache theo (storeId, lang)
+end note
+
+Hook -> ComAPI : getStoreCommentary(storeId, lang)
+note right of ComAPI
+  GET /stores/{storeId}/commentary?lang={lang}
+  lib/api/commentary.ts
+end note
+
+ComAPI -> Ctrl : GET /stores/:id/commentary?lang=
+Ctrl -> Ctrl : đọc Accept-Language header\n(fallback nếu query lang trống)
+Ctrl -> Svc : getCommentary(storeId, language)
+Svc -> DB : SELECT Commentary\nJOIN CommentaryTranslation\nWHERE lang = ?
+DB --> Svc : { translatedText, audioUrl, pipelineStatus }
+Svc --> Ctrl : { translatedText, audioUrl, status }
+Ctrl --> ComAPI : response
+ComAPI --> Hook : data
+Hook --> Player : { translatedText, audioUrl, status }
+
+Player --> User : Hiển thị nút ▶ Play
+
+User -> Player : click ▶ Play
+Player -> TTS : speakText(translatedText)
+note right of TTS
+  SpeechSynthesis chạy 100% client
+  (không gọi thêm backend)
+  window.speechSynthesis.speak(utterance)
+end note
+TTS --> User : 🔊 phát thuyết minh bằng giọng đọc browser
+
+User -> Player : click ⏹ Stop
+Player -> TTS : window.speechSynthesis.cancel()
+TTS --> User : dừng phát
+
+@enduml

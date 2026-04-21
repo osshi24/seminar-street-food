@@ -1,0 +1,75 @@
+@startuml 12-routing
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 8
+skinparam sequenceParticipantBorderColor #555
+skinparam sequenceParticipantBackgroundColor #FFF
+skinparam noteBorderColor #888
+skinparam noteBackgroundColor #FFFDE7
+
+title [12] Chỉ Đường Tới Gian Hàng
+
+actor "Khách du lịch" as User
+participant "MapPage\napp/(public)/map/page.tsx" as Page
+participant "StoreBottomSheet\napp/(public)/map/components/StoreBottomSheet.tsx" as Sheet
+participant "RoutingPanel\napp/(public)/map/components/RoutingPanel.tsx" as Panel
+participant "useGeolocation\nhooks/useGeolocation.ts" as Geo
+participant "analytics.ts\nlib/analytics.ts" as Analytics
+participant "osrm.ts\nlib/map/osrm.ts" as OSRM
+cloud "OSRM API\nrouter.project-osrm.org" as OSRMCloud
+participant "MapView\nmap/components/MapView.tsx" as MapView
+
+== 1. Chọn gian hàng muốn đến ==
+
+User -> Page : click marker gian hàng trên bản đồ
+Page -> Sheet : openStoreBottomSheet(storeId)
+Sheet --> User : Hiện bottom sheet:\n- Tên gian hàng\n- Nút "Chỉ đường"
+
+User -> Sheet : click "Chỉ đường"
+Sheet -> Analytics : analytics.directionsRequest(storeName)\n(Umami track)
+Sheet -> Panel : open RoutingPanel\n(truyền: destinationPin { lat, lng })
+
+== 2. Lấy vị trí hiện tại ==
+
+Panel -> Geo : useGeolocation()
+Geo --> Panel : userPosition { lat, lng }
+
+alt GPS chưa được cấp phép
+    Panel --> User : Hiện banner "Cần bật GPS"
+else GPS đã có
+    Panel -> Analytics : analytics.navigationStart(storeName)
+end
+
+== 3. Gọi OSRM tính tuyến đường ==
+
+Panel -> OSRM : fetchRoute(\n  from: { lat: userLat, lng: userLng },\n  to: { lat: pinLat, lng: pinLng }\n)
+note right of OSRM
+  lib/map/osrm.ts
+  URL: router.project-osrm.org/route/v1/driving/
+  {fromLng},{fromLat};{toLng},{toLat}
+  ?overview=full&geometries=geojson
+  (OSRM nhận lng,lat — không phải lat,lng)
+end note
+
+OSRM -> OSRMCloud : HTTP GET route request
+OSRMCloud --> OSRM : { code: 'Ok', routes: [{ distance, duration, geometry }] }
+OSRM -> OSRM : flip coordinates [lng,lat] → [lat,lng]\ncho Leaflet
+OSRM --> Panel : { coordinates[][], distanceMeters, durationSeconds }
+
+Panel -> Panel : formatDistance(distanceMeters)\nformatDuration(durationSeconds)
+
+== 4. Vẽ tuyến đường lên bản đồ ==
+
+Panel -> MapView : drawPolyline(coordinates)\nfitBounds()
+MapView --> User : 🗺 Hiển thị tuyến đường màu xanh trên bản đồ
+Panel --> User : Hiện thông tin:\n- Khoảng cách: "350 m"\n- Thời gian: "2 phút"
+
+== 5. Dừng chỉ đường ==
+
+User -> Panel : click "Dừng chỉ đường"
+Panel -> Analytics : analytics.navigationStop()
+Panel -> MapView : removePolyline()
+Panel --> User : Xoá tuyến đường, quay lại bản đồ bình thường
+
+@enduml

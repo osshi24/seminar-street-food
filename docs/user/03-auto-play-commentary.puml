@@ -1,0 +1,88 @@
+@startuml 03-auto-play-commentary
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 8
+skinparam sequenceParticipantBorderColor #555
+skinparam sequenceParticipantBackgroundColor #FFF
+skinparam noteBorderColor #888
+skinparam noteBackgroundColor #FFFDE7
+
+title [03] Auto-Play Thuyết Minh Khi Đến Gần Gian Hàng
+
+actor "Khách du lịch" as User
+participant "MapPage\napp/(public)/map/page.tsx" as Page
+participant "useProximityDetection\nhooks/useProximityDetection.ts" as Prox
+participant "useAutoPlay\nhooks/useAutoPlay.ts" as Play
+participant "commentary.ts\nlib/api/commentary.ts" as ComAPI
+participant "PublicStoresController\nbackend/src/public/public-stores.controller.ts" as Ctrl
+participant "PublicStoresService\nbackend/src/public/public-stores.service.ts" as Svc
+database "Postgres" as DB
+participant "HTMLAudioElement\n(browser)" as Audio
+
+== Khi nearestStore thay đổi ==
+
+Prox --> Page : nearbyStores = [{ storeId, storeName, 3.0m }]
+Page -> Page : nearestStore = nearbyStores[0]
+
+note over Page
+  useEffect: khi nearestStore thay đổi
+  && gpsStatus === 'granted'
+  → gọi tryPlay(nearestStore)
+end note
+
+Page -> Play : tryPlay(nearestStore)
+activate Play
+
+alt session đã phát store này
+    Play -> Play : session.get(storeId) === true\n→ return (bỏ qua)
+    Play --> Page : bỏ qua (không phát lại)
+else lastTriggeredRef trùng storeId
+    Play -> Play : lastTriggeredRef === storeId\n→ return (tránh duplicate)
+else chưa phát — tiếp tục
+    Play -> Play : lastTriggeredRef = storeId
+
+    Play -> ComAPI : getStoreCommentary(storeId, lang)
+    note right of ComAPI
+      GET /stores/{storeId}/commentary?lang={lang}
+      lib/api/commentary.ts
+    end note
+
+    ComAPI -> Ctrl : GET /stores/:id/commentary?lang=
+    Ctrl -> Svc : getCommentary(storeId, lang)
+    Svc -> DB : SELECT CommentaryTranslation\nWHERE commentaryId AND lang
+    DB --> Svc : { translatedText, audioUrl }
+    Svc --> Ctrl : { translatedText, audioUrl, status }
+    Ctrl --> ComAPI : response
+    ComAPI --> Play : { audioUrl }
+
+    Play -> Audio : new Audio(audioUrl)\naudio.play()
+    activate Audio
+
+    alt browser cho phép autoplay
+        Audio --> Play : Promise resolved
+        Play -> Play : onMarkPlayed(storeId)\n→ session.set(storeId, true)
+        Play -> Play : setCurrentAudio(audio)\nsetCurrentStoreName(storeName)
+        Audio -> User : 🔊 phát thuyết minh tự động
+        Audio -> Play : onended callback
+        Play -> Play : setCurrentAudio(null)
+        deactivate Audio
+    else browser chặn (NotAllowedError)
+        Audio --> Play : DOMException: NotAllowedError
+        deactivate Audio
+        Play -> Play : setBannerVisible(true)\nlưu pendingAudioRef
+        Play --> User : Hiện AutoplayBanner\n"Nhấn để nghe thuyết minh"
+
+        User -> Page : nhấn nút ▶ trên banner
+        Page -> Play : triggerManualPlay()
+        Play -> Audio : pendingAudio.play()
+        activate Audio
+        Audio -> User : 🔊 phát thuyết minh
+        deactivate Audio
+        Play -> Play : onMarkPlayed(storeId)\nsetBannerVisible(false)
+    end
+end
+
+deactivate Play
+
+@enduml
