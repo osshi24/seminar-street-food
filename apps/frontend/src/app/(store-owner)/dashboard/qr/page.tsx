@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getMyStore } from '../../../../lib/api/stores';
-import { createQr, getActiveQr, downloadQrPng } from '../../../../lib/api/qr';
+import { createQr, getActiveQr } from '../../../../lib/api/qr';
 import type { CreateQrResponse } from '../../../../lib/api/qr';
 import QRCodeDisplay from '../../../../components/qr/QRCodeDisplay';
 import QRDownloadButtons from '../../../../components/qr/QRDownloadButtons';
@@ -17,7 +17,6 @@ export default function DashboardQrPage() {
   const [store, setStore] = useState<StoreInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [qrData, setQrData] = useState<CreateQrResponse | null>(null);
-  const [qrPreviewUrl, setQrPreviewUrl] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,18 +29,11 @@ export default function DashboardQrPage() {
         const existing = await getActiveQr(s.id).catch(() => null);
         if (existing) {
           setQrData(existing);
-          setQrPreviewUrl(existing.qrImageUrl);
         }
       })
       .catch(() => setStore(null))
       .finally(() => setLoading(false));
   }, []);
-
-  useEffect(() => {
-    return () => {
-      if (qrPreviewUrl) URL.revokeObjectURL(qrPreviewUrl);
-    };
-  }, [qrPreviewUrl]);
 
   const handleCreate = async () => {
     if (!store) return;
@@ -50,13 +42,6 @@ export default function DashboardQrPage() {
     try {
       const data = await createQr(store.id);
       setQrData(data);
-
-      const blob = await downloadQrPng(store.id);
-      const nextUrl = URL.createObjectURL(blob);
-      setQrPreviewUrl((prev) => {
-        if (prev) URL.revokeObjectURL(prev);
-        return nextUrl;
-      });
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -113,7 +98,7 @@ export default function DashboardQrPage() {
         {qrData && (
           <div className="space-y-4 rounded-lg border border-gray-100 bg-white p-4 shadow-sm">
             <QRCodeDisplay
-              qrImageUrl={qrPreviewUrl ?? qrData.qrImageUrl}
+              qrImageUrl={qrData.qrImageUrl}
               loading={creating}
               storeName={store.name}
             />

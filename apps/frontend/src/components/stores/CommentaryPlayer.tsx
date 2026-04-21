@@ -8,29 +8,48 @@ import PipelineBanner from './PipelineBanner';
 
 interface CommentaryPlayerProps {
   storeId: string;
+  autoPlay?: boolean;
+  autoPlayKey?: string | null;
+  onAutoPlayHandled?: () => void;
 }
 
-export default function CommentaryPlayer({ storeId }: CommentaryPlayerProps) {
+export default function CommentaryPlayer({
+  storeId,
+  autoPlay = false,
+  autoPlayKey = null,
+  onAutoPlayHandled,
+}: CommentaryPlayerProps) {
   const { t } = useTranslation();
   const { lang, speechCode } = useLang();
-  const { translatedText, pipelineStatus, message, isLoading } = useCommentary(storeId, lang);
+  const { translatedText, audioUrl, pipelineStatus, message, isLoading } = useCommentary(storeId, lang);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const handledAutoPlayRef = useRef<string | null>(null);
 
-  // Cancel speech on unmount
-  useEffect(() => {
-    return () => { window.speechSynthesis?.cancel(); };
-  }, []);
-
-  // Cancel speech when language or text changes
-  useEffect(() => {
+  const stop = useCallback(() => {
     window.speechSynthesis?.cancel();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
     setIsSpeaking(false);
     setIsPaused(false);
-  }, [translatedText, lang]);
+  }, []);
 
-  const speak = useCallback(() => {
+  // Cancel playback on unmount
+  useEffect(() => {
+    return () => { stop(); };
+  }, [stop]);
+
+  // Reset playback when content/language changes
+  useEffect(() => {
+    stop();
+  }, [audioUrl, translatedText, lang, stop]);
+
+  const speakText = useCallback(() => {
     if (!translatedText || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
 
@@ -47,7 +66,51 @@ export default function CommentaryPlayer({ storeId }: CommentaryPlayerProps) {
     window.speechSynthesis.speak(utterance);
   }, [translatedText, speechCode]);
 
+  const play = useCallback(async () => {
+    stop();
+
+    if (audioUrl) {
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      audio.onplay = () => {
+        setIsSpeaking(true);
+        setIsPaused(false);
+      };
+      audio.onpause = () => {
+        if (audio.currentTime > 0 && !audio.ended) {
+          setIsPaused(true);
+          setIsSpeaking(true);
+        }
+      };
+      audio.onended = () => {
+        setIsSpeaking(false);
+        setIsPaused(false);
+        audioRef.current = null;
+      };
+      audio.onerror = () => {
+        audioRef.current = null;
+        setIsSpeaking(false);
+        setIsPaused(false);
+        speakText();
+      };
+
+      try {
+        await audio.play();
+        return;
+      } catch {
+        audioRef.current = null;
+      }
+    }
+
+    speakText();
+  }, [audioUrl, speakText, stop]);
+
   const pause = useCallback(() => {
+    if (audioRef.current && !audioRef.current.paused) {
+      audioRef.current.pause();
+      return;
+    }
     if (window.speechSynthesis?.speaking) {
       window.speechSynthesis.pause();
       setIsPaused(true);
@@ -55,17 +118,36 @@ export default function CommentaryPlayer({ storeId }: CommentaryPlayerProps) {
   }, []);
 
   const resume = useCallback(() => {
+    if (audioRef.current && audioRef.current.paused) {
+      void audioRef.current.play();
+      setIsPaused(false);
+      setIsSpeaking(true);
+      return;
+    }
     if (window.speechSynthesis?.paused) {
       window.speechSynthesis.resume();
       setIsPaused(false);
     }
   }, []);
 
-  const stop = useCallback(() => {
-    window.speechSynthesis?.cancel();
-    setIsSpeaking(false);
-    setIsPaused(false);
-  }, []);
+  const canSpeak = !!audioUrl || !!translatedText;
+
+  useEffect(() => {
+    if (!autoPlay || !autoPlayKey || isLoading) return;
+    if (handledAutoPlayRef.current === autoPlayKey) return;
+
+    handledAutoPlayRef.current = autoPlayKey;
+
+    if (canSpeak) {
+      const timer = window.setTimeout(() => {
+        void play();
+        onAutoPlayHandled?.();
+      }, 0);
+      return () => window.clearTimeout(timer);
+    }
+
+    onAutoPlayHandled?.();
+  }, [autoPlay, autoPlayKey, canSpeak, isLoading, onAutoPlayHandled, play]);
 
   if (isLoading) {
     return (
@@ -83,8 +165,6 @@ export default function CommentaryPlayer({ storeId }: CommentaryPlayerProps) {
     );
   }
 
-  const canSpeak = !!translatedText && message !== 'pipeline_running' && message !== 'pipeline_failed';
-
   return (
     <div className="space-y-3">
       <PipelineBanner storeId={storeId} pipelineStatus={pipelineStatus} lang={lang} />
@@ -97,7 +177,7 @@ export default function CommentaryPlayer({ storeId }: CommentaryPlayerProps) {
         <div className="flex items-center gap-2">
           {!isSpeaking ? (
             <button
-              onClick={speak}
+              onClick={() => { void play(); }}
               className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-full transition-colors"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
