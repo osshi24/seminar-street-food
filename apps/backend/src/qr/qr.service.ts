@@ -11,6 +11,7 @@ import PDFDocument from 'pdfkit';
 import { QrCode } from './entities/qr-code.entity';
 import { Store, StoreStatus } from '../stores/entities/store.entity';
 import { CreateQrResponseDto } from './dto/create-qr.dto';
+import { StoreAnalyticsService } from '../store-analytics/store-analytics.service';
 
 @Injectable()
 export class QrService {
@@ -20,6 +21,7 @@ export class QrService {
     @InjectRepository(Store)
     private readonly storeRepository: Repository<Store>,
     private readonly configService: ConfigService,
+    private readonly analyticsService: StoreAnalyticsService,
   ) {}
 
   async getActiveQr(storeId: string, ownerId: string): Promise<CreateQrResponseDto> {
@@ -147,6 +149,7 @@ export class QrService {
     const store = qr.store;
     if (!store || store.status === StoreStatus.INACTIVE) return { type: 'unavailable' };
 
+    this.analyticsService.track(store.id, 'qr_scan');
     return { type: 'store', storeId: store.id };
   }
 

@@ -43,7 +43,8 @@ export default function AdminReviewTable({
   onUnhide,
   onDelete,
 }: AdminReviewTableProps) {
-  if (reviews.length === 0) {
+  const list = Array.isArray(reviews) ? reviews : [];
+  if (list.length === 0) {
     return (
       <AdminEmptyState
         icon={MessageSquare}
@@ -74,7 +75,7 @@ export default function AdminReviewTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
-            {reviews.map((review) => {
+            {list.map((review) => {
               const busy = processingId === review.id;
 
               return (

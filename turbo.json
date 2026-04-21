@@ -12,6 +12,11 @@
     "lint": {
       "outputs": []
     },
+    "start": {
+      "cache": false,
+      "persistent": true,
+      "dependsOn": ["build"]
+    },
     "test": {
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"]

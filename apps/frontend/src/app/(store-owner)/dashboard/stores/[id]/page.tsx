@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   AlertTriangle,
+  BarChart2,
   CheckCircle2,
   Clock,
   ExternalLink,
@@ -36,6 +37,7 @@ import StoreDetailEditForm from '../../../../../components/stores/StoreDetailEdi
 import ImageUploader from '../../../../../components/stores/ImageUploader';
 import StoreQrSection from '../../../../../components/stores/StoreQrSection';
 import StoreMenuTab from '../../../../../components/stores/StoreMenuTab';
+import StoreMonitorTab from '../../../../../components/stores/StoreMonitorTab';
 import StoreOwnerPageHeader from '../../../../../components/dashboard/common/StoreOwnerPageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../../components/ui/card';
 import { Button } from '../../../../../components/ui/button';
@@ -58,7 +60,7 @@ import {
 } from '../../../../../components/ui/dialog';
 import { cn } from '../../../../../lib/cn';
 
-type TabKey = 'overview' | 'menu' | 'qr';
+type TabKey = 'overview' | 'menu' | 'qr' | 'monitor';
 
 interface StoreData {
   id: string;
@@ -79,6 +81,7 @@ const TABS: { key: TabKey; label: string; icon: typeof Info }[] = [
   { key: 'overview', label: 'Thông tin', icon: Info },
   { key: 'menu', label: 'Thực đơn', icon: UtensilsCrossed },
   { key: 'qr', label: 'QR Code', icon: QrCode },
+  { key: 'monitor', label: 'Thống kê', icon: BarChart2 },
 ];
 
 const APPROVAL_VARIANT = {
@@ -716,6 +719,12 @@ export default function StoreDetailPage() {
           storeName={store.name}
           storeStatus={store.status}
         />
+      )}
+
+      {tab === 'monitor' && (
+        <div className="px-4 pb-6">
+          <StoreMonitorTab storeId={storeId} />
+        </div>
       )}
 
       <Dialog

@@ -57,7 +57,7 @@ export class AdminReviewsController {
       .createQueryBuilder('r')
       .leftJoinAndSelect('r.customer', 'c')
       .leftJoinAndSelect('r.store', 's')
-      .orderBy('r.created_at', 'DESC');
+      .orderBy('r.createdAt', 'DESC');
 
     if (query.storeId) {
       qb.andWhere('r.store_id = :storeId', { storeId: query.storeId });

@@ -24,8 +24,10 @@ function overrideGeolocation(lat: number, lng: number) {
       altitudeAccuracy: null,
       heading: null,
       speed: null,
+      toJSON() { return this; },
     },
     timestamp: Date.now(),
+    toJSON() { return this; },
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

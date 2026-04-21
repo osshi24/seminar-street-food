@@ -55,7 +55,7 @@ export default function AdminReviewsPage() {
   const loadReviews = useCallback(async (nextFilters: ReviewFilters, nextPage: number) => {
     setLoading(true);
     try {
-      const { data } = await apiClient.get<ReviewListResponse>('/admin/reviews', {
+      const { data } = await apiClient.get<{ data: ReviewListResponse }>('/admin/reviews', {
         params: {
           keyword: nextFilters.keyword,
           status: nextFilters.status,
@@ -64,9 +64,10 @@ export default function AdminReviewsPage() {
         },
       });
 
-      setReviews(data.data);
-      setTotal(data.meta.total);
-      setTotalPages(data.meta.totalPages);
+      const payload = data.data;
+      setReviews(Array.isArray(payload?.data) ? payload.data : []);
+      setTotal(payload?.meta?.total ?? 0);
+      setTotalPages(payload?.meta?.totalPages ?? 1);
     } catch {
       showToast('Không thể tải danh sách bình luận.', 'error');
     } finally {
