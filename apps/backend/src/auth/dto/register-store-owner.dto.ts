@@ -33,7 +33,7 @@ export class RegisterStoreOwnerDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(255)
-  storeName: string;
+  storeName?: string;
 
   @IsString()
   @IsNotEmpty()

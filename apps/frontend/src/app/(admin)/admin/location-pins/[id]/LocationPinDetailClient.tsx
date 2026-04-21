@@ -236,8 +236,8 @@ export default function LocationPinDetailClient({ id }: LocationPinDetailClientP
         isLoading={approveLoading}
         onApprove={handleApprove}
         onCancel={() => setShowApproveModal(false)}
-        currentLat={pin.latitude}
-        currentLng={pin.longitude}
+        currentLat={Number(pin.latitude)}
+        currentLng={Number(pin.longitude)}
         storeName={pin.store?.name || 'Ghim vị trí'}
       />
 

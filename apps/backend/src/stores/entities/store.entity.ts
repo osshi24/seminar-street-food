@@ -12,10 +12,17 @@ import { StoreContentDraft } from './store-content-draft.entity';
 import { MenuItem } from './menu-item.entity';
 import { StoreImage } from './store-image.entity';
 import { Commentary } from '../../commentary/entities/commentary.entity';
+import { StoreOwnerAccount } from '../../entities/store-owner-account.entity';
 
 export enum StoreStatus {
   ACTIVE = 'active',
   INACTIVE = 'inactive',
+}
+
+export enum StoreApprovalStatus {
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
 }
 
 @Entity('stores')
@@ -51,6 +58,14 @@ export class Store {
   })
   status: StoreStatus;
 
+  @Column({
+    name: 'approval_status',
+    type: 'enum',
+    enum: StoreApprovalStatus,
+    default: StoreApprovalStatus.PENDING,
+  })
+  approvalStatus: StoreApprovalStatus;
+
   @Column({ name: 'active_commentary_id', nullable: true })
   activeCommentaryId: string | null;
 
@@ -81,4 +96,8 @@ export class Store {
   @ManyToOne(() => Commentary, { nullable: true, eager: false })
   @JoinColumn({ name: 'active_commentary_id' })
   activeCommentary: Commentary | null;
+
+  @ManyToOne(() => StoreOwnerAccount, (account) => account.stores, { nullable: true, eager: false })
+  @JoinColumn({ name: 'owner_id' })
+  owner: StoreOwnerAccount | null;
 }

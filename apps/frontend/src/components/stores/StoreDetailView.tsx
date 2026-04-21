@@ -29,6 +29,7 @@ interface StoreDetailViewProps {
   menuItems: MenuItem[];
   images: StoreImage[];
   hasCommentary?: boolean;
+  autoPlay?: boolean;
 }
 
 function formatVND(amount: number): string {
@@ -42,6 +43,7 @@ export default function StoreDetailView({
   menuItems,
   images,
   hasCommentary = false,
+  autoPlay = false,
 }: StoreDetailViewProps) {
   const { t } = useTranslation();
   const { lang } = useLang();
@@ -87,7 +89,11 @@ export default function StoreDetailView({
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-orange-800 mb-1">{t('storeDetail.commentaryTitle')}</p>
-            <CommentaryPlayer storeId={storeId} />
+            <CommentaryPlayer
+              storeId={storeId}
+              autoPlay={autoPlay}
+              autoPlayKey={autoPlay ? 'qrscan' : null}
+            />
           </div>
         </div>
       ) : (
