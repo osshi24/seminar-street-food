@@ -1,0 +1,55 @@
+@startuml 01-view-map
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 8
+skinparam sequenceParticipantBorderColor #555
+skinparam sequenceParticipantBackgroundColor #FFF
+skinparam noteBorderColor #888
+skinparam noteBackgroundColor #FFFDE7
+
+title [01] Xem Bản Đồ Gian Hàng
+
+actor "Khách du lịch" as User
+participant "MapPage\napp/(public)/map/page.tsx" as Page
+participant "MapView\nmap/components/MapView.tsx" as MapView
+participant "map.ts\nlib/api/map.ts" as MapAPI
+participant "MapController\nbackend/src/map/map.controller.ts" as Ctrl
+participant "MapService\nbackend/src/map/map.service.ts" as Svc
+database "Postgres" as DB
+
+User -> Page : truy cập /map
+Page -> MapView : render <MapView />
+activate MapView
+
+MapView -> MapAPI : getPublicPins()
+note right of MapAPI
+  GET /api/backend/map/pins
+end note
+
+MapAPI -> Ctrl : GET /map/pins
+Ctrl -> Svc : getPublicPins()
+Svc -> DB : SELECT location_pins\nWHERE status = ACTIVE\nJOIN stores (name, thumbnailUrl)
+DB --> Svc : pins[]
+Svc --> Ctrl : { pins[], boundary }
+Ctrl --> MapAPI : response
+MapAPI --> MapView : { pins[], boundary }
+
+MapView -> MapView : setPins(data.pins)\nrenderLeafletMap()\nplotMarkers(pins)
+note right of MapView
+  Leaflet.js vẽ bản đồ
+  Mỗi pin → marker trên map
+  analytics.mapView() → Umami track
+end note
+
+MapView --> User : Hiển thị bản đồ với các gian hàng
+
+User -> MapView : click marker gian hàng
+MapView -> MapView : openStoreBottomSheet(storeId)
+note right
+  StoreBottomSheet.tsx
+  hiện tên + ảnh thumbnail
+end note
+MapView --> User : Hiện popup thông tin ngắn gian hàng
+
+@enduml

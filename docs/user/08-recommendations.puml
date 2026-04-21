@@ -1,0 +1,71 @@
+@startuml 08-recommendations
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 8
+skinparam sequenceParticipantBorderColor #555
+skinparam sequenceParticipantBackgroundColor #FFF
+skinparam noteBorderColor #888
+skinparam noteBackgroundColor #FFFDE7
+
+title [08] Gợi Ý Gian Hàng Theo Sở Thích (Tags)
+
+actor "Khách du lịch" as User
+participant "RecommendationsPage\napp/recommendations/page.tsx" as Page
+participant "RecommendationsClient\napp/recommendations/RecommendationsClient.tsx" as Client
+participant "recommendations.ts\nlib/api/recommendations.ts" as RecAPI
+participant "tags.ts\nlib/api/tags.ts" as TagAPI
+participant "TagsController\nbackend/src/tags/tags.controller.ts" as TagCtrl
+participant "TagsService\nbackend/src/tags/tags.service.ts" as TagSvc
+participant "RecommendationsController\nbackend/src/recommendations/recommendations.controller.ts" as RecCtrl
+participant "RecommendationsService\nbackend/src/recommendations/recommendations.service.ts" as RecSvc
+database "Postgres" as DB
+
+== 1. Load danh sách tags để chọn ==
+
+User -> Page : truy cập /recommendations
+Page -> Client : render <RecommendationsClient />
+
+Client -> TagAPI : fetchTags()
+note right of TagAPI
+  GET /tags
+  lib/api/tags.ts
+end note
+TagAPI -> TagCtrl : GET /tags
+TagCtrl -> TagSvc : findGrouped()
+TagSvc -> DB : SELECT preference_tags\nGROUP BY category
+DB --> TagSvc : grouped tags
+TagSvc --> TagCtrl : { groups: [{ category, tags[] }] }
+TagCtrl --> TagAPI : response
+TagAPI --> Client : { groups }
+Client --> User : Hiển thị danh sách tag (ẩm thực)\nvd: Cay, Chay, Hải sản, Ngọt...
+
+== 2. User chọn tag sở thích ==
+
+User -> Client : tick chọn các tag yêu thích
+Client -> Client : setSelectedTags([tagId1, tagId2, ...])\nupdate URL params
+
+== 3. Fetch gợi ý dựa trên tags ==
+
+Client -> RecAPI : fetchRecommendations(tagIds, page=1)
+note right of RecAPI
+  GET /recommendations?tags=1,2,3&page=1
+  lib/api/recommendations.ts
+end note
+RecAPI -> RecCtrl : GET /recommendations?tags=&page=
+RecCtrl -> RecSvc : getRecommendations(tags[], page)
+RecSvc -> DB : SELECT menu_items\nJOIN menu_item_tags WHERE tag_id IN (?)\nGROUP BY menuItemId\nORDER BY matchCount DESC\nOFFSET/LIMIT (pageSize=20)
+DB --> RecSvc : { items[], totalCount }
+RecSvc --> RecCtrl : { items[], totalCount }
+RecCtrl -> RecCtrl : tính totalPages\nhasNextPage, hasPreviousPage
+RecCtrl --> RecAPI : { items[], pagination }
+RecAPI --> Client : response
+Client --> User : Hiển thị danh sách gợi ý:\n- Tên món ăn + giá\n- Tên gian hàng\n- Số tag match (matchCount)\nNút phân trang
+
+== 4. Chuyển sang xem gian hàng ==
+
+User -> Client : click vào gian hàng trong kết quả
+Client -> Client : router.push('/stores/{storeId}')
+Client --> User : Chuyển đến trang chi tiết gian hàng (flow 06)
+
+@enduml
