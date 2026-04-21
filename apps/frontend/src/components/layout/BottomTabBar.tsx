@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
-import LanguageSwitcher from './LanguageSwitcher';
 import {
   getCustomerToken,
   clearCustomerToken,
@@ -13,6 +12,8 @@ import {
 import { fetchCurrentCustomer, redirectToGoogleOAuth } from '../../lib/api/auth-google';
 import type { CustomerProfile } from '../../lib/api/auth-google';
 import type { QrResolveResult } from '../../lib/api/qr';
+import { useLang } from '../../contexts/LanguageContext';
+import { LANGUAGES } from '../../i18n/config';
 
 const QrScannerModal = dynamic(() => import('../qr/QrScannerModal'), { ssr: false });
 const PENDING_QR_SCAN_KEY = 'pending_qr_scan';
@@ -20,6 +21,7 @@ const PENDING_QR_SCAN_KEY = 'pending_qr_scan';
 export default function BottomTabBar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { lang, setLang } = useLang();
   const [showAccount, setShowAccount] = useState(false);
   const [showQrScanner, setShowQrScanner] = useState(false);
   const [qrError, setQrError] = useState<string | null>(null);
@@ -93,42 +95,55 @@ export default function BottomTabBar() {
 
       {showAccount && (
         <div
-          className="fixed inset-0 z-[60] sm:hidden bg-black/20"
+          className="fixed inset-0 z-[60] sm:hidden bg-black/40 backdrop-blur-sm"
           onClick={() => setShowAccount(false)}
         >
           <div
-            className="absolute bottom-14 left-0 right-0 bg-white rounded-t-2xl shadow-2xl border-t border-gray-100 px-4 pb-5"
-            style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+            className="absolute bottom-14 left-0 right-0 bg-white rounded-t-3xl shadow-2xl px-5 pb-6"
+            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1.5rem)' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-8 h-1 bg-gray-300 rounded-full mx-auto mt-3 mb-5" />
+            {/* drag handle */}
+            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mt-3 mb-6" />
+
             {customer ? (
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
+              <>
+                {/* avatar + name */}
+                <div className="flex items-center gap-3 mb-5">
                   {customer.avatarUrl ? (
-                    <img src={customer.avatarUrl} alt={customer.displayName} referrerPolicy="no-referrer" className="h-12 w-12 rounded-full" />
+                    <img src={customer.avatarUrl} alt={customer.displayName} referrerPolicy="no-referrer" className="h-14 w-14 rounded-full ring-2 ring-orange-100" />
                   ) : (
-                    <div className="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center text-lg font-semibold text-orange-600">
+                    <div className="h-14 w-14 rounded-full bg-orange-100 flex items-center justify-center text-xl font-bold text-orange-600">
                       {customer.displayName?.[0]?.toUpperCase() ?? '?'}
                     </div>
                   )}
                   <div>
-                    <p className="font-semibold text-gray-900">{customer.displayName}</p>
-                    <p className="text-xs text-gray-400">Đã đăng nhập</p>
+                    <p className="font-semibold text-gray-900 text-base">{customer.displayName}</p>
+                    <p className="text-xs text-green-500 font-medium mt-0.5">Đã đăng nhập</p>
                   </div>
                 </div>
-                <button onClick={handleLogout} className="w-full rounded-xl border border-gray-200 py-3 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+                <button onClick={handleLogout} className="w-full rounded-2xl border border-gray-200 py-3 text-sm text-gray-600 hover:bg-gray-50 active:bg-gray-100 transition-colors font-medium">
                   Đăng xuất
                 </button>
-              </div>
+              </>
             ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-gray-500 text-center">Đăng nhập để nhận ưu đãi</p>
+              <>
+                {/* not logged in hero */}
+                <div className="text-center mb-5">
+                  <div className="w-14 h-14 rounded-full bg-orange-50 flex items-center justify-center mx-auto mb-3">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ea580c" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                  </div>
+                  <p className="font-semibold text-gray-800">Chào mừng!</p>
+                  <p className="text-sm text-gray-400 mt-1">Đăng nhập để nhận ưu đãi độc quyền</p>
+                </div>
                 <button
                   onClick={() => redirectToGoogleOAuth(pathname)}
-                  className="w-full flex items-center justify-center gap-2.5 rounded-xl bg-white border border-gray-200 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
+                  className="w-full flex items-center justify-center gap-3 rounded-2xl bg-white border border-gray-200 py-3.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors shadow-sm"
                 >
-                  <svg className="h-4 w-4" viewBox="0 0 24 24">
+                  <svg className="h-5 w-5" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
                     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
@@ -136,10 +151,28 @@ export default function BottomTabBar() {
                   </svg>
                   Đăng nhập bằng Google
                 </button>
-              </div>
+              </>
             )}
+
+            {/* language select */}
             <div className="mt-5 pt-4 border-t border-gray-100">
-              <LanguageSwitcher />
+              <label className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2 block">Ngôn ngữ</label>
+              <div className="relative">
+                <select
+                  value={lang}
+                  onChange={(e) => setLang(e.target.value)}
+                  className="w-full appearance-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 focus:border-orange-400 focus:outline-none focus:bg-white transition-colors pr-10"
+                >
+                  {LANGUAGES.map((l) => (
+                    <option key={l.code} value={l.code}>
+                      {l.flag}  {l.label}
+                    </option>
+                  ))}
+                </select>
+                <svg className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
             </div>
           </div>
         </div>

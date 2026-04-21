@@ -83,7 +83,7 @@ export class PublicStoresService {
 
   async getStoreDetail(storeId: string, lang = 'vi') {
     const store = await this.storeRepo.findOne({ where: { id: storeId } });
-    if (!store || store.status === StoreStatus.INACTIVE) {
+    if (!store) {
       throw new NotFoundException('Store not found');
     }
 
