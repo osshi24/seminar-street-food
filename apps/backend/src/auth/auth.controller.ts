@@ -1,6 +1,7 @@
 import {
   Controller,
   Post,
+  Patch,
   Get,
   Body,
   Res,
@@ -14,10 +15,13 @@ import { Response, Request } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterStoreOwnerDto } from './dto/register-store-owner.dto';
 import { LoginDto } from './dto/login.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { StoreOwnerJwtGuard } from './guards/store-owner-jwt.guard';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { CustomerJwtGuard } from './guards/customer-jwt.guard';
 import { CustomerGoogleAccount } from '../entities/customer-google-account.entity';
+import { StoreOwnerAccount } from '../entities/store-owner-account.entity';
 
 const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
@@ -117,6 +121,33 @@ export class AuthController {
     }
     res.clearCookie('refresh_token', { path: '/' });
     return { message: 'Logged out successfully' };
+  }
+
+  @Get('store-owner/me')
+  @UseGuards(StoreOwnerJwtGuard)
+  async getStoreOwnerProfile(@Req() req: Request) {
+    const user = req.user as StoreOwnerAccount;
+    return this.authService.getStoreOwnerProfile(user.id);
+  }
+
+  @Patch('store-owner/me')
+  @UseGuards(StoreOwnerJwtGuard)
+  async updateStoreOwnerProfile(@Req() req: Request, @Body() dto: UpdateProfileDto) {
+    const user = req.user as StoreOwnerAccount;
+    return this.authService.updateStoreOwnerProfile(user.id, dto);
+  }
+
+  @Post('store-owner/change-password')
+  @UseGuards(StoreOwnerJwtGuard)
+  @HttpCode(HttpStatus.OK)
+  async changeStoreOwnerPassword(@Req() req: Request, @Body() dto: ChangePasswordDto) {
+    const user = req.user as StoreOwnerAccount;
+    await this.authService.changeStoreOwnerPassword(
+      user.id,
+      dto.currentPassword,
+      dto.newPassword,
+    );
+    return { message: 'Password changed successfully' };
   }
 
   // ── Admin ─────────────────────────────────────────────────────────────────

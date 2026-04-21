@@ -1,5 +1,7 @@
 'use client';
 
+import { cn } from '../../../../../lib/cn';
+
 interface CoordinateFormProps {
   lat: string;
   lng: string;
@@ -16,43 +18,48 @@ export default function CoordinateForm({ lat, lng, onChange }: CoordinateFormPro
     return !isNaN(n) && n >= -180 && n <= 180;
   };
 
+  const latInvalid = !!lat && !validateLat(lat);
+  const lngInvalid = !!lng && !validateLng(lng);
+
   return (
-    <div className="flex gap-4">
-      <div className="flex-1">
-        <label className="block text-sm font-medium text-gray-700 mb-1">Vĩ độ (Latitude)</label>
+    <div className="grid grid-cols-2 gap-3">
+      <div>
+        <label className="block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          Vĩ độ
+        </label>
         <input
           type="number"
           step="any"
           value={lat}
           onChange={(e) => onChange(e.target.value, lng)}
-          className={`w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
-            lat && !validateLat(lat)
-              ? 'border-red-400 focus:ring-red-300'
-              : 'border-gray-300 focus:ring-orange-300'
-          }`}
           placeholder="10.762622"
+          className={cn(
+            'mt-1 w-full rounded-lg border bg-white px-3 py-2 font-mono text-sm text-slate-900 transition-colors placeholder:text-slate-400 focus:outline-none focus:ring-2',
+            latInvalid
+              ? 'border-rose-300 focus:border-rose-400 focus:ring-rose-200'
+              : 'border-slate-200 focus:border-orange-400 focus:ring-orange-200',
+          )}
         />
-        {lat && !validateLat(lat) && (
-          <p className="text-xs text-red-500 mt-1">Vĩ độ phải từ -90 đến 90</p>
-        )}
+        {latInvalid && <p className="mt-1 text-[11px] text-rose-600">−90 đến 90</p>}
       </div>
-      <div className="flex-1">
-        <label className="block text-sm font-medium text-gray-700 mb-1">Kinh độ (Longitude)</label>
+      <div>
+        <label className="block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          Kinh độ
+        </label>
         <input
           type="number"
           step="any"
           value={lng}
           onChange={(e) => onChange(lat, e.target.value)}
-          className={`w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
-            lng && !validateLng(lng)
-              ? 'border-red-400 focus:ring-red-300'
-              : 'border-gray-300 focus:ring-orange-300'
-          }`}
           placeholder="106.660172"
+          className={cn(
+            'mt-1 w-full rounded-lg border bg-white px-3 py-2 font-mono text-sm text-slate-900 transition-colors placeholder:text-slate-400 focus:outline-none focus:ring-2',
+            lngInvalid
+              ? 'border-rose-300 focus:border-rose-400 focus:ring-rose-200'
+              : 'border-slate-200 focus:border-orange-400 focus:ring-orange-200',
+          )}
         />
-        {lng && !validateLng(lng) && (
-          <p className="text-xs text-red-500 mt-1">Kinh độ phải từ -180 đến 180</p>
-        )}
+        {lngInvalid && <p className="mt-1 text-[11px] text-rose-600">−180 đến 180</p>}
       </div>
     </div>
   );
