@@ -14,6 +14,7 @@ import type { CustomerProfile } from '../../lib/api/auth-google';
 import type { QrResolveResult } from '../../lib/api/qr';
 import { useLang } from '../../contexts/LanguageContext';
 import { LANGUAGES } from '../../i18n/config';
+import { analytics } from '../../lib/analytics';
 
 const QrScannerModal = dynamic(() => import('../qr/QrScannerModal'), { ssr: false });
 const PENDING_QR_SCAN_KEY = 'pending_qr_scan';
@@ -46,6 +47,7 @@ export default function BottomTabBar() {
   function handleQrResult(result: QrResolveResult) {
     setShowQrScanner(false);
     if (result.type === 'store') {
+      analytics.qrScanSuccess('store');
       const nonce =
         typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
           ? crypto.randomUUID()
@@ -67,12 +69,14 @@ export default function BottomTabBar() {
       });
       router.push(`/map?${params.toString()}`);
     } else if (result.type === 'boundary') {
+      analytics.qrScanSuccess('boundary');
       sessionStorage.setItem(
         `boundary_qr_${result.boundary.id}`,
         JSON.stringify(result.boundary),
       );
       router.push(`/map?boundaryQrId=${result.boundary.id}`);
     } else {
+      analytics.qrScanFail();
       setQrError('Cửa hàng hoặc khu vực không tồn tại');
       setTimeout(() => setQrError(null), 3500);
     }
