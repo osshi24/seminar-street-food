@@ -1,7 +1,8 @@
 import type { ReportReason } from '../../types/report';
 import apiClient from './client';
 
-const API = '/api/backend';
+import { getApiUrl } from './config';
+const API = getApiUrl();
 
 export async function fetchReportReasons(): Promise<ReportReason[]> {
   const res = await fetch(`${API}/report-reasons`);

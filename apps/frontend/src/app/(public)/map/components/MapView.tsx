@@ -78,7 +78,9 @@ export default function MapView({
   const pinMarkersRef = useRef<Map<string, any>>(new Map());
   const pinsDataRef = useRef<Map<string, PublicPin>>(new Map());
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const userMarkerRef = useRef<any>(null);
+  const myLocationMarkerRef = useRef<any>(null);
+  const myPositionRef = useRef<[number, number] | null>(null); // [lat, lng]
+  const gpsWatchIdRef = useRef<number | null>(null);
   const boundaryFittedRef = useRef(false);
 
   // Keep latest callbacks in refs (stable across renders)
@@ -121,6 +123,33 @@ export default function MapView({
 
     map.on('click', () => onMapClickRef.current());
 
+    // Always-on live user position (blue dot)
+    if (navigator.geolocation) {
+      const dotEl = document.createElement('div');
+      dotEl.style.cssText = 'position:relative;width:20px;height:20px;pointer-events:none';
+      dotEl.innerHTML =
+        '<div style="position:absolute;inset:0;border-radius:50%;background:rgba(37,99,235,0.25);animation:pulse-ring 1.5s ease-out infinite"></div>' +
+        '<div style="position:absolute;top:4px;left:4px;width:12px;height:12px;border-radius:50%;background:#2563eb;border:2px solid white;box-shadow:0 0 4px rgba(0,0,0,0.3)"></div>';
+
+      gpsWatchIdRef.current = navigator.geolocation.watchPosition(
+        (pos) => {
+          const { latitude: lat, longitude: lng } = pos.coords;
+          myPositionRef.current = [lat, lng];
+          try {
+            if (!myLocationMarkerRef.current) {
+              myLocationMarkerRef.current = new maplibregl.Marker({ element: dotEl, anchor: 'center' })
+                .setLngLat([lng, lat])
+                .addTo(map);
+            } else {
+              myLocationMarkerRef.current.setLngLat([lng, lat]);
+            }
+          } catch { /* map removed */ }
+        },
+        undefined,
+        { enableHighAccuracy: false, maximumAge: 10000, timeout: 60000 },
+      );
+    }
+
     // Locate-me control
     class LocateControl {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -133,10 +162,16 @@ export default function MapView({
         btn.innerHTML = '📍';
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
+          if (myPositionRef.current) {
+            m.flyTo({ center: [myPositionRef.current[1], myPositionRef.current[0]], zoom: 17, duration: 600 });
+            return;
+          }
           if (!navigator.geolocation) return;
-          navigator.geolocation.getCurrentPosition((pos) => {
-            m.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: 17 });
-          });
+          navigator.geolocation.getCurrentPosition(
+            (pos) => m.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: 17 }),
+            undefined,
+            { timeout: 10000, enableHighAccuracy: false },
+          );
         });
         const div = document.createElement('div');
         div.className = 'maplibregl-ctrl';
@@ -192,12 +227,16 @@ export default function MapView({
     });
 
     return () => {
+      if (gpsWatchIdRef.current !== null) {
+        navigator.geolocation?.clearWatch(gpsWatchIdRef.current);
+        gpsWatchIdRef.current = null;
+      }
       map.remove();
       mapInstanceRef.current = null;
       mapLoadedRef.current = false;
       pinMarkersRef.current.clear();
       pinsDataRef.current.clear();
-      userMarkerRef.current = null;
+      myLocationMarkerRef.current = null;
       boundaryFittedRef.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -292,12 +331,6 @@ export default function MapView({
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const maplibregl = require('maplibre-gl');
 
-    // Clear user marker
-    if (userMarkerRef.current) {
-      userMarkerRef.current.remove();
-      userMarkerRef.current = null;
-    }
-
     const src = map.getSource('route');
     if (!route) {
       src?.setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: [] }, properties: {} });
@@ -311,16 +344,6 @@ export default function MapView({
       geometry: { type: 'LineString', coordinates: coords },
       properties: {},
     });
-
-    // User location marker (pulsing blue dot)
-    const el = document.createElement('div');
-    el.style.cssText = 'position:relative;width:20px;height:20px';
-    el.innerHTML =
-      '<div style="position:absolute;inset:0;border-radius:50%;background:rgba(37,99,235,0.3);animation:pulse-ring 1.5s ease-out infinite"></div>' +
-      '<div style="position:absolute;top:4px;left:4px;width:12px;height:12px;border-radius:50%;background:#2563eb;border:2px solid white;box-shadow:0 0 4px rgba(0,0,0,0.3)"></div>';
-    userMarkerRef.current = new maplibregl.Marker({ element: el, anchor: 'center' })
-      .setLngLat([route.userLocation[1], route.userLocation[0]])
-      .addTo(map);
 
     // Fit to route bounds
     const allLngs = coords.map(([lng]) => lng);
@@ -345,7 +368,7 @@ export default function MapView({
         const { latitude: lat, longitude: lng } = pos.coords;
         try {
           map.easeTo({ center: [lng, lat], duration: 500 });
-          if (userMarkerRef.current) userMarkerRef.current.setLngLat([lng, lat]);
+          if (myLocationMarkerRef.current) myLocationMarkerRef.current.setLngLat([lng, lat]);
         } catch { /* map destroyed */ }
         onUserPositionUpdateRef.current?.(lat, lng);
         if (haversineDistance(lat, lng, destLat, destLng) < 50) onArrivedRef.current?.();

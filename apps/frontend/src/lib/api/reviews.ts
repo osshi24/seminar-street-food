@@ -1,6 +1,7 @@
 import type { ReviewListResponse } from '../../types/review';
 
-const API = '/api/backend';
+import { getApiUrl } from './config';
+const API = getApiUrl();
 
 export async function listReviews(
   storeId: string,

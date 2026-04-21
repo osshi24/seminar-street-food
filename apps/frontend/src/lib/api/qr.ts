@@ -1,5 +1,5 @@
-// Browser-only (uses document.cookie); always use proxy path
-const API_URL = '/api/backend';
+import { getApiUrl } from './config';
+const API_URL = getApiUrl();
 
 export interface CreateQrResponse {
   id: number;

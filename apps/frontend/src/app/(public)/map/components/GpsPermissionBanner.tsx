@@ -61,7 +61,7 @@ export default function GpsPermissionBanner() {
 
   if (state === 'denied') {
     return (
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[40] w-[calc(100%-2rem)] max-w-sm">
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[600] w-[calc(100%-2rem)] max-w-sm">
         <div className="bg-white rounded-2xl shadow-lg border border-red-100 px-4 py-3 flex items-start gap-3">
           <span className="text-xl mt-0.5">📍</span>
           <div className="flex-1 min-w-0">
@@ -77,7 +77,7 @@ export default function GpsPermissionBanner() {
 
   // state === 'prompt'
   return (
-    <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[40] w-[calc(100%-2rem)] max-w-sm">
+    <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[600] w-[calc(100%-2rem)] max-w-sm">
       <div className="bg-white rounded-2xl shadow-lg border border-orange-100 px-4 py-3 flex items-center gap-3">
         <span className="text-2xl">📍</span>
         <div className="flex-1 min-w-0">

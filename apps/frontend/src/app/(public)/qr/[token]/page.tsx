@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+import { getApiUrl } from '../../../../lib/api/config';
+const API_URL = getApiUrl();
 
 interface QrResolveResponse {
   data?: { storeId?: string };
