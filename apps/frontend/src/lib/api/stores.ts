@@ -206,6 +206,11 @@ export async function updateStoreInfoById(storeId: string, dto: UpdateStoreInfoD
   return res.data;
 }
 
+export async function toggleStoreStatus(storeId: string, active: boolean) {
+  const res = await apiClient.patch(`/store-owner/stores/${storeId}/status`, { active });
+  return res.data;
+}
+
 export interface StoreDraft {
   id: string;
   storeId: string;

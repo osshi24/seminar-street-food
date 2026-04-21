@@ -86,6 +86,15 @@ export class StoresController {
     return this.storesService.updateStoreInfo(req.user.id, dto, storeId);
   }
 
+  @Patch('stores/:id/status')
+  async toggleStoreStatus(
+    @Request() req: { user: StoreOwnerAccount },
+    @Param('id', ParseUUIDPipe) storeId: string,
+    @Body() body: { active: boolean },
+  ) {
+    return this.storesService.toggleStoreStatus(req.user.id, storeId, !!body.active);
+  }
+
   @Put('stores/:id/draft')
   async saveDraftById(
     @Request() req: { user: StoreOwnerAccount },

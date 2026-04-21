@@ -157,6 +157,19 @@ export class StoresService {
     return this.storeRepo.save(store);
   }
 
+  async toggleStoreStatus(ownerId: string, storeId: string, active: boolean): Promise<Store> {
+    const store = await this.storeRepo.findOne({ where: { id: storeId, ownerId } });
+    if (!store) throw new NotFoundException('Store not found');
+    if (store.approvalStatus !== StoreApprovalStatus.APPROVED) {
+      throw new UnprocessableEntityException({
+        code: 'STORE_NOT_APPROVED',
+        message: 'Store must be approved before changing its visibility',
+      });
+    }
+    store.status = active ? StoreStatus.ACTIVE : StoreStatus.INACTIVE;
+    return this.storeRepo.save(store);
+  }
+
   private async findStoreOrThrow(ownerId: string, storeId?: string): Promise<Store> {
     const where = storeId ? { id: storeId, ownerId } : { ownerId };
     const store = await this.storeRepo.findOne({ where });

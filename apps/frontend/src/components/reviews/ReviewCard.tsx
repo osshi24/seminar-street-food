@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import StarRating from './StarRating';
+import Thumbnail from '../ui/thumbnail';
 import type { Review } from '../../types/review';
 import ReportModal from '../reports/ReportModal';
 
@@ -40,17 +41,16 @@ export default function ReviewCard({ review, storeId, isStoreOwner = false, stor
     <div className="rounded-lg border border-gray-100 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          {review.customer.avatarUrl ? (
-            <img
-              src={review.customer.avatarUrl}
-              alt={review.customer.displayName}
-              className="h-9 w-9 rounded-full object-cover"
-            />
-          ) : (
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-100 text-sm font-semibold text-orange-600">
-              {getInitials(review.customer.displayName)}
-            </div>
-          )}
+          <Thumbnail
+            src={review.customer.avatarUrl}
+            alt={review.customer.displayName}
+            className="h-9 w-9 rounded-full object-cover"
+            fallback={
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-100 text-sm font-semibold text-orange-600">
+                {getInitials(review.customer.displayName)}
+              </div>
+            }
+          />
           <div>
             <p className="text-sm font-medium text-gray-800">{review.customer.displayName}</p>
             <StarRating value={review.stars} readonly />
