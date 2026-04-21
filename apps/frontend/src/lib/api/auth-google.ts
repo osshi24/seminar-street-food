@@ -2,7 +2,7 @@ import { saveReturnUrl } from '../auth/customer-session';
 
 export function redirectToGoogleOAuth(returnUrl: string): void {
   saveReturnUrl(returnUrl);
-  const oauthUrl = process.env.NEXT_PUBLIC_GOOGLE_OAUTH_URL ?? 'http://localhost:3001/api/auth/google';
+  const oauthUrl = '/api/backend/auth/google';
   window.location.href = oauthUrl;
 }
 
@@ -13,7 +13,7 @@ export interface CustomerProfile {
 }
 
 export async function fetchCurrentCustomer(token: string): Promise<CustomerProfile> {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
+  const apiUrl = '/api/backend';
   const res = await fetch(`${apiUrl}/auth/me`, {
     headers: { Authorization: `Bearer ${token}` },
   });

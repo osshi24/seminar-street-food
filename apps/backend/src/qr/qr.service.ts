@@ -129,17 +129,25 @@ export class QrService {
   }
 
   async resolveToken(token: string): Promise<string | 'unavailable'> {
+    const result = await this.resolveTokenData(token);
+    if (result.type === 'unavailable') return 'unavailable';
+    return result.storeId;
+  }
+
+  async resolveTokenData(
+    token: string,
+  ): Promise<{ type: 'store'; storeId: string } | { type: 'unavailable' }> {
     const qr = await this.qrCodeRepository.findOne({
       where: { token },
       relations: ['store'],
     });
 
-    if (!qr || !qr.isActive) return 'unavailable';
+    if (!qr || !qr.isActive) return { type: 'unavailable' };
 
     const store = qr.store;
-    if (!store || store.status === StoreStatus.INACTIVE) return 'unavailable';
+    if (!store || store.status === StoreStatus.INACTIVE) return { type: 'unavailable' };
 
-    return store.id;
+    return { type: 'store', storeId: store.id };
   }
 
   private async verifyOwnership(storeId: string, ownerId: string): Promise<Store> {

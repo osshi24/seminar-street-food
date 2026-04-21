@@ -1,7 +1,7 @@
 import type { ReportReason } from '../../types/report';
 import apiClient from './client';
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
+const API = '/api/backend';
 
 export async function fetchReportReasons(): Promise<ReportReason[]> {
   const res = await fetch(`${API}/report-reasons`);

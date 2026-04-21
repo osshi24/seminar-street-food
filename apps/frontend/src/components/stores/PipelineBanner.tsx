@@ -16,7 +16,8 @@ export default function PipelineBanner({ storeId, pipelineStatus, lang }: Pipeli
   useEffect(() => {
     if (pipelineStatus !== 'running' && pipelineStatus !== 'pending') return;
 
-    const socket = io(process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3001');
+    // Connect to current origin; Next.js rewrites /socket.io/* to the backend
+    const socket = io({ path: '/socket.io', transports: ['polling', 'websocket'] });
     socket.emit('joinStore', storeId);
 
     socket.on('commentary:updated', (payload: { pipelineStatus: string }) => {

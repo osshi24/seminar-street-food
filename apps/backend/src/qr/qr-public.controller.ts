@@ -6,6 +6,11 @@ import { QrService } from './qr.service';
 export class QrPublicController {
   constructor(private readonly qrService: QrService) {}
 
+  @Get(':token/resolve')
+  async resolveQrJson(@Param('token') token: string) {
+    return this.qrService.resolveTokenData(token);
+  }
+
   @Get(':token')
   async resolveQr(
     @Param('token') token: string,

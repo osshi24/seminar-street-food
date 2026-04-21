@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { useSearchParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { getPublicPins } from '../../../lib/api/map';
 import type { PublicPin } from '../../../lib/api/map';
@@ -47,10 +48,12 @@ function boundaryCenter(coords: { lat: number; lng: number }[]) {
 
 export default function MapPage() {
   const { t } = useTranslation();
+  const searchParams = useSearchParams();
   const [pins, setPins] = useState<PublicPin[]>([]);
   const [boundary, setBoundary] = useState<Awaited<ReturnType<typeof getPublicPins>>['boundary']>(null);
   const [selectedPin, setSelectedPin] = useState<PublicPin | null>(null);
   const [boundaryQr, setBoundaryQr] = useState<BoundaryQrData | null>(null);
+  const pinsLoadedRef = useRef(false);
 
   // Routing
   const [route, setRoute] = useState<RouteDisplay | null>(null);
@@ -71,16 +74,24 @@ export default function MapPage() {
   // Stores dismissed by user — don't auto-reopen
   const dismissedRef = useRef<Set<string>>(new Set());
 
+  // Load pins once
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const lat = params.get('lat');
-    const lng = params.get('lng');
+    getPublicPins().then((d) => {
+      setPins(d.pins);
+      setBoundary(d.boundary);
+      pinsLoadedRef.current = true;
+    }).catch(() => {});
+  }, []);
+
+  // React to URL param changes (initial load + after QR scan navigation)
+  useEffect(() => {
+    const lat = searchParams.get('lat');
+    const lng = searchParams.get('lng');
     if (lat && lng && !isNaN(Number(lat)) && !isNaN(Number(lng))) {
       setSharedLocation({ lat: Number(lat), lng: Number(lng) });
     }
 
-    // Boundary QR
-    const boundaryQrId = params.get('boundaryQrId');
+    const boundaryQrId = searchParams.get('boundaryQrId');
     if (boundaryQrId) {
       const raw = sessionStorage.getItem(`boundary_qr_${boundaryQrId}`);
       if (raw) {
@@ -92,19 +103,30 @@ export default function MapPage() {
       }
     }
 
-    const storeId = params.get('storeId');
-    getPublicPins().then((d) => {
-      setPins(d.pins);
-      setBoundary(d.boundary);
-      if (storeId) {
-        const target = d.pins.find((p) => p.storeId === storeId);
+    const storeId = searchParams.get('storeId');
+    if (storeId) {
+      // If pins already loaded, open immediately; otherwise wait
+      const openPin = (pinList: PublicPin[]) => {
+        const target = pinList.find((p) => p.storeId === storeId);
         if (target) {
+          dismissedRef.current.delete(storeId);
           setSelectedPin(target);
           setFlyTo({ lat: Number(target.latitude), lng: Number(target.longitude) });
         }
+      };
+      if (pinsLoadedRef.current && pins.length > 0) {
+        openPin(pins);
+      } else {
+        getPublicPins().then((d) => {
+          setPins(d.pins);
+          setBoundary(d.boundary);
+          pinsLoadedRef.current = true;
+          openPin(d.pins);
+        }).catch(() => {});
       }
-    }).catch(() => {});
-  }, []);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const handleDirections = useCallback(async (destLat: number, destLng: number): Promise<boolean> => {
     setIsRouting(true);
