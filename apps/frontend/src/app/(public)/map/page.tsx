@@ -58,6 +58,10 @@ export default function MapPage() {
   const [isRouting, setIsRouting] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
 
+  // Navigation
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [arrived, setArrived] = useState(false);
+
   // Fly-to (search / QR)
   const [flyTo, setFlyTo] = useState<{ lat: number; lng: number } | null>(null);
 
@@ -102,7 +106,7 @@ export default function MapPage() {
     }).catch(() => {});
   }, []);
 
-  const handleDirections = useCallback(async (destLat: number, destLng: number) => {
+  const handleDirections = useCallback(async (destLat: number, destLng: number): Promise<boolean> => {
     setIsRouting(true);
     setRouteError(null);
     try {
@@ -130,13 +134,31 @@ export default function MapPage() {
         duration: formatDuration(result.durationSeconds),
         storeName: selectedPin?.storeName ?? boundaryQr?.name ?? '',
       });
+      return true;
     } catch (err) {
       setRouteError((err as Error).message);
       setTimeout(() => setRouteError(null), 8000);
+      return false;
     } finally {
       setIsRouting(false);
     }
   }, [selectedPin, boundaryQr, t]);
+
+  const handleStartNavigation = useCallback(async (destLat: number, destLng: number) => {
+    let ok = !!route;
+    if (!ok) ok = await handleDirections(destLat, destLng);
+    if (ok) {
+      setArrived(false);
+      setIsNavigating(true);
+    }
+  }, [route, handleDirections]);
+
+  function handleStopNavigation() {
+    setIsNavigating(false);
+    setArrived(false);
+    setRoute(null);
+    setRouteInfo(null);
+  }
 
   function clearRoute() {
     setRoute(null);
@@ -155,6 +177,9 @@ export default function MapPage() {
         selectedPinId={selectedPin?.storeId ?? null}
         route={route}
         flyTo={flyTo}
+        tracking={isNavigating && !arrived}
+        onArrived={() => setArrived(true)}
+        onUserPositionUpdate={(pos) => setFlyTo({ lat: pos[0], lng: pos[1] })}
         onPinSelect={(pin) => { setBoundaryQr(null); setSelectedPin(pin); }}
         onMapClick={() => setSelectedPin(null)}
       />
@@ -183,8 +208,8 @@ export default function MapPage() {
         </div>
       )}
 
-      {/* Route info bar (shown when there's a route but no store sheet open) */}
-      {routeInfo && !selectedPin && !boundaryQr && (
+      {/* Route info bar (shown when there's a route but no store sheet open and not navigating) */}
+      {routeInfo && !selectedPin && !boundaryQr && !isNavigating && (
         <div className="absolute bottom-24 sm:bottom-4 left-3 right-3 z-[400]">
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 px-4 py-3 flex items-center gap-3">
             <div className="flex-1 min-w-0">
@@ -247,9 +272,15 @@ export default function MapPage() {
         onClose={() => {
           if (selectedPin) dismissedRef.current.add(selectedPin.storeId);
           setSelectedPin(null);
+          if (isNavigating) handleStopNavigation();
         }}
         onDirections={handleDirections}
+        onStartNavigation={handleStartNavigation}
+        onStopNavigation={handleStopNavigation}
         isRouting={isRouting}
+        routeInfo={routeInfo ? { distance: routeInfo.distance, duration: routeInfo.duration } : null}
+        isNavigating={isNavigating}
+        arrived={arrived}
       />
     </div>
   );

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
-import { initLeafletIcons } from '../../../../../lib/map/leaflet-config';
 
 interface Coordinate {
   lat: number;
@@ -31,45 +30,76 @@ export default function LocationMapPicker({
 
   useEffect(() => {
     if (typeof window === 'undefined' || !mapRef.current) return;
-    if (mapInstanceRef.current) return; // Already initialized
+    if (mapInstanceRef.current) return;
 
-    initLeafletIcons();
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const L = require('leaflet') as typeof import('leaflet');
+    const maplibregl = require('maplibre-gl');
 
-    const map = L.map(mapRef.current).setView([center.lat, center.lng], 16);
+    const markerPos = initialMarker ?? center;
+
+    const map = new maplibregl.Map({
+      container: mapRef.current,
+      style: 'https://tiles.openfreemap.org/styles/liberty',
+      center: [markerPos.lng, markerPos.lat],
+      zoom: 16,
+    });
     mapInstanceRef.current = map;
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-    }).addTo(map);
+    // Draggable marker using a custom element
+    const el = document.createElement('div');
+    el.style.cssText = `
+      width: 28px; height: 28px;
+      background: #f97316; border: 3px solid white;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+      cursor: grab;
+    `;
 
-    // Draggable marker
-    const markerLatLng = initialMarker
-      ? L.latLng(initialMarker.lat, initialMarker.lng)
-      : L.latLng(center.lat, center.lng);
-
-    const marker = L.marker(markerLatLng, { draggable: true }).addTo(map);
+    const marker = new maplibregl.Marker({ element: el, draggable: true, anchor: 'bottom' })
+      .setLngLat([markerPos.lng, markerPos.lat])
+      .addTo(map);
     markerRef.current = marker;
 
     marker.on('dragend', () => {
-      const pos = marker.getLatLng();
-      handleCoordChange(pos.lat, pos.lng);
+      const { lng, lat } = marker.getLngLat();
+      handleCoordChange(lat, lng);
     });
 
-    // Click to move marker
-    map.on('click', (e: import('leaflet').LeafletMouseEvent) => {
-      marker.setLatLng(e.latlng);
-      handleCoordChange(e.latlng.lat, e.latlng.lng);
+    map.on('click', (e: { lngLat: { lat: number; lng: number } }) => {
+      marker.setLngLat([e.lngLat.lng, e.lngLat.lat]);
+      handleCoordChange(e.lngLat.lat, e.lngLat.lng);
     });
 
-    // Draw boundary polygon if provided
-    if (boundary && boundary.length >= 3) {
-      L.polygon(
-        boundary.map((c) => [c.lat, c.lng] as [number, number]),
-        { color: '#f97316', fillOpacity: 0.1, weight: 2 },
-      ).addTo(map);
-    }
+    map.once('load', () => {
+      if (boundary && boundary.length >= 3) {
+        map.addSource('boundary', {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            geometry: {
+              type: 'Polygon',
+              coordinates: [
+                [...boundary.map((c) => [c.lng, c.lat]), [boundary[0].lng, boundary[0].lat]],
+              ],
+            },
+            properties: {},
+          },
+        });
+        map.addLayer({
+          id: 'boundary-fill',
+          type: 'fill',
+          source: 'boundary',
+          paint: { 'fill-color': '#f97316', 'fill-opacity': 0.1 },
+        });
+        map.addLayer({
+          id: 'boundary-line',
+          type: 'line',
+          source: 'boundary',
+          paint: { 'line-color': '#f97316', 'line-width': 2 },
+        });
+      }
+    });
 
     return () => {
       map.remove();
