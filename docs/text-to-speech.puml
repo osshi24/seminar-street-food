@@ -1,0 +1,44 @@
+@startuml text-to-speech
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 8
+skinparam sequenceParticipantBorderColor #555
+skinparam sequenceParticipantBackgroundColor #FFF
+skinparam noteBorderColor #888
+skinparam noteBackgroundColor #FFFDE7
+
+title Text-to-Speech: Phát thuyết minh gian hàng
+
+actor User
+participant "CommentaryPlayer\n(.tsx)" as UI
+participant "useCommentary\n(React Query hook)" as Hook
+participant "PublicStores\nController" as API
+participant "PublicStores\nService" as Svc
+database "Postgres" as DB
+participant "Web Speech API\n(SpeechSynthesis)" as TTS
+
+User -> UI : Click ▶ (play)
+UI -> Hook : useCommentary(storeId, lang)
+
+note right of Hook
+  staleTime 30s
+  cache theo (storeId, lang)
+end note
+
+Hook -> API : GET /stores/{storeId}/commentary?lang={lang}
+API -> Svc : getCommentary(storeId, lang)
+Svc -> DB : query Commentary + CommentaryTranslation
+DB --> Svc : translatedText, audioUrl, pipelineStatus
+Svc --> API : { translatedText, audioUrl, status }
+API --> Hook : response
+Hook --> UI : data
+
+UI -> TTS : speakText(translatedText)
+note right of TTS
+  TTS chạy 100% trên client
+  (không gọi backend TTS)
+end note
+TTS --> User : 🔊 phát âm thanh
+
+@enduml

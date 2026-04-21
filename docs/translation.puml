@@ -1,0 +1,72 @@
+@startuml translation
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 8
+skinparam sequenceParticipantBorderColor #555
+skinparam sequenceParticipantBackgroundColor #FFF
+skinparam noteBorderColor #888
+skinparam noteBackgroundColor #FFFDE7
+
+title Translation Flow: Đa ngôn ngữ thuyết minh
+
+actor "Store Owner" as Owner
+actor "Customer" as User
+participant "Commentary\nService" as CSvc
+queue "BullMQ\nQueue" as Queue
+participant "Commentary\nProcessor\n(Worker)" as Worker
+participant "Translation\nService" as TSvc
+cloud "Google Gemini API\n(gemini-flash-latest)" as Gemini
+cloud "MyMemory API\n(fallback)" as MyMem
+database Postgres
+participant "Commentary\nGateway (WS)" as WS
+
+== 1. Store owner tạo/cập nhật commentary ==
+
+Owner -> CSvc : createCommentary(storeId, sourceText)
+CSvc -> Postgres : save Commentary\n(pipelineStatus = PENDING)
+CSvc -> Queue : add('translate',\n{ commentaryId, storeId })
+CSvc --> Owner : 201 (đang xử lý nền)
+
+== 2. Worker xử lý translate cho từng ngôn ngữ ==
+
+Queue -> Worker : process(job)
+
+loop với mỗi lang ∈ [en, fr, zh, ja, ko, th]
+    Worker -> Postgres : check translation đã có?
+
+    alt chưa có
+        Worker -> TSvc : translate(text, lang)
+
+        TSvc -> Gemini : translateWithGemini(text, lang)
+
+        alt Gemini OK
+            Gemini --> TSvc : translatedText
+        else Gemini lỗi
+            TSvc -> MyMem : translateWithMyMemory(text, lang)
+            MyMem --> TSvc : translatedText (fallback)
+        end
+
+        TSvc --> Worker : translatedText
+        Worker -> Postgres : INSERT CommentaryTranslation
+        Worker -> Worker : sleep 1500ms\n(rate limit)
+    end
+end
+
+Worker -> Postgres : update Commentary.pipelineStatus = COMPLETED
+Worker -> WS : emit('commentary:updated',\n{ commentaryId, successCount })
+WS --> Owner : socket notification
+
+== 3. Customer xem theo ngôn ngữ chọn ==
+
+User -> CSvc : GET /stores/{id}/commentary?lang=en
+CSvc -> Postgres : query CommentaryTranslation\nWHERE commentaryId AND lang
+Postgres --> CSvc : translatedText (hoặc null)
+
+alt có bản dịch
+    CSvc --> User : { translatedText, audioUrl }
+else không có
+    CSvc --> User : fallback về bản tiếng Việt
+end
+
+@enduml

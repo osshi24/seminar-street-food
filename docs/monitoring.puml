@@ -1,0 +1,60 @@
+@startuml monitoring
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 8
+skinparam sequenceParticipantBorderColor #555
+skinparam sequenceParticipantBackgroundColor #FFF
+skinparam noteBorderColor #888
+skinparam noteBackgroundColor #FFFDE7
+
+title Admin Monitoring: Theo dõi user online realtime
+
+actor Admin
+participant "OnlinePresence\nCard (.tsx)" as UI
+participant "AdminMonitoring\nController" as REST
+participant "PresenceGateway\n(WebSocket)" as WS
+participant "PresenceService" as Svc
+collections "connections Map\n(in-memory)" as Mem
+collections "publicVisitors Map\n(TTL 45s)" as Pub
+
+== 1. Lần đầu mở dashboard (REST snapshot) ==
+
+Admin -> UI : mở /admin
+UI -> REST : GET /admin/monitoring/presence
+REST -> Svc : snapshot()
+Svc -> Mem : đọc connections
+Svc -> Pub : countAlivePublic()
+Mem --> Svc : connections list
+Pub --> Svc : số visitor còn TTL
+Svc --> REST : { uniqueUsers, publicVisitors, byRole, ts }
+REST --> UI : snapshot ban đầu
+UI --> Admin : hiển thị số online
+
+== 2. Realtime updates qua WebSocket ==
+
+UI -> WS : io('/admin/monitoring').connect()
+
+note over WS, Svc
+  Khi user khác login/logout:
+  - WS handleConnection → add(conn)
+  - WS handleDisconnect → remove(socketId)
+end note
+
+WS -> Svc : add(conn) hoặc remove(socketId)
+Svc -> Svc : notify() — tính snapshot mới
+Svc -> WS : emit('presence:updated', snap)
+WS --> UI : socket event
+UI --> Admin : cập nhật số online (animation)
+
+== 3. Public visitor heartbeat (mỗi 30s) ==
+
+note over Svc
+  usePublicPresence hook
+  POST /public/presence/heartbeat
+end note
+
+Svc -> Pub : pingPublic(visitorId)
+Pub -> Pub : refresh lastSeenAt
+
+@enduml

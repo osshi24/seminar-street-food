@@ -75,7 +75,7 @@ export class PresenceService implements OnModuleInit, OnModuleDestroy {
     }
     return {
       total: this.connections.size,
-      byRole,
+      byRole, //{ admin: 1, store_owner: 3, customer: 0, anonymous: 0 },
       uniqueUsers: uniqueUsers.size,
       publicVisitors: this.countAlivePublic(),
       ts: new Date().toISOString(),
