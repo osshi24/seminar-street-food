@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Script from 'next/script';
 import './globals.css';
 import Providers from '../components/Providers';
 
@@ -16,6 +17,15 @@ export default function RootLayout({
     <html lang="vi">
       <body>
         <Providers>{children}</Providers>
+        {process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID && (
+          <Script
+            async
+            src="/umami/script.js"
+            data-website-id={process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID}
+            data-host-url="/umami"
+            strategy="afterInteractive"
+          />
+        )}
       </body>
     </html>
   );
