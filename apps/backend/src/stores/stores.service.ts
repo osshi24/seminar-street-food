@@ -127,6 +127,23 @@ export class StoresService {
     return this.storeRepo.save(store);
   }
 
+  async requestDeletion(ownerId: string, storeId: string): Promise<void> {
+    const store = await this.storeRepo.findOne({ where: { id: storeId, ownerId } });
+    if (!store) throw new NotFoundException('Store not found');
+    if (store.deletionRequestedAt) {
+      throw new ConflictException({ code: 'DELETION_ALREADY_REQUESTED', message: 'Deletion already requested' });
+    }
+    store.deletionRequestedAt = new Date();
+    await this.storeRepo.save(store);
+  }
+
+  async revokeDeletionRequest(ownerId: string, storeId: string): Promise<void> {
+    const store = await this.storeRepo.findOne({ where: { id: storeId, ownerId } });
+    if (!store) throw new NotFoundException('Store not found');
+    store.deletionRequestedAt = null;
+    await this.storeRepo.save(store);
+  }
+
   async updateStoreInfo(ownerId: string, dto: UpdateStoreInfoDto, storeId?: string): Promise<Store> {
     const where = storeId ? { id: storeId, ownerId } : { ownerId };
     const store = await this.storeRepo.findOne({ where });

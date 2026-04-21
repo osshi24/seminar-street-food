@@ -46,6 +46,7 @@ export class AdminCatalogStoresService {
       'store.id AS id',
       'store.name AS name',
       'store.status AS status',
+      'store.deletion_requested_at AS "deletionRequestedAt"',
       'store.created_at AS "createdAt"',
       'owner.id AS "ownerId"',
       'owner.email AS "ownerEmail"',
@@ -58,6 +59,7 @@ export class AdminCatalogStoresService {
       id: r.id,
       name: r.name,
       status: r.status,
+      deletionRequestedAt: r.deletionRequestedAt ?? null,
       owner: {
         id: r.ownerId,
         email: r.ownerEmail,
@@ -131,6 +133,7 @@ export class AdminCatalogStoresService {
       'store.phone AS phone',
       'store.address AS address',
       'store.opening_hours AS "openingHours"',
+      'store.deletion_requested_at AS "deletionRequestedAt"',
       'store.created_at AS "createdAt"',
       'store.updated_at AS "updatedAt"',
       'owner.id AS "ownerId"',
@@ -162,8 +165,24 @@ export class AdminCatalogStoresService {
         phone: row.ownerPhone,
         status: row.ownerStatus,
       },
+      deletionRequestedAt: row.deletionRequestedAt ?? null,
       deleteImpact: impact,
     };
+  }
+
+  async approveDeletion(storeId: string): Promise<void> {
+    const store = await this.storeRepo.findOne({ where: { id: storeId } });
+    if (!store) throw new NotFoundException({ code: 'STORE_NOT_FOUND', message: 'Store not found' });
+    store.status = StoreStatus.INACTIVE;
+    store.deletionRequestedAt = null;
+    await this.storeRepo.save(store);
+  }
+
+  async rejectDeletion(storeId: string): Promise<void> {
+    const store = await this.storeRepo.findOne({ where: { id: storeId } });
+    if (!store) throw new NotFoundException({ code: 'STORE_NOT_FOUND', message: 'Store not found' });
+    store.deletionRequestedAt = null;
+    await this.storeRepo.save(store);
   }
 
   async remove(storeId: string, confirmed: boolean) {

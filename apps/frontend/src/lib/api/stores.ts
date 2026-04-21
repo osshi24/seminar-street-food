@@ -135,7 +135,56 @@ export async function deleteStoreImage(imageId: string) {
   return res.data;
 }
 
+// --- Per-store menu items ---
+
+export async function getMenuItemsByStoreId(storeId: string) {
+  const res = await apiClient.get(`/store-owner/stores/${storeId}/menu-items`);
+  return res.data;
+}
+
+export async function addMenuItemByStoreId(storeId: string, dto: CreateMenuItemDto) {
+  const res = await apiClient.post(`/store-owner/stores/${storeId}/menu-items`, dto);
+  return res.data;
+}
+
+export async function updateMenuItemByStoreId(storeId: string, id: string, dto: UpdateMenuItemDto) {
+  const res = await apiClient.put(`/store-owner/stores/${storeId}/menu-items/${id}`, dto);
+  return res.data;
+}
+
+export async function removeMenuItemByStoreId(storeId: string, id: string) {
+  const res = await apiClient.delete(`/store-owner/stores/${storeId}/menu-items/${id}`);
+  return res.data;
+}
+
+export async function generateMenuItemImageUploadUrlByStoreId(
+  storeId: string,
+  menuItemId: string,
+  contentType: string,
+) {
+  const res = await apiClient.post<{ data: { presignedUrl: string; imageUrl: string } }>(
+    `/store-owner/stores/${storeId}/menu-items/${menuItemId}/image`,
+    { contentType },
+  );
+  return res.data.data ?? res.data;
+}
+
+export async function deleteMenuItemImageByStoreId(storeId: string, menuItemId: string) {
+  const res = await apiClient.delete(`/store-owner/stores/${storeId}/menu-items/${menuItemId}/image`);
+  return res.data;
+}
+
 // --- Multiple Stores API ---
+
+export async function requestStoreDeletion(storeId: string) {
+  const res = await apiClient.post(`/store-owner/stores/${storeId}/deletion-request`);
+  return res.data;
+}
+
+export async function revokeStoreDeletionRequest(storeId: string) {
+  const res = await apiClient.delete(`/store-owner/stores/${storeId}/deletion-request`);
+  return res.data;
+}
 
 export async function getMyStores() {
   const res = await apiClient.get('/store-owner/stores');

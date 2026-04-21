@@ -6,6 +6,7 @@ export interface AdminStoreListItem {
   id: string;
   name: string;
   status: AdminStoreStatus;
+  deletionRequestedAt: string | null;
   owner: {
     id: string;
     email: string;
@@ -56,6 +57,7 @@ export interface AdminStoreDetail {
   id: string;
   name: string;
   status: AdminStoreStatus;
+  deletionRequestedAt: string | null;
   description: string | null;
   phone: string | null;
   address: string | null;
@@ -84,5 +86,13 @@ export async function getAdminStore(id: string): Promise<{ data: AdminStoreDetai
 
 export async function deleteStore(id: string, confirmed?: boolean): Promise<void> {
   await apiClient.delete(`/admin/stores/${id}`, { data: { confirmed: Boolean(confirmed) } });
+}
+
+export async function approveDeletion(id: string): Promise<void> {
+  await apiClient.patch(`/admin/stores/${id}/approve-deletion`);
+}
+
+export async function rejectDeletion(id: string): Promise<void> {
+  await apiClient.patch(`/admin/stores/${id}/reject-deletion`);
 }
 

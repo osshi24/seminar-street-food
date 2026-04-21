@@ -47,6 +47,18 @@ export class AdminCatalogStoresController {
     return this.adminCatalogStoresService.getDeleteImpact(id);
   }
 
+  @Patch(':id/approve-deletion')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async approveDeletion(@Param('id', ParseUUIDPipe) id: string) {
+    await this.adminCatalogStoresService.approveDeletion(id);
+  }
+
+  @Patch(':id/reject-deletion')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async rejectDeletion(@Param('id', ParseUUIDPipe) id: string) {
+    await this.adminCatalogStoresService.rejectDeletion(id);
+  }
+
   @Delete(':id')
   @Throttle({ global: { limit: 30, ttl: 60000 } })
   @HttpCode(HttpStatus.NO_CONTENT)

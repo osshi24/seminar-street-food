@@ -216,7 +216,14 @@ export default function StoresClient() {
                         <p className="mt-0.5 text-xs text-slate-500">{store.owner.email || '—'}</p>
                       </td>
                       <td className="px-4 py-3">
-                        <StoreStatusBadge status={store.status} />
+                        <div className="flex flex-col gap-1">
+                          <StoreStatusBadge status={store.status} />
+                          {store.deletionRequestedAt && (
+                            <span className="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                              Yêu cầu xóa
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600">
                         {new Date(store.createdAt).toLocaleDateString('vi-VN')}
