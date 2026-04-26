@@ -3,10 +3,20 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import {
+  ArrowLeft,
+  Store as StoreIcon,
+  AlertTriangle,
+  User,
+  Wrench,
+} from 'lucide-react';
 import DeleteStoreConfirmDialog from '../../../../../components/admin/DeleteStoreConfirmDialog';
 import AdminPageHeader from '../../../../../components/admin/common/AdminPageHeader';
-import InfoCard from '../../../../../components/admin/stores/InfoCard';
+import AdminInfoCard from '../../../../../components/admin/common/AdminInfoCard';
 import StoreStatusBadge from '../../../../../components/admin/stores/StoreStatusBadge';
+import { Badge } from '../../../../../components/ui/badge';
+import { Button } from '../../../../../components/ui/button';
+import { Card, CardContent } from '../../../../../components/ui/card';
 import {
   activateStore,
   deactivateStore,
@@ -25,13 +35,9 @@ export default function AdminStoreDetailPage() {
   const [actionLoading, setActionLoading] = useState(false);
 
   const load = useCallback(async () => {
-    if (!id) {
-      return;
-    }
-
+    if (!id) return;
     setLoading(true);
     setError(null);
-
     try {
       const res = await getAdminStore(id);
       setData(res.data);
@@ -50,10 +56,7 @@ export default function AdminStoreDetailPage() {
   }, [load]);
 
   const toggleStatus = async () => {
-    if (!data) {
-      return;
-    }
-
+    if (!data) return;
     setActionLoading(true);
     try {
       if (data.status === 'active') {
@@ -69,11 +72,11 @@ export default function AdminStoreDetailPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="h-40 animate-pulse rounded-[32px] bg-white/70" />
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="h-80 animate-pulse rounded-[32px] bg-white/70 lg:col-span-2" />
-          <div className="h-80 animate-pulse rounded-[32px] bg-white/70" />
+      <div className="space-y-5">
+        <div className="h-24 animate-pulse rounded-xl bg-white" />
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="h-80 animate-pulse rounded-xl bg-white lg:col-span-2" />
+          <div className="h-80 animate-pulse rounded-xl bg-white" />
         </div>
       </div>
     );
@@ -81,204 +84,198 @@ export default function AdminStoreDetailPage() {
 
   if (error) {
     return (
-      <div className="rounded-[28px] border border-rose-200 bg-rose-50 p-6 text-rose-700">
-        <p className="font-semibold">Không thể tải chi tiết gian hàng</p>
-        <p className="mt-2">{error}</p>
-        <Link href="/admin/stores" className="mt-4 inline-flex text-sm font-semibold text-rose-700 underline">
-          Quay lại danh sách
-        </Link>
-      </div>
+      <Card className="border-rose-200 bg-rose-50">
+        <CardContent className="p-5">
+          <p className="font-semibold text-rose-700">Không thể tải chi tiết gian hàng</p>
+          <p className="mt-2 text-sm text-rose-600">{error}</p>
+          <Link
+            href="/admin/stores"
+            className="mt-4 inline-flex text-sm font-medium text-rose-700 hover:underline"
+          >
+            Quay lại danh sách
+          </Link>
+        </CardContent>
+      </Card>
     );
   }
 
   if (!data) {
     return (
-      <div className="rounded-[28px] border border-slate-200 bg-white p-6 text-slate-600">
-        <p className="font-semibold text-slate-900">Không tìm thấy gian hàng này.</p>
-        <Link href="/admin/stores" className="mt-4 inline-flex text-sm font-semibold text-cyan-700 underline">
-          Quay lại danh sách
-        </Link>
-      </div>
+      <Card>
+        <CardContent className="p-5">
+          <p className="font-semibold text-slate-900">Không tìm thấy gian hàng này.</p>
+          <Link
+            href="/admin/stores"
+            className="mt-4 inline-flex text-sm font-medium text-cyan-700 hover:underline"
+          >
+            Quay lại danh sách
+          </Link>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <Link
-          href="/admin/stores"
-          className="inline-flex items-center gap-2 text-sm font-semibold text-cyan-700 transition hover:text-cyan-800"
-        >
-          <span aria-hidden>←</span>
-          Quay lại danh sách gian hàng
-        </Link>
-      </div>
+    <div className="space-y-5">
+      <Link
+        href="/admin/stores"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Quay lại danh sách
+      </Link>
 
       <AdminPageHeader
-        badge="Store detail"
+        badge="Chi tiết gian hàng"
         title={data.name}
-        description="Xem nhanh thông tin vận hành, dữ liệu liên quan và các rủi ro phát sinh trước khi tạm ẩn hoặc xóa gian hàng."
-        meta={`Mã gian hàng: ${data.id}`}
-        action={
-          <div className="flex items-center gap-3">
-            <StoreStatusBadge status={data.status} size="md" />
-          </div>
-        }
+        description="Xem nhanh thông tin vận hành và rủi ro phát sinh trước khi tạm ẩn hoặc xóa."
+        meta={`Mã: ${data.id}`}
+        action={<StoreStatusBadge status={data.status} />}
       />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          <InfoCard title="Thông tin gian hàng" icon="🏪">
-            <dl className="space-y-5">
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="space-y-4 lg:col-span-2">
+          <AdminInfoCard title="Thông tin gian hàng" icon={StoreIcon}>
+            <dl className="space-y-4">
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Mô tả
-                </dt>
-                <dd className="mt-2 whitespace-pre-wrap rounded-[24px] bg-slate-50 p-4 text-sm leading-6 text-slate-700">
+                <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Mô tả</dt>
+                <dd className="mt-1.5 whitespace-pre-wrap rounded-md bg-slate-50 p-3 text-sm leading-6 text-slate-700">
                   {data.description ?? '—'}
                 </dd>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
                     Điện thoại
                   </dt>
-                  <dd className="mt-2 text-sm text-slate-900">{data.phone ?? '—'}</dd>
+                  <dd className="mt-1 text-sm text-slate-900">{data.phone ?? '—'}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
                     Giờ mở cửa
                   </dt>
-                  <dd className="mt-2 text-sm text-slate-900">{data.openingHours ?? '—'}</dd>
+                  <dd className="mt-1 text-sm text-slate-900">{data.openingHours ?? '—'}</dd>
                 </div>
               </div>
 
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Địa chỉ
-                </dt>
-                <dd className="mt-2 text-sm leading-6 text-slate-700">{data.address ?? '—'}</dd>
+                <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Địa chỉ</dt>
+                <dd className="mt-1 text-sm leading-6 text-slate-700">{data.address ?? '—'}</dd>
               </div>
 
-              <div className="grid gap-4 border-t border-slate-200 pt-5 sm:grid-cols-2">
+              <div className="grid gap-4 border-t border-slate-100 pt-4 sm:grid-cols-2">
                 <div>
-                  <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
                     Tạo lúc
                   </dt>
-                  <dd className="mt-2 text-sm text-slate-700">
+                  <dd className="mt-1 text-sm text-slate-700">
                     {new Date(data.createdAt).toLocaleString('vi-VN')}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
                     Cập nhật
                   </dt>
-                  <dd className="mt-2 text-sm text-slate-700">
+                  <dd className="mt-1 text-sm text-slate-700">
                     {new Date(data.updatedAt).toLocaleString('vi-VN')}
                   </dd>
                 </div>
               </div>
             </dl>
-          </InfoCard>
+          </AdminInfoCard>
 
-          <InfoCard title="Phân tích ảnh hưởng khi xóa" icon="⚠️">
-            <p className="text-sm leading-6 text-slate-500">
-              Nếu xóa gian hàng này, các dữ liệu liên quan bên dưới sẽ bị ảnh hưởng trực tiếp.
+          <AdminInfoCard title="Phân tích ảnh hưởng khi xóa" icon={AlertTriangle}>
+            <p className="text-sm text-slate-500">
+              Nếu xóa gian hàng, các dữ liệu liên quan dưới đây sẽ bị ảnh hưởng.
             </p>
-
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-[24px] border border-amber-200 bg-amber-50 p-4">
-                <div className="text-3xl font-semibold text-amber-700">{data.deleteImpact.reviewCount}</div>
-                <div className="mt-2 text-sm font-medium text-amber-700">Đánh giá</div>
-              </div>
-              <div className="rounded-[24px] border border-rose-200 bg-rose-50 p-4">
-                <div className="text-3xl font-semibold text-rose-700">{data.deleteImpact.reportCount}</div>
-                <div className="mt-2 text-sm font-medium text-rose-700">Báo cáo</div>
-              </div>
-              <div className="rounded-[24px] border border-cyan-200 bg-cyan-50 p-4">
-                <div className="text-3xl font-semibold text-cyan-700">{data.deleteImpact.locationPinCount}</div>
-                <div className="mt-2 text-sm font-medium text-cyan-700">Ghim bản đồ</div>
-              </div>
-              <div className="rounded-[24px] border border-violet-200 bg-violet-50 p-4">
-                <div className="text-3xl font-semibold text-violet-700">
-                  {data.deleteImpact.pendingDraft ? '1' : '0'}
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {[
+                {
+                  count: data.deleteImpact.reviewCount,
+                  label: 'Đánh giá',
+                  color: 'border-amber-200 bg-amber-50 text-amber-700',
+                },
+                {
+                  count: data.deleteImpact.reportCount,
+                  label: 'Báo cáo',
+                  color: 'border-rose-200 bg-rose-50 text-rose-700',
+                },
+                {
+                  count: data.deleteImpact.locationPinCount,
+                  label: 'Ghim bản đồ',
+                  color: 'border-cyan-200 bg-cyan-50 text-cyan-700',
+                },
+                {
+                  count: data.deleteImpact.pendingDraft ? 1 : 0,
+                  label: 'Bản nháp chờ duyệt',
+                  color: 'border-violet-200 bg-violet-50 text-violet-700',
+                },
+              ].map(({ count, label, color }) => (
+                <div key={label} className={`rounded-lg border p-3 ${color}`}>
+                  <div className="text-2xl font-semibold">{count}</div>
+                  <div className="mt-0.5 text-xs font-medium">{label}</div>
                 </div>
-                <div className="mt-2 text-sm font-medium text-violet-700">Bản nháp chờ duyệt</div>
-              </div>
+              ))}
             </div>
-          </InfoCard>
+          </AdminInfoCard>
         </div>
 
-        <div className="space-y-6">
-          <InfoCard title="Chủ gian hàng" icon="👤">
-            <dl className="space-y-4">
+        <div className="space-y-4">
+          <AdminInfoCard title="Chủ gian hàng" icon={User}>
+            <dl className="space-y-3">
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Tên
-                </dt>
-                <dd className="mt-2 text-sm font-medium text-slate-900">
+                <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Tên</dt>
+                <dd className="mt-1 text-sm font-medium text-slate-900">
                   {data.owner.fullName ?? '—'}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Email
-                </dt>
-                <dd className="mt-2 break-all text-sm text-cyan-700 underline">
-                  {data.owner.email ?? '—'}
-                </dd>
+                <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Email</dt>
+                <dd className="mt-1 break-all text-sm text-cyan-700">{data.owner.email ?? '—'}</dd>
               </div>
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
                   Điện thoại
                 </dt>
-                <dd className="mt-2 text-sm text-slate-700">{data.owner.phone ?? '—'}</dd>
+                <dd className="mt-1 text-sm text-slate-700">{data.owner.phone ?? '—'}</dd>
               </div>
-              <div className="border-t border-slate-200 pt-4">
-                <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Trạng thái tài khoản
+              <div className="border-t border-slate-100 pt-3">
+                <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Trạng thái
                 </dt>
-                <dd className="mt-2">
-                  <span
-                    className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                      data.owner.status === 'active'
-                        ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-                        : 'bg-slate-100 text-slate-700 ring-1 ring-slate-200'
-                    }`}
-                  >
+                <dd className="mt-1">
+                  <Badge variant={data.owner.status === 'active' ? 'success' : 'muted'}>
                     {data.owner.status}
-                  </span>
+                  </Badge>
                 </dd>
               </div>
             </dl>
-          </InfoCard>
+          </AdminInfoCard>
 
-          <InfoCard title="Tác vụ" icon="🛠️">
-            <div className="space-y-3">
-              <button
+          <AdminInfoCard title="Tác vụ" icon={Wrench}>
+            <div className="space-y-2">
+              <Button
                 onClick={toggleStatus}
                 disabled={actionLoading}
-                className={`w-full rounded-full px-4 py-3 text-sm font-semibold text-white transition ${
-                  data.status === 'active'
-                    ? 'bg-slate-950 hover:bg-slate-800'
-                    : 'bg-emerald-600 hover:bg-emerald-700'
-                } disabled:opacity-50`}
+                variant={data.status === 'active' ? 'default' : 'primary'}
+                className="w-full"
               >
                 {actionLoading
                   ? 'Đang xử lý...'
                   : data.status === 'active'
                     ? 'Vô hiệu hóa gian hàng'
                     : 'Kích hoạt gian hàng'}
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => setDeleteOpen(true)}
-                className="w-full rounded-full border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
+                variant="outline"
+                className="w-full border-rose-200 text-rose-700 hover:bg-rose-50"
               >
                 Xóa gian hàng
-              </button>
+              </Button>
             </div>
-          </InfoCard>
+          </AdminInfoCard>
         </div>
       </div>
 

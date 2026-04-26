@@ -1,5 +1,6 @@
 'use client';
 
+import { MapPin, Hourglass, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
 import AdminMetricGrid from '../common/AdminMetricGrid';
 
 interface LocationPinStatsCardProps {
@@ -20,41 +21,11 @@ export default function LocationPinStatsCard({
   return (
     <AdminMetricGrid
       items={[
-        {
-          label: 'Tổng ghim',
-          value: total,
-          tone: 'blue',
-          icon: '📍',
-          description: 'Tổng số đề xuất ghim vị trí đã được gửi lên hệ thống.',
-        },
-        {
-          label: 'Chờ duyệt',
-          value: pending,
-          tone: 'amber',
-          icon: '⏳',
-          description: 'Các ghim mới đang chờ admin đối chiếu và quyết định.',
-        },
-        {
-          label: 'Đã duyệt',
-          value: approved,
-          tone: 'emerald',
-          icon: '✅',
-          description: 'Các vị trí đang được sử dụng chính thức trên bản đồ.',
-        },
-        {
-          label: 'Bị từ chối',
-          value: rejected,
-          tone: 'rose',
-          icon: '❌',
-          description: 'Đề xuất ghim không hợp lệ hoặc không đủ điều kiện phê duyệt.',
-        },
-        {
-          label: 'Đã thay thế',
-          value: superseded,
-          tone: 'violet',
-          icon: '🔄',
-          description: 'Các ghim cũ đã được thay thế bởi một vị trí được duyệt mới hơn.',
-        },
+        { label: 'Tổng ghim', value: total, tone: 'blue', icon: <MapPin />, description: 'Đề xuất ghim đã gửi.' },
+        { label: 'Chờ duyệt', value: pending, tone: 'amber', icon: <Hourglass />, description: 'Đang chờ admin đối chiếu.' },
+        { label: 'Đã duyệt', value: approved, tone: 'emerald', icon: <CheckCircle2 />, description: 'Vị trí đang dùng chính thức.' },
+        { label: 'Bị từ chối', value: rejected, tone: 'rose', icon: <XCircle />, description: 'Đề xuất không đủ điều kiện.' },
+        { label: 'Đã thay thế', value: superseded, tone: 'violet', icon: <RefreshCw />, description: 'Bị thay thế bởi vị trí mới.' },
       ]}
     />
   );

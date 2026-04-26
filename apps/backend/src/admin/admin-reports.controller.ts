@@ -23,6 +23,8 @@ import { Store } from '../stores/entities/store.entity';
 import { AdminJwtGuard } from '../auth/guards/admin-jwt.guard';
 import { ListAdminReportsQueryDto } from './dto/list-admin-reports-query.dto';
 import { IsEnum } from 'class-validator';
+import { AuditLogService } from '../monitoring/audit-log.service';
+import { AdminAccount } from '../entities/admin-account.entity';
 
 class ResolveReportDto {
   @IsEnum(['hide', 'delete'])
@@ -40,7 +42,18 @@ export class AdminReportsController {
     @InjectRepository(Store)
     private readonly storeRepo: Repository<Store>,
     private readonly dataSource: DataSource,
+    private readonly auditLog: AuditLogService,
   ) {}
+
+  private actor(req: Request) {
+    const admin = req.user as AdminAccount;
+    return {
+      actorId: admin?.id ?? null,
+      actorRole: 'admin' as const,
+      actorName: admin?.fullName ?? admin?.email ?? null,
+      ip: req.ip ?? null,
+    };
+  }
 
   @Get()
   async listReports(@Query() query: ListAdminReportsQueryDto) {
@@ -131,6 +144,18 @@ export class AdminReportsController {
       });
     });
 
+    await this.auditLog.record({
+      ...this.actor(req),
+      action: `report.resolve.${body.action}`,
+      resourceType: 'comment_report',
+      resourceId: id,
+      metadata: {
+        action: body.action,
+        reviewId: report.review?.id,
+        storeId: report.review?.storeId,
+      },
+    });
+
     return { message: 'Report resolved' };
   }
 
@@ -151,6 +176,13 @@ export class AdminReportsController {
       status: CommentReportStatus.DISMISSED,
       resolvedAt: new Date(),
       resolvedBy: adminId,
+    });
+
+    await this.auditLog.record({
+      ...this.actor(req),
+      action: 'report.dismiss',
+      resourceType: 'comment_report',
+      resourceId: id,
     });
 
     return { message: 'Report dismissed' };

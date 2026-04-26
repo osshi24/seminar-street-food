@@ -1,5 +1,6 @@
 'use client';
 
+import { Users, Hourglass, CheckCircle2, Ban, XCircle } from 'lucide-react';
 import AdminMetricGrid from '../common/AdminMetricGrid';
 
 interface StoreOwnerStatsCardProps {
@@ -20,41 +21,11 @@ export default function StoreOwnerStatsCard({
   return (
     <AdminMetricGrid
       items={[
-        {
-          label: 'Tổng chủ gian hàng',
-          value: total,
-          tone: 'blue',
-          icon: '👥',
-          description: 'Tổng số tài khoản store owner đã đăng ký trong hệ thống.',
-        },
-        {
-          label: 'Chờ duyệt',
-          value: pending,
-          tone: 'amber',
-          icon: '⏳',
-          description: 'Những tài khoản mới đang chờ admin phê duyệt hồ sơ đăng ký.',
-        },
-        {
-          label: 'Đang hoạt động',
-          value: active,
-          tone: 'emerald',
-          icon: '✅',
-          description: 'Các chủ gian hàng hiện có thể đăng nhập và vận hành gian hàng.',
-        },
-        {
-          label: 'Vô hiệu hóa',
-          value: inactive,
-          tone: 'slate',
-          icon: '⛔',
-          description: 'Tài khoản đã bị tạm khóa hoặc vô hiệu hóa bởi admin.',
-        },
-        {
-          label: 'Đã từ chối',
-          value: rejected,
-          tone: 'rose',
-          icon: '❌',
-          description: 'Các hồ sơ đăng ký không đạt yêu cầu và đã bị từ chối.',
-        },
+        { label: 'Tổng tài khoản', value: total, tone: 'blue', icon: <Users />, description: 'Tài khoản chủ gian hàng đã đăng ký.' },
+        { label: 'Chờ duyệt', value: pending, tone: 'amber', icon: <Hourglass />, description: 'Hồ sơ mới đang chờ admin phê duyệt.' },
+        { label: 'Đang hoạt động', value: active, tone: 'emerald', icon: <CheckCircle2 />, description: 'Có thể đăng nhập và vận hành.' },
+        { label: 'Vô hiệu hóa', value: inactive, tone: 'slate', icon: <Ban />, description: 'Đã bị tạm khóa bởi admin.' },
+        { label: 'Đã từ chối', value: rejected, tone: 'rose', icon: <XCircle />, description: 'Hồ sơ không đạt yêu cầu.' },
       ]}
     />
   );

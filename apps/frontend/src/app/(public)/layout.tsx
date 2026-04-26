@@ -2,10 +2,12 @@ import { Suspense } from 'react';
 import { LanguageProvider } from '../../contexts/LanguageContext';
 import PublicHeader from '../../components/layout/PublicHeader';
 import BottomTabBar from '../../components/layout/BottomTabBar';
+import PublicPresenceTracker from '../../components/admin/PublicPresenceTracker';
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <LanguageProvider>
+      <PublicPresenceTracker />
       {/* Desktop-only header */}
       <div className="hidden sm:block">
         <PublicHeader />

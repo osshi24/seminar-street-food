@@ -1,9 +1,12 @@
-/* eslint-disable react/no-unescaped-entities */
 'use client';
 
 import { useState, useMemo } from 'react';
+import { Search, Send, X, Check, Store as StoreIcon } from 'lucide-react';
 import type { RecipientMode } from '@/lib/api/admin-announcements';
 import type { AdminStoreListItem } from '@/lib/api/admin-stores';
+import { Button } from '../../ui/button';
+import { Badge } from '../../ui/badge';
+import { cn } from '../../../lib/cn';
 
 interface AnnouncementRecipientSelectProps {
   mode: RecipientMode;
@@ -16,8 +19,8 @@ interface AnnouncementRecipientSelectProps {
 
 const MODE_LABELS: Record<RecipientMode, { label: string; desc: string }> = {
   single_store: { label: '1 gian hàng', desc: 'Gửi riêng cho 1 chủ' },
-  multi_store: { label: 'Nhiều gian hàng', desc: 'Gửi cho nhiều chủ cùng lúc' },
-  all_stores: { label: 'Tất cả gian hàng', desc: 'Gửi cho tất cả chủ hàng' },
+  multi_store: { label: 'Nhiều gian hàng', desc: 'Gửi cho nhiều chủ' },
+  all_stores: { label: 'Tất cả', desc: 'Gửi cho toàn bộ' },
 };
 
 export default function AnnouncementRecipientSelect({
@@ -33,7 +36,6 @@ export default function AnnouncementRecipientSelect({
   const selectedStores = stores.filter((s) => storeIds.includes(s.id));
   const recipientCount = mode === 'all_stores' ? stores.length : selectedStores.length;
 
-  // Filter stores based on search query
   const filteredStores = useMemo(() => {
     if (!searchQuery.trim()) return stores;
     const q = searchQuery.toLowerCase();
@@ -41,7 +43,7 @@ export default function AnnouncementRecipientSelect({
       (s) =>
         s.name.toLowerCase().includes(q) ||
         s.owner.fullName.toLowerCase().includes(q) ||
-        s.owner.email.toLowerCase().includes(q)
+        s.owner.email.toLowerCase().includes(q),
     );
   }, [stores, searchQuery]);
 
@@ -56,25 +58,9 @@ export default function AnnouncementRecipientSelect({
     }
   };
 
-  const handleSelectAll = () => {
-    onStoreIdsChange(stores.map((s) => s.id));
-  };
-
-  const handleDeselectAll = () => {
-    onStoreIdsChange([]);
-  };
-
-  const handleInvert = () => {
-    const newIds = stores
-      .map((s) => s.id)
-      .filter((id) => !storeIds.includes(id));
-    onStoreIdsChange(newIds);
-  };
-
   return (
-    <div className="space-y-4">
-      {/* Mode Selection Tabs */}
-      <div className="grid grid-cols-3 gap-2 rounded-lg border border-gray-200 bg-gray-50 p-1">
+    <div className="space-y-3">
+      <div className="grid grid-cols-3 gap-1 rounded-md border border-slate-200 bg-slate-50 p-1">
         {(Object.keys(MODE_LABELS) as RecipientMode[]).map((m) => (
           <button
             key={m}
@@ -85,167 +71,140 @@ export default function AnnouncementRecipientSelect({
               }
               setSearchQuery('');
             }}
-            className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+            className={cn(
+              'rounded px-2 py-1.5 text-xs transition-colors',
               mode === m
-                ? 'bg-white text-blue-600 shadow-sm border border-blue-200'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900',
+            )}
           >
             <div className="font-medium">{MODE_LABELS[m].label}</div>
-            <div className="text-xs text-gray-500">{MODE_LABELS[m].desc}</div>
+            <div className="text-[10px] text-slate-500">{MODE_LABELS[m].desc}</div>
           </button>
         ))}
       </div>
 
-      {/* Store Selection */}
       {mode !== 'all_stores' && (
         <div>
-          <div className="mb-3 flex items-center justify-between">
-            <label className="text-sm font-semibold text-gray-700">
-              🏪 {mode === 'single_store' ? 'Chọn gian hàng' : 'Chọn gian hàng'}
-            </label>
-            <span className="text-xs font-medium text-gray-500">
-              {storeIds.length} / {stores.length}
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-500">
+              Đã chọn {storeIds.length}/{stores.length}
             </span>
           </div>
 
           {loading ? (
             <div className="space-y-2">
-              <div className="h-10 rounded-lg bg-gray-200 animate-pulse"></div>
-              <div className="h-32 rounded-lg bg-gray-200 animate-pulse"></div>
+              <div className="h-9 animate-pulse rounded-md bg-slate-100" />
+              <div className="h-32 animate-pulse rounded-md bg-slate-100" />
             </div>
           ) : (
             <>
-              {/* Search Box */}
-              <div className="mb-3">
+              <div className="relative mb-2">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="🔍 Tìm kiếm gian hàng, chủ, email..."
+                  placeholder="Tìm gian hàng, chủ, email..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="h-9 w-full rounded-md border border-slate-200 bg-white pl-8 pr-3 text-sm outline-none transition-colors placeholder:text-slate-400 focus:border-slate-400"
                 />
               </div>
 
-              {/* Quick Actions (Multi-select mode only) */}
               {mode === 'multi_store' && stores.length > 0 && (
-                <div className="mb-3 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={handleSelectAll}
-                    className="rounded-full border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                <div className="mb-2 flex flex-wrap gap-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onStoreIdsChange(stores.map((s) => s.id))}
                   >
-                    ✓ Chọn tất cả
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDeselectAll}
-                    className="rounded-full border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    ✕ Bỏ chọn
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleInvert}
-                    className="rounded-full border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    ⟲ Đảo ngược
-                  </button>
+                    Chọn tất cả
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => onStoreIdsChange([])}>
+                    Bỏ chọn
+                  </Button>
                 </div>
               )}
 
-              {/* Selected Chips (Multi-select mode) */}
               {mode === 'multi_store' && storeIds.length > 0 && (
-                <div className="mb-3 flex flex-wrap gap-2">
+                <div className="mb-2 flex flex-wrap gap-1">
                   {selectedStores.map((store) => (
-                    <div
+                    <button
                       key={store.id}
-                      className="flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800"
+                      type="button"
+                      onClick={() => handleToggleStore(store.id)}
+                      className="inline-flex items-center gap-1 rounded-md border border-cyan-200 bg-cyan-50 px-2 py-1 text-xs font-medium text-cyan-800 transition-colors hover:bg-cyan-100"
                     >
                       {store.name}
-                      <button
-                        type="button"
-                        onClick={() => handleToggleStore(store.id)}
-                        className="ml-1 rounded-full hover:bg-blue-200 p-0.5 transition-colors"
-                      >
-                        ✕
-                      </button>
-                    </div>
+                      <X className="h-3 w-3" />
+                    </button>
                   ))}
                 </div>
               )}
 
-              {/* Checkbox List */}
-              <div className="space-y-2 rounded-lg border border-gray-200 bg-white p-3 max-h-64 overflow-y-auto">
+              <div className="max-h-64 space-y-1 overflow-y-auto rounded-md border border-slate-200 bg-white p-2">
                 {filteredStores.length === 0 ? (
-                  <div className="py-4 text-center text-sm text-gray-500">
-                    {searchQuery ? '❌ Không tìm thấy gian hàng nào' : '📭 Danh sách trống'}
+                  <div className="py-4 text-center text-xs text-slate-500">
+                    {searchQuery ? 'Không tìm thấy gian hàng' : 'Danh sách trống'}
                   </div>
                 ) : (
-                  filteredStores.map((store) => (
-                    <label
-                      key={store.id}
-                      className={`flex items-start gap-3 rounded-lg p-2.5 cursor-pointer transition-colors ${
-                        storeIds.includes(store.id)
-                          ? 'bg-blue-50 border border-blue-200'
-                          : 'hover:bg-gray-50 border border-transparent'
-                      }`}
-                    >
-                      <input
-                        type={mode === 'single_store' ? 'radio' : 'checkbox'}
-                        name={mode === 'single_store' ? 'store-selection' : undefined}
-                        checked={storeIds.includes(store.id)}
-                        onChange={() => handleToggleStore(store.id)}
-                        className="mt-0.5 rounded cursor-pointer"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-gray-900 text-sm">{store.name}</div>
-                        <div className="text-xs text-gray-600 mt-0.5">
-                          👤 {store.owner.fullName}
+                  filteredStores.map((store) => {
+                    const checked = storeIds.includes(store.id);
+                    return (
+                      <label
+                        key={store.id}
+                        className={cn(
+                          'flex cursor-pointer items-start gap-2 rounded-md p-2 transition-colors',
+                          checked
+                            ? 'bg-cyan-50'
+                            : 'hover:bg-slate-50',
+                        )}
+                      >
+                        <input
+                          type={mode === 'single_store' ? 'radio' : 'checkbox'}
+                          name={mode === 'single_store' ? 'store-selection' : undefined}
+                          checked={checked}
+                          onChange={() => handleToggleStore(store.id)}
+                          className="mt-0.5 cursor-pointer"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium text-slate-900">{store.name}</div>
+                          <div className="mt-0.5 text-xs text-slate-600">{store.owner.fullName}</div>
+                          <div className="truncate text-xs text-slate-500">{store.owner.email}</div>
                         </div>
-                        <div className="text-xs text-gray-500 truncate">
-                          ✉️ {store.owner.email}
-                        </div>
-                      </div>
-                      {storeIds.includes(store.id) && (
-                        <div className="text-blue-600 text-lg">✓</div>
-                      )}
-                    </label>
-                  ))
+                        {checked ? <Check className="h-4 w-4 text-cyan-600" /> : null}
+                      </label>
+                    );
+                  })
                 )}
               </div>
-
-              {/* Helper Text */}
-              <p className="mt-2 text-xs text-gray-500">
-                {mode === 'multi_store'
-                  ? `💡 Chọn từ 0-${stores.length} gian hàng. Hiện chọn: ${storeIds.length}`
-                  : '💡 Chọn một gian hàng để gửi.'}
-              </p>
             </>
           )}
         </div>
       )}
 
-      {/* Recipient Preview */}
-      <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
-        <div className="flex items-start gap-3">
-          <span className="text-lg">📨</span>
-          <div className="flex-1">
-            <div className="text-sm font-semibold text-blue-900">
-              Sẽ gửi cho <span className="text-lg text-blue-600">{recipientCount}</span> người
-            </div>
-            {mode !== 'all_stores' && storeIds.length > 0 && (
-              <div className="mt-1 text-xs text-blue-700">
-                {selectedStores.length <= 3
-                  ? selectedStores.map((s) => s.name).join(', ')
-                  : `${selectedStores.slice(0, 2).map((s) => s.name).join(', ')} và ${selectedStores.length - 2} cái khác`}
-              </div>
-            )}
-            {mode === 'all_stores' && (
-              <div className="mt-1 text-xs text-blue-700">Gửi tới tất cả chủ gian hàng đang hoạt động</div>
-            )}
+      <div className="flex items-start gap-2 rounded-md border border-cyan-200 bg-cyan-50 p-3">
+        <Send className="mt-0.5 h-4 w-4 text-cyan-700" />
+        <div className="flex-1">
+          <div className="text-sm font-medium text-cyan-900">
+            Sẽ gửi cho <Badge variant="info">{recipientCount}</Badge> người nhận
           </div>
+          {mode !== 'all_stores' && storeIds.length > 0 && (
+            <div className="mt-0.5 text-xs text-cyan-800">
+              {selectedStores.length <= 3
+                ? selectedStores.map((s) => s.name).join(', ')
+                : `${selectedStores
+                    .slice(0, 2)
+                    .map((s) => s.name)
+                    .join(', ')} và ${selectedStores.length - 2} khác`}
+            </div>
+          )}
+          {mode === 'all_stores' && (
+            <div className="mt-0.5 text-xs text-cyan-800">
+              Gửi tới tất cả chủ gian hàng đang hoạt động
+            </div>
+          )}
         </div>
+        {mode === 'all_stores' ? <StoreIcon className="hidden h-4 w-4 text-cyan-700" /> : null}
       </div>
     </div>
   );

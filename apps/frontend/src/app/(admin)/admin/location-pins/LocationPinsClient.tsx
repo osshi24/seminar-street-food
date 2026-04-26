@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ArrowRight } from 'lucide-react';
+import { Button } from '../../../../components/ui/button';
 import ApprovePinModal from '../../../../components/admin/location-pins/ApprovePinModal';
 import LocationPinEmptyState from '../../../../components/admin/location-pins/LocationPinEmptyState';
 import LocationPinFilterBar from '../../../../components/admin/location-pins/LocationPinFilterBar';
@@ -186,26 +188,25 @@ export default function LocationPinsClient() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <AdminPageHeader
-        badge="Map ops"
+        badge="Bản đồ"
         title="Quản lý ghim vị trí"
-        description="Theo dõi các đề xuất ghim mới, xác nhận tọa độ hợp lệ và chuyển nhanh sang màn chi tiết khi cần so khớp với dữ liệu hiện có."
+        description="Theo dõi đề xuất ghim mới, xác nhận tọa độ và mở chi tiết để so khớp dữ liệu."
         meta={
           searchQuery
             ? `Đang lọc cục bộ ${visiblePins.length} ghim trên trang hiện tại`
             : stats.total > 0
-              ? `Hiển thị ${visibleStart}-${visibleEnd} trên tổng ${stats.total} ghim`
-              : 'Chưa có đề xuất ghim nào trong hệ thống'
+              ? `Hiển thị ${visibleStart}–${visibleEnd} trên tổng ${stats.total} ghim`
+              : 'Chưa có đề xuất ghim nào'
         }
         action={
-          <Link
-            href="/admin/boundaries"
-            className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-          >
-            Mở ranh giới
-            <span aria-hidden>→</span>
-          </Link>
+          <Button asChild>
+            <Link href="/admin/boundaries">
+              Mở ranh giới
+              <ArrowRight />
+            </Link>
+          </Button>
         }
       />
 
@@ -225,9 +226,9 @@ export default function LocationPinsClient() {
       />
 
       {loading ? (
-        <div className="rounded-[32px] border border-slate-200 bg-white px-8 py-14 text-center shadow-[0_24px_60px_-40px_rgba(15,23,42,0.45)]">
-          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-cyan-600" />
-          <p className="mt-4 text-sm text-slate-500">Đang tải danh sách ghim vị trí...</p>
+        <div className="rounded-xl border border-slate-200 bg-white px-8 py-14 text-center">
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-cyan-600" />
+          <p className="mt-3 text-sm text-slate-500">Đang tải danh sách...</p>
         </div>
       ) : visiblePins.length === 0 ? (
         <LocationPinEmptyState status={statusFilter} searchQuery={searchQuery} />
@@ -276,7 +277,7 @@ export default function LocationPinsClient() {
 
       {toast ? (
         <div
-          className={`fixed bottom-6 right-6 rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-lg ${
+          className={`fixed bottom-6 right-6 z-50 rounded-md px-4 py-2.5 text-sm font-medium text-white shadow-lg ${
             toast.type === 'success' ? 'bg-emerald-600' : 'bg-rose-600'
           }`}
         >

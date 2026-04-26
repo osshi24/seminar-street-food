@@ -1,8 +1,10 @@
 'use client';
 
+import { Pencil } from 'lucide-react';
 import type { RecipientMode } from '@/lib/api/admin-announcements';
 import type { AdminStoreListItem } from '@/lib/api/admin-stores';
 import AnnouncementRecipientSelect from './AnnouncementRecipientSelect';
+import { Button } from '../../ui/button';
 
 interface AnnouncementFormSectionProps {
   editingId: string | null;
@@ -23,10 +25,7 @@ interface AnnouncementFormSectionProps {
   canSubmit: boolean;
 }
 
-const CHAR_LIMITS = {
-  title: 500,
-  body: 5000,
-};
+const CHAR_LIMITS = { title: 500, body: 5000 };
 
 export default function AnnouncementFormSection({
   editingId,
@@ -50,66 +49,56 @@ export default function AnnouncementFormSection({
     !canSubmit && (title.trim() || body.trim() || mode !== 'single_store' || storeIds.length > 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {editingId ? (
-        <div className="flex items-center justify-between gap-4 rounded-[24px] border border-cyan-200 bg-cyan-50 px-5 py-4">
-          <div>
-            <p className="text-sm font-semibold text-cyan-900">Đang chỉnh sửa bản nháp</p>
-            <p className="mt-1 text-xs uppercase tracking-[0.18em] text-cyan-700">
-              {editingId.slice(0, 12)}
-            </p>
+        <div className="flex items-center justify-between gap-3 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2.5">
+          <div className="flex items-center gap-2 text-sm">
+            <Pencil className="h-4 w-4 text-cyan-700" />
+            <span className="font-medium text-cyan-900">Đang chỉnh sửa bản nháp</span>
+            <span className="font-mono text-xs text-cyan-700">{editingId.slice(0, 8)}</span>
           </div>
-          <button
-            onClick={onCancelEdit}
-            className="rounded-full border border-cyan-200 bg-white px-4 py-2 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-100"
-          >
+          <Button size="sm" variant="outline" onClick={onCancelEdit}>
             Hủy
-          </button>
+          </Button>
         </div>
       ) : null}
 
       <div>
-        <label className="mb-2 flex items-center justify-between gap-3">
-          <span className="text-sm font-semibold text-slate-700">Tiêu đề thông báo</span>
-          <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="text-sm font-medium text-slate-700">Tiêu đề</label>
+          <span className="text-[11px] text-slate-400">
             {title.length}/{CHAR_LIMITS.title}
           </span>
-        </label>
+        </div>
         <input
           type="text"
           value={title}
           onChange={(event) => onTitleChange(event.target.value.slice(0, CHAR_LIMITS.title))}
           placeholder="Ví dụ: Bảo trì hệ thống vào 22:00"
           maxLength={CHAR_LIMITS.title}
-          className="w-full rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-cyan-300 focus:bg-white"
+          className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-slate-400"
         />
-        <p className="mt-2 text-sm leading-6 text-slate-500">
-          Dùng tiêu đề ngắn, rõ và đi thẳng vào việc để chủ gian hàng nắm nội dung nhanh.
-        </p>
       </div>
 
       <div>
-        <label className="mb-2 flex items-center justify-between gap-3">
-          <span className="text-sm font-semibold text-slate-700">Nội dung thông báo</span>
-          <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="text-sm font-medium text-slate-700">Nội dung</label>
+          <span className="text-[11px] text-slate-400">
             {body.length}/{CHAR_LIMITS.body}
           </span>
-        </label>
+        </div>
         <textarea
           value={body}
           onChange={(event) => onBodyChange(event.target.value.slice(0, CHAR_LIMITS.body))}
-          placeholder="Nhập nội dung chi tiết sẽ được gửi qua email và in-app notification."
+          placeholder="Nội dung gửi qua email và in-app notification."
           maxLength={CHAR_LIMITS.body}
           rows={7}
-          className="w-full resize-none rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-900 outline-none transition focus:border-cyan-300 focus:bg-white"
+          className="w-full resize-none rounded-md border border-slate-200 bg-white px-3 py-2 text-sm leading-6 text-slate-900 outline-none transition-colors focus:border-slate-400"
         />
-        <p className="mt-2 text-sm leading-6 text-slate-500">
-          Nội dung càng rõ ràng thì tỉ lệ chủ gian hàng đọc và phản hồi càng tốt.
-        </p>
       </div>
 
       <div>
-        <label className="mb-3 block text-sm font-semibold text-slate-700">
+        <label className="mb-2 block text-sm font-medium text-slate-700">
           Đối tượng nhận thông báo
         </label>
         <AnnouncementRecipientSelect
@@ -123,26 +112,23 @@ export default function AnnouncementFormSection({
       </div>
 
       {showWarning ? (
-        <div className="rounded-[24px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
           Cần điền đủ tiêu đề, nội dung và chọn ít nhất một gian hàng nếu không gửi cho toàn bộ hệ thống.
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row">
-        <button
+      <div className="flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row">
+        <Button
           onClick={onSaveDraft}
           disabled={submitting || !canSubmit}
-          className="inline-flex flex-1 items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+          variant="outline"
+          className="flex-1"
         >
           {submitting ? 'Đang lưu...' : 'Lưu nháp'}
-        </button>
-        <button
-          onClick={onSend}
-          disabled={submitting || !canSubmit}
-          className="inline-flex flex-1 items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-        >
+        </Button>
+        <Button onClick={onSend} disabled={submitting || !canSubmit} className="flex-1">
           {submitting ? 'Đang gửi...' : 'Gửi ngay'}
-        </button>
+        </Button>
       </div>
     </div>
   );

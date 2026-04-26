@@ -6,8 +6,10 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { initSentry } from './monitoring/sentry';
 
 async function bootstrap() {
+  initSentry();
   const app = await NestFactory.create(AppModule);
 
   const configService = app.get(ConfigService);

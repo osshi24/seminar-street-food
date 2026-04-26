@@ -147,11 +147,11 @@ export default function ReportsClient() {
   const totalPages = Math.ceil(stats.total / limit);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <AdminPageHeader
-        badge="Moderation reports"
+        badge="Kiểm duyệt"
         title="Quản lý báo cáo bình luận"
-        description="Theo dõi các báo cáo do store owner gửi lên, xử lý nhanh các nội dung vi phạm và giữ luồng kiểm duyệt bình luận luôn thông suốt."
+        description="Theo dõi báo cáo do store owner gửi lên và xử lý nhanh các nội dung vi phạm."
         meta={`${stats.pending} báo cáo đang chờ xử lý`}
       />
 
@@ -165,9 +165,9 @@ export default function ReportsClient() {
       <ReportFilterBar currentStatus={statusFilter} currentSearch={searchQuery} />
 
       {loading ? (
-        <div className="space-y-3 rounded-[32px] border border-slate-200 bg-white p-5 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.45)]">
+        <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3">
           {Array.from({ length: 5 }).map((_, index) => (
-            <div key={index} className="h-24 animate-pulse rounded-2xl bg-slate-50" />
+            <div key={index} className="h-16 animate-pulse rounded-md bg-slate-50" />
           ))}
         </div>
       ) : reports.length === 0 ? (
@@ -217,8 +217,8 @@ export default function ReportsClient() {
 
       {toast ? (
         <div
-          className={`fixed bottom-6 right-6 rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-lg ${
-            toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
+          className={`fixed bottom-6 right-6 z-50 rounded-md px-4 py-2.5 text-sm font-medium text-white shadow-lg ${
+            toast.type === 'success' ? 'bg-emerald-600' : 'bg-rose-600'
           }`}
         >
           {toast.message}

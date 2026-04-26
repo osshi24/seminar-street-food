@@ -1,23 +1,18 @@
 'use client';
 
+import { Info } from 'lucide-react';
+import AdminInfoCard from '../common/AdminInfoCard';
+
 interface StoreOwnerInfoSectionProps {
   title: string;
   icon?: string;
   children: React.ReactNode;
 }
 
-export default function StoreOwnerInfoSection({
-  title,
-  icon = '📋',
-  children,
-}: StoreOwnerInfoSectionProps) {
+export default function StoreOwnerInfoSection({ title, children }: StoreOwnerInfoSectionProps) {
   return (
-    <div className="rounded-lg bg-white border border-gray-200 p-6">
-      <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900">
-        <span className="text-xl">{icon}</span>
-        {title}
-      </h2>
+    <AdminInfoCard title={title} icon={Info}>
       {children}
-    </div>
+    </AdminInfoCard>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { Check, X, Ban, RefreshCw } from 'lucide-react';
 import {
   getStoreOwner,
   approveStoreOwner,
@@ -15,8 +16,26 @@ import StoreOwnerTimeline from '../../../../../components/admin/store-owners/Sto
 import ApprovalModal from '../../../../../components/admin/store-owners/ApprovalModal';
 import RejectionModal from '../../../../../components/admin/store-owners/RejectionModal';
 import DeactivateModal from '../../../../../components/admin/store-owners/DeactivateModal';
+import { Badge } from '../../../../../components/ui/badge';
+import { Button } from '../../../../../components/ui/button';
+import { Card, CardContent } from '../../../../../components/ui/card';
+import type { BadgeProps } from '../../../../../components/ui/badge';
 import type { StoreOwner } from '../../../../../types/store-owner';
 import type { TimelineEvent } from '../../../../../components/admin/store-owners/StoreOwnerTimeline';
+
+const STATUS_VARIANT: Record<string, NonNullable<BadgeProps['variant']>> = {
+  pending: 'warning',
+  active: 'success',
+  inactive: 'muted',
+  rejected: 'danger',
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  pending: 'Chờ duyệt',
+  active: 'Đang hoạt động',
+  inactive: 'Vô hiệu hóa',
+  rejected: 'Đã từ chối',
+};
 
 export default function StoreOwnerDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -26,7 +45,6 @@ export default function StoreOwnerDetailPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  // Modals
   const [modals, setModals] = useState({
     approval: false,
     rejection: false,
@@ -36,6 +54,7 @@ export default function StoreOwnerDetailPage() {
 
   useEffect(() => {
     loadStoreOwner();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   async function loadStoreOwner() {
@@ -59,8 +78,8 @@ export default function StoreOwnerDetailPage() {
       const result = await approveStoreOwner(id);
       setStoreOwner(result.data as StoreOwner);
       setModals({ ...modals, approval: false });
-      showToast('✓ Đã phê duyệt tài khoản thành công', 'success');
-    } catch (error) {
+      showToast('Đã phê duyệt tài khoản thành công', 'success');
+    } catch {
       showToast('Lỗi khi phê duyệt tài khoản', 'error');
     } finally {
       setActionLoading(false);
@@ -74,8 +93,8 @@ export default function StoreOwnerDetailPage() {
       setStoreOwner(result.data as StoreOwner);
       setModals({ ...modals, rejection: false });
       setRejectReason('');
-      showToast('✓ Đã từ chối tài khoản', 'success');
-    } catch (error) {
+      showToast('Đã từ chối tài khoản', 'success');
+    } catch {
       showToast('Lỗi khi từ chối tài khoản', 'error');
     } finally {
       setActionLoading(false);
@@ -86,11 +105,10 @@ export default function StoreOwnerDetailPage() {
     setActionLoading(true);
     try {
       const result = await deactivateStoreOwner(id, true);
-      const data = result.data as StoreOwner;
-      setStoreOwner(data);
+      setStoreOwner(result.data as StoreOwner);
       setModals({ ...modals, deactivate: false });
-      showToast('✓ Đã vô hiệu hóa tài khoản', 'success');
-    } catch (error) {
+      showToast('Đã vô hiệu hóa tài khoản', 'success');
+    } catch {
       showToast('Lỗi khi vô hiệu hóa tài khoản', 'error');
     } finally {
       setActionLoading(false);
@@ -102,8 +120,8 @@ export default function StoreOwnerDetailPage() {
     try {
       const result = await reactivateStoreOwner(id);
       setStoreOwner(result.data as StoreOwner);
-      showToast('✓ Đã kích hoạt lại tài khoản', 'success');
-    } catch (error) {
+      showToast('Đã kích hoạt lại tài khoản', 'success');
+    } catch {
       showToast('Lỗi khi kích hoạt lại tài khoản', 'error');
     } finally {
       setActionLoading(false);
@@ -112,17 +130,19 @@ export default function StoreOwnerDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-blue-600"></div>
+      <div className="flex items-center justify-center py-16">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-cyan-600" />
       </div>
     );
   }
 
   if (!storeOwner) {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-red-700">
-        <p className="font-medium">❌ Không tìm thấy tài khoản</p>
-      </div>
+      <Card className="border-rose-200 bg-rose-50">
+        <CardContent className="p-5 text-sm font-medium text-rose-700">
+          Không tìm thấy tài khoản
+        </CardContent>
+      </Card>
     );
   }
 
@@ -137,10 +157,12 @@ export default function StoreOwnerDetailPage() {
     ...(storeOwner.status === 'active' || storeOwner.status === 'rejected'
       ? [
           {
-            icon: storeOwner.status === 'active' ? '✅' : '❌',
+            icon: storeOwner.status === 'active' ? '✓' : '✗',
             label: storeOwner.status === 'active' ? 'Đã phê duyệt' : 'Đã từ chối',
             description:
-              storeOwner.status === 'active' ? 'Tài khoản được kích hoạt' : 'Yêu cầu bị từ chối',
+              storeOwner.status === 'active'
+                ? 'Tài khoản được kích hoạt'
+                : 'Yêu cầu bị từ chối',
             timestamp: storeOwner.updatedAt,
             color: (storeOwner.status === 'active' ? 'green' : 'red') as 'green' | 'red',
           },
@@ -149,170 +171,129 @@ export default function StoreOwnerDetailPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Toast */}
+    <div className="space-y-5">
       {toast && (
         <div
-          className={`fixed top-4 right-4 z-50 rounded-lg px-4 py-3 text-white shadow-lg ${
-            toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
+          className={`fixed right-4 top-4 z-50 rounded-md px-4 py-2.5 text-sm font-medium text-white shadow-lg ${
+            toast.type === 'success' ? 'bg-emerald-600' : 'bg-rose-600'
           }`}
         >
           {toast.message}
         </div>
       )}
 
-      {/* Header */}
       <StoreOwnerDetailHeader
         owner={storeOwner}
         onBack={() => router.push('/admin/store-owners')}
       />
 
-      {/* Action Buttons */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-2">
         {storeOwner.status === 'pending' && (
           <>
-            <button
+            <Button
               onClick={() => setModals({ ...modals, approval: true })}
               disabled={actionLoading}
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-2"
+              className="bg-emerald-600 hover:bg-emerald-700"
             >
-              ✓ Phê duyệt
-            </button>
-            <button
+              <Check />
+              Phê duyệt
+            </Button>
+            <Button
               onClick={() => setModals({ ...modals, rejection: true })}
               disabled={actionLoading}
-              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
+              variant="destructive"
             >
-              ✕ Từ chối
-            </button>
+              <X />
+              Từ chối
+            </Button>
           </>
         )}
         {storeOwner.status === 'active' && (
-          <button
+          <Button
             onClick={() => setModals({ ...modals, deactivate: true })}
             disabled={actionLoading}
-            className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50 flex items-center gap-2"
+            className="bg-amber-600 hover:bg-amber-700"
           >
-            ⛔ Vô hiệu hóa
-          </button>
+            <Ban />
+            Vô hiệu hóa
+          </Button>
         )}
         {storeOwner.status === 'inactive' && (
-          <button
-            onClick={handleReactivate}
-            disabled={actionLoading}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-          >
-            {actionLoading && <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>}
-            🔄 Kích hoạt lại
-          </button>
+          <Button onClick={handleReactivate} disabled={actionLoading} variant="primary">
+            <RefreshCw />
+            Kích hoạt lại
+          </Button>
         )}
       </div>
 
-      {/* Personal Information */}
-      <StoreOwnerInfoSection title="Thông tin cá nhân" icon="👤">
-        <div className="grid grid-cols-2 gap-6">
+      <StoreOwnerInfoSection title="Thông tin cá nhân">
+        <dl className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-600">
-              Họ và tên
-            </label>
-            <p className="mt-1 text-gray-900">{storeOwner.fullName}</p>
+            <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Họ và tên</dt>
+            <dd className="mt-1 text-sm text-slate-900">{storeOwner.fullName}</dd>
           </div>
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-600">
-              Email
-            </label>
-            <p className="mt-1 text-gray-900">{storeOwner.email}</p>
+            <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Email</dt>
+            <dd className="mt-1 text-sm text-slate-900">{storeOwner.email}</dd>
           </div>
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-600">
-              Số điện thoại
-            </label>
-            <p className="mt-1 text-gray-900">{storeOwner.phone || '—'}</p>
+            <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Điện thoại</dt>
+            <dd className="mt-1 text-sm text-slate-900">{storeOwner.phone || '—'}</dd>
           </div>
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-600">
-              Trạng thái
-            </label>
-            <div className="mt-1">
-              <span
-                className={`rounded-full px-3 py-1 text-sm font-medium ${
-                  storeOwner.status === 'pending'
-                    ? 'bg-amber-100 text-amber-800'
-                    : storeOwner.status === 'active'
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : storeOwner.status === 'inactive'
-                        ? 'bg-slate-100 text-slate-800'
-                        : 'bg-red-100 text-red-800'
-                }`}
-              >
-                {storeOwner.status === 'pending'
-                  ? '⏳ Chờ duyệt'
-                  : storeOwner.status === 'active'
-                    ? '✅ Đang hoạt động'
-                    : storeOwner.status === 'inactive'
-                      ? '⛔ Vô hiệu hóa'
-                      : '❌ Đã từ chối'}
-              </span>
-            </div>
+            <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Trạng thái</dt>
+            <dd className="mt-1">
+              <Badge variant={STATUS_VARIANT[storeOwner.status]}>
+                {STATUS_LABEL[storeOwner.status]}
+              </Badge>
+            </dd>
           </div>
-        </div>
+        </dl>
       </StoreOwnerInfoSection>
 
-      {/* Store Information */}
       {storeOwner.store && (
-        <StoreOwnerInfoSection title="Thông tin gian hàng" icon="🏪">
-          <div className="grid grid-cols-2 gap-6">
+        <StoreOwnerInfoSection title="Thông tin gian hàng">
+          <dl className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-gray-600">
-                Tên gian hàng
-              </label>
-              <p className="mt-1 text-gray-900">{storeOwner.store.name}</p>
+              <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Tên gian hàng</dt>
+              <dd className="mt-1 text-sm text-slate-900">{storeOwner.store.name}</dd>
             </div>
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-gray-600">
-                Địa chỉ
-              </label>
-              <p className="mt-1 text-gray-900">{storeOwner.store.address || '—'}</p>
+              <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Địa chỉ</dt>
+              <dd className="mt-1 text-sm text-slate-900">{storeOwner.store.address || '—'}</dd>
             </div>
-            <div className="col-span-2">
-              <a
-                href={`/admin/stores/${storeOwner.store.id}`}
-                className="text-blue-600 hover:underline font-medium text-sm"
-              >
-                → Xem chi tiết gian hàng
-              </a>
-            </div>
-          </div>
+          </dl>
+          <a
+            href={`/admin/stores/${storeOwner.store.id}`}
+            className="mt-4 inline-flex text-sm font-medium text-cyan-700 hover:underline"
+          >
+            Xem chi tiết gian hàng →
+          </a>
         </StoreOwnerInfoSection>
       )}
 
-      {/* Registration Details */}
-      <StoreOwnerInfoSection title="Thông tin đăng ký" icon="📋">
+      <StoreOwnerInfoSection title="Thông tin đăng ký">
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-600 mb-1">
-              Ngày đăng ký
-            </label>
-            <p className="text-gray-900">
+            <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Ngày đăng ký</dt>
+            <dd className="mt-1 text-sm text-slate-900">
               {new Date(storeOwner.createdAt).toLocaleDateString('vi-VN')} lúc{' '}
               {new Date(storeOwner.createdAt).toLocaleTimeString('vi-VN')}
-            </p>
+            </dd>
           </div>
           {storeOwner.registrationReason && (
-            <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-blue-700 mb-2">
+            <div className="rounded-md border border-cyan-200 bg-cyan-50 p-3">
+              <dt className="text-xs font-medium uppercase tracking-wide text-cyan-700">
                 Lý do đăng ký
-              </label>
-              <p className="text-blue-900">{storeOwner.registrationReason}</p>
+              </dt>
+              <dd className="mt-1 text-sm text-cyan-900">{storeOwner.registrationReason}</dd>
             </div>
           )}
         </div>
       </StoreOwnerInfoSection>
 
-      {/* Timeline */}
       <StoreOwnerTimeline events={timelineEvents} />
 
-      {/* Modals */}
       <ApprovalModal
         isOpen={modals.approval}
         isLoading={actionLoading}

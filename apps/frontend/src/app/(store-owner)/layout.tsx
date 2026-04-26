@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react';
 import DashboardSidebar from '../../components/layout/DashboardSidebar';
 import DashboardHeader from '../../components/layout/DashboardHeader';
 import { getMyStore } from '../../lib/api/stores';
+import { usePresenceSocket } from '../../hooks/usePresenceSocket';
 
 export default function StoreOwnerLayout({ children }: { children: React.ReactNode }) {
   const [storeName, setStoreName] = useState('');
+  usePresenceSocket('store_owner');
 
   useEffect(() => {
     getMyStore()

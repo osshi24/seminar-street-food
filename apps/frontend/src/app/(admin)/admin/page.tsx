@@ -2,18 +2,47 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import AdminMetricGrid from '../../../components/admin/common/AdminMetricGrid';
+import {
+  ArrowRight,
+  CheckCircle2,
+  FileEdit,
+  Flag,
+  MapPin,
+  MessageSquare,
+  Star,
+  Store,
+  Tags,
+  Users,
+} from 'lucide-react';
 import AdminPageHeader from '../../../components/admin/common/AdminPageHeader';
+import { Badge } from '../../../components/ui/badge';
+import { Button } from '../../../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/card';
+import { cn } from '../../../lib/cn';
 import { getAdminOverview, type AdminOverviewResponse } from '../../../lib/api/admin-overview';
 
-function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+function formatRelative(dateString: string) {
+  const now = Date.now();
+  const then = new Date(dateString).getTime();
+  const diffMin = Math.round((now - then) / 60000);
+  if (diffMin < 1) return 'vừa xong';
+  if (diffMin < 60) return `${diffMin} phút trước`;
+  const diffH = Math.round(diffMin / 60);
+  if (diffH < 24) return `${diffH} giờ trước`;
+  const diffD = Math.round(diffH / 24);
+  if (diffD < 7) return `${diffD} ngày trước`;
+  return new Date(dateString).toLocaleDateString('vi-VN');
+}
+
+interface ActivityItem {
+  id: string;
+  type: 'draft' | 'report' | 'review';
+  timestamp: string;
+  title: string;
+  meta: string;
+  body?: string;
+  href?: string;
+  badge?: { label: string; variant: 'warning' | 'danger' | 'success' | 'default' };
 }
 
 export default function AdminOverviewPage() {
@@ -31,77 +60,173 @@ export default function AdminOverviewPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const stats = useMemo(() => {
+  const queues = useMemo(() => {
     if (!overview) return [];
-
     return [
       {
-        label: 'Gian hàng',
-        value: overview.metrics.stores.total,
-        tone: 'blue' as const,
-        icon: '🏪',
-        description: `${overview.metrics.stores.active} đang hoạt động, ${overview.metrics.stores.inactive} tạm ẩn.`,
-      },
-      {
-        label: 'Chủ gian hàng',
-        value: overview.metrics.storeOwners.total,
-        tone: 'cyan' as const,
-        icon: '👥',
-        description: `${overview.metrics.storeOwners.pending} hồ sơ mới đang chờ duyệt.`,
-      },
-      {
-        label: 'Báo cáo chờ xử lý',
-        value: overview.metrics.reports.pending,
+        href: '/admin/store-owners?status=pending',
+        label: 'Hồ sơ chủ gian hàng',
+        value: overview.metrics.storeOwners.pending,
+        icon: Users,
         tone: 'amber' as const,
-        icon: '🚨',
-        description: `${overview.metrics.reports.total} báo cáo, ${overview.metrics.reports.resolved} đã giải quyết.`,
       },
       {
-        label: 'Bình luận',
-        value: overview.metrics.reviews.total,
-        tone: 'violet' as const,
-        icon: '💬',
-        description: `${overview.metrics.reviews.hidden} bình luận đang bị ẩn.`,
-      },
-      {
-        label: 'Bản nháp',
+        href: '/admin/store-drafts',
+        label: 'Bản nháp gian hàng',
         value: overview.metrics.drafts.pending,
+        icon: FileEdit,
         tone: 'rose' as const,
-        icon: '📝',
-        description: 'Số bản nháp gian hàng đang chờ admin duyệt nội dung.',
       },
       {
+        href: '/admin/location-pins?status=pending',
         label: 'Ghim vị trí',
         value: overview.metrics.locationPins.pending,
+        icon: MapPin,
         tone: 'emerald' as const,
-        icon: '📍',
-        description: `${overview.metrics.locationPins.approved} ghim đã được sử dụng chính thức.`,
       },
       {
-        label: 'Nhãn sở thích',
-        value: overview.metrics.tags.total,
-        tone: 'slate' as const,
-        icon: '🏷️',
-        description: 'Tổng số nhãn phục vụ phân loại món ăn, khẩu vị và dị ứng.',
-      },
-      {
-        label: 'Thông báo',
-        value: overview.metrics.announcements.draft,
-        tone: 'blue' as const,
-        icon: '📣',
-        description: `${overview.metrics.announcements.sent} thông báo đã được gửi đến hệ thống.`,
+        href: '/admin/reports?status=pending',
+        label: 'Báo cáo bình luận',
+        value: overview.metrics.reports.pending,
+        icon: Flag,
+        tone: 'cyan' as const,
       },
     ];
   }, [overview]);
 
+  const totalPending = useMemo(
+    () => queues.reduce((sum, q) => sum + q.value, 0),
+    [queues],
+  );
+
+  const stats = useMemo(() => {
+    if (!overview) return [];
+    const m = overview.metrics;
+    return [
+      {
+        label: 'Gian hàng',
+        value: m.stores.total,
+        sub: `${m.stores.active} hoạt động · ${m.stores.inactive} tạm ẩn`,
+        icon: Store,
+        href: '/admin/stores',
+      },
+      {
+        label: 'Chủ gian hàng',
+        value: m.storeOwners.total,
+        sub: `${m.storeOwners.active} hoạt động · ${m.storeOwners.rejected} từ chối`,
+        icon: Users,
+        href: '/admin/store-owners',
+      },
+      {
+        label: 'Bình luận',
+        value: m.reviews.total,
+        sub: `${m.reviews.visible} hiển thị · ${m.reviews.hidden} đang ẩn`,
+        icon: MessageSquare,
+        href: '/admin/reviews',
+      },
+      {
+        label: 'Nhãn sở thích',
+        value: m.tags.total,
+        sub: 'Phân loại món, khẩu vị, dị ứng',
+        icon: Tags,
+        href: '/admin/tags',
+      },
+    ];
+  }, [overview]);
+
+  const health = useMemo(() => {
+    if (!overview) return [];
+    const m = overview.metrics;
+    return [
+      {
+        label: 'Gian hàng đang hoạt động',
+        current: m.stores.active,
+        total: m.stores.total,
+      },
+      {
+        label: 'Bình luận hiển thị',
+        current: m.reviews.visible,
+        total: m.reviews.total,
+      },
+      {
+        label: 'Hồ sơ chủ đã duyệt',
+        current: m.storeOwners.active,
+        total: m.storeOwners.total,
+      },
+      {
+        label: 'Báo cáo đã xử lý',
+        current: m.reports.resolved,
+        total: m.reports.total,
+      },
+    ];
+  }, [overview]);
+
+  const activities = useMemo<ActivityItem[]>(() => {
+    if (!overview) return [];
+    const items: ActivityItem[] = [];
+
+    overview.recentDrafts.forEach((d) =>
+      items.push({
+        id: `draft-${d.id}`,
+        type: 'draft',
+        timestamp: d.submittedAt,
+        title: d.proposedName || d.store?.name || 'Bản nháp chưa đặt tên',
+        meta: d.store?.name ? `Gian hàng: ${d.store.name}` : 'Chưa có gian hàng gốc',
+        href: `/admin/store-drafts/${d.id}`,
+        badge: { label: 'Bản nháp', variant: 'warning' },
+      }),
+    );
+
+    overview.recentReports.forEach((r) =>
+      items.push({
+        id: `report-${r.id}`,
+        type: 'report',
+        timestamp: r.createdAt,
+        title: r.review?.storeName ?? 'Bình luận chưa gắn gian hàng',
+        meta: `Báo cáo bởi ${r.reporter?.fullName ?? 'ẩn danh'} · ${r.reason?.labelVi ?? 'Mới'}`,
+        body: r.review?.content ?? undefined,
+        href: '/admin/reports',
+        badge: { label: 'Báo cáo', variant: 'danger' },
+      }),
+    );
+
+    overview.recentReviews.forEach((r) =>
+      items.push({
+        id: `review-${r.id}`,
+        type: 'review',
+        timestamp: r.createdAt,
+        title: r.customer?.displayName ?? 'Khách vãng lai',
+        meta: `${r.store?.name ?? 'Không rõ gian hàng'} · ${r.stars}/5 sao${r.reportCount ? ` · ${r.reportCount} báo cáo` : ''}`,
+        body: r.content ?? undefined,
+        href: r.store?.id ? `/admin/stores/${r.store.id}` : '/admin/reviews',
+        badge: r.isHidden
+          ? { label: 'Đang ẩn', variant: 'default' }
+          : { label: 'Bình luận', variant: 'success' },
+      }),
+    );
+
+    return items
+      .sort((a, b) => +new Date(b.timestamp) - +new Date(a.timestamp))
+      .slice(0, 12);
+  }, [overview]);
+
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="h-44 animate-pulse rounded-[32px] bg-white/70" />
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, index) => (
-            <div key={index} className="h-40 animate-pulse rounded-[28px] bg-white/70" />
+      <div className="space-y-5">
+        <div className="h-20 animate-pulse rounded-xl bg-white" />
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-28 animate-pulse rounded-xl bg-white" />
           ))}
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-24 animate-pulse rounded-xl bg-white" />
+          ))}
+        </div>
+        <div className="grid gap-4 lg:grid-cols-[1fr_1.4fr]">
+          <div className="h-80 animate-pulse rounded-xl bg-white" />
+          <div className="h-80 animate-pulse rounded-xl bg-white" />
         </div>
       </div>
     );
@@ -109,277 +234,276 @@ export default function AdminOverviewPage() {
 
   if (!overview) {
     return (
-      <div className="rounded-[28px] border border-rose-200 bg-rose-50 p-6 text-rose-700">
-        {error ?? 'Không có dữ liệu tổng quan.'}
-      </div>
+      <Card className="border-rose-200 bg-rose-50">
+        <CardContent className="p-5 text-sm text-rose-700">
+          {error ?? 'Không có dữ liệu tổng quan.'}
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <AdminPageHeader
-        badge="Admin dashboard"
-        title="Điều phối toàn bộ hệ thống"
-        description="Tổng quan nhanh các hàng chờ quan trọng của admin: duyệt hồ sơ, kiểm duyệt nội dung, xử lý báo cáo và theo dõi các vùng đang cần ưu tiên."
-        meta={`Cập nhật gần nhất: ${new Intl.DateTimeFormat('vi-VN', {
-          hour: '2-digit',
-          minute: '2-digit',
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-        }).format(new Date())}`}
+        badge="Bảng điều khiển"
+        title="Tổng quan hệ thống"
+        description="Theo dõi nhanh các hàng chờ kiểm duyệt và hoạt động chính của admin."
         action={
-          <Link
-            href="/admin/reports"
-            className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-          >
-            Ưu tiên xử lý báo cáo
-            <span aria-hidden>→</span>
-          </Link>
+          totalPending > 0 ? (
+            <Button asChild>
+              <Link href="/admin/reports?status=pending">
+                {totalPending} mục cần xử lý
+                <ArrowRight />
+              </Link>
+            </Button>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 ring-1 ring-emerald-200">
+              <CheckCircle2 className="h-4 w-4" />
+              Mọi việc đã xử lý
+            </span>
+          )
         }
       />
 
-      <AdminMetricGrid items={stats} />
-
-      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <section className="space-y-6">
-          <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.45)]">
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-700">
-                  Hàng chờ
-                </p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
-                  Nhóm tác vụ cần xử lý trước
-                </h2>
-              </div>
-              <p className="max-w-xl text-sm leading-6 text-slate-500">
-                Những con số này giúp admin biết nên vào màn nào trước để hệ thống không bị tồn đọng kiểm duyệt.
-              </p>
-            </div>
-
-            <div className="mt-6 grid gap-4 md:grid-cols-2">
-              {[
-                {
-                  href: '/admin/store-owners',
-                  title: 'Hồ sơ chủ gian hàng',
-                  value: overview.metrics.storeOwners.pending,
-                  hint: 'Tài khoản mới đang chờ phê duyệt.',
-                  tone: 'amber',
-                },
-                {
-                  href: '/admin/store-drafts',
-                  title: 'Bản nháp nội dung',
-                  value: overview.metrics.drafts.pending,
-                  hint: 'Bản nháp gian hàng cần review trước khi publish.',
-                  tone: 'rose',
-                },
-                {
-                  href: '/admin/location-pins',
-                  title: 'Ghim vị trí',
-                  value: overview.metrics.locationPins.pending,
-                  hint: 'Các đề xuất vị trí mới đang chờ xác nhận.',
-                  tone: 'emerald',
-                },
-                {
-                  href: '/admin/reviews',
-                  title: 'Bình luận cần theo dõi',
-                  value: overview.metrics.reviews.hidden,
-                  hint: 'Bình luận đã bị ẩn và cần theo dõi tiếp diễn biến.',
-                  tone: 'violet',
-                },
-              ].map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`group rounded-[24px] border p-5 transition hover:-translate-y-0.5 hover:shadow-lg ${
-                    item.tone === 'amber'
-                      ? 'border-amber-200 bg-amber-50'
-                      : item.tone === 'rose'
-                        ? 'border-rose-200 bg-rose-50'
-                        : item.tone === 'emerald'
-                          ? 'border-emerald-200 bg-emerald-50'
-                          : 'border-violet-200 bg-violet-50'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">{item.title}</p>
-                      <p className="mt-2 text-4xl font-semibold text-slate-950">{item.value}</p>
-                    </div>
-                    <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-slate-600">
-                      Xem ngay
-                    </span>
-                  </div>
-                  <p className="mt-4 text-sm leading-6 text-slate-600">{item.hint}</p>
-                </Link>
-              ))}
-            </div>
+      {/* Hàng chờ kiểm duyệt — to và rõ ràng nhất */}
+      <section>
+        <div className="mb-2.5 flex items-end justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">Hàng chờ kiểm duyệt</h2>
+            <p className="text-xs text-slate-500">Click để mở danh sách đang chờ.</p>
           </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {queues.map((q) => (
+            <QueueCard key={q.href} {...q} />
+          ))}
+        </div>
+      </section>
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.45)]">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-700">
-                    Bản nháp mới
-                  </p>
-                  <h3 className="mt-2 text-xl font-semibold text-slate-950">
-                    Gian hàng chờ duyệt
-                  </h3>
-                </div>
-                <Link href="/admin/store-drafts" className="text-sm font-semibold text-cyan-700 hover:text-cyan-800">
-                  Xem tất cả
-                </Link>
-              </div>
-              <div className="mt-5 space-y-3">
-                {overview.recentDrafts.length === 0 ? (
-                  <p className="rounded-2xl bg-slate-50 px-4 py-5 text-sm text-slate-500">
-                    Hiện chưa có bản nháp nào chờ duyệt.
-                  </p>
-                ) : (
-                  overview.recentDrafts.map((draft) => (
-                    <Link
-                      key={draft.id}
-                      href={`/admin/store-drafts/${draft.id}`}
-                      className="block rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 transition hover:border-cyan-200 hover:bg-cyan-50"
-                    >
-                      <p className="font-semibold text-slate-900">
-                        {draft.proposedName || draft.store?.name || 'Bản nháp chưa đặt tên'}
-                      </p>
-                      <p className="mt-1 text-sm text-slate-500">
-                        {draft.store?.name ? `Gian hàng hiện tại: ${draft.store.name}` : 'Chưa có gian hàng gốc'}
-                      </p>
-                      <p className="mt-2 text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
-                        {formatDate(draft.submittedAt)}
-                      </p>
-                    </Link>
-                  ))
-                )}
-              </div>
-            </div>
+      {/* Thống kê tổng */}
+      <section>
+        <div className="mb-2.5">
+          <h2 className="text-sm font-semibold text-slate-900">Thống kê hệ thống</h2>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {stats.map((s) => (
+            <StatCard key={s.label} {...s} />
+          ))}
+        </div>
+      </section>
 
-            <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.45)]">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-700">
-                    Tốp báo cáo
-                  </p>
-                  <h3 className="mt-2 text-xl font-semibold text-slate-950">
-                    Bình luận cần can thiệp
-                  </h3>
-                </div>
-                <Link href="/admin/reports" className="text-sm font-semibold text-cyan-700 hover:text-cyan-800">
-                  Mở màn báo cáo
-                </Link>
-              </div>
-              <div className="mt-5 space-y-3">
-                {overview.recentReports.length === 0 ? (
-                  <p className="rounded-2xl bg-slate-50 px-4 py-5 text-sm text-slate-500">
-                    Không có báo cáo mới cần xử lý.
-                  </p>
-                ) : (
-                  overview.recentReports.map((report) => (
-                    <div
-                      key={report.id}
-                      className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="font-semibold text-slate-900">
-                          {report.review?.storeName ?? 'Bình luận chưa gắn gian hàng'}
-                        </p>
-                        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-amber-700 ring-1 ring-amber-200">
-                          {report.reason?.labelVi ?? 'Báo cáo mới'}
-                        </span>
-                      </div>
-                      <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">
-                        {report.review?.content || 'Bình luận không có nội dung văn bản.'}
-                      </p>
-                      <p className="mt-3 text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
-                        {formatDate(report.createdAt)}
-                      </p>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        </section>
+      {/* Sức khỏe + Hoạt động */}
+      <div className="grid gap-4 lg:grid-cols-[1fr_1.4fr]">
+        <Card>
+          <CardHeader className="border-b border-slate-100">
+            <CardTitle className="text-base">Sức khỏe hệ thống</CardTitle>
+            <CardDescription>Tỉ lệ hoạt động / hoàn tất theo từng nhóm.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-5">
+            {health.map((h) => (
+              <HealthBar key={h.label} {...h} />
+            ))}
+          </CardContent>
+        </Card>
 
-        <aside className="space-y-6">
-          <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.45)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-700">
-              Lối tắt
-            </p>
-            <h3 className="mt-2 text-xl font-semibold text-slate-950">Truy cập nhanh các màn admin</h3>
-            <div className="mt-5 space-y-3">
-              {[
-                ['/admin/stores', 'Quản lý gian hàng', 'Xem trạng thái và mở chi tiết từng gian hàng.'],
-                ['/admin/tags', 'Quản lý nhãn sở thích', 'Chỉnh taxonomy dùng trong menu và gợi ý món ăn.'],
-                ['/admin/reviews', 'Quản lý bình luận', 'Ẩn, bỏ ẩn hoặc xóa các bình luận cần kiểm duyệt.'],
-                ['/admin/announcements', 'Gửi thông báo', 'Soạn thông báo nội bộ đến các chủ gian hàng.'],
-              ].map(([href, title, text]) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className="block rounded-2xl border border-slate-200 px-4 py-4 transition hover:border-cyan-200 hover:bg-cyan-50"
-                >
-                  <p className="font-semibold text-slate-900">{title}</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-500">{text}</p>
-                </Link>
-              ))}
+        <Card>
+          <CardHeader className="flex-row items-center justify-between space-y-0 border-b border-slate-100">
+            <div>
+              <CardTitle className="text-base">Hoạt động gần đây</CardTitle>
+              <CardDescription className="mt-0.5">
+                Bản nháp, báo cáo và bình luận mới nhất.
+              </CardDescription>
             </div>
-          </div>
-
-          <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.45)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-700">
-              Bình luận mới
-            </p>
-            <h3 className="mt-2 text-xl font-semibold text-slate-950">
-              Dòng hoạt động gần nhất
-            </h3>
-            <div className="mt-5 space-y-3">
-              {overview.recentReviews.length === 0 ? (
-                <p className="rounded-2xl bg-slate-50 px-4 py-5 text-sm text-slate-500">
-                  Chưa có bình luận nào mới.
-                </p>
-              ) : (
-                overview.recentReviews.map((review) => (
-                  <div
-                    key={review.id}
-                    className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="font-semibold text-slate-900">
-                        {review.customer?.displayName ?? 'Khách vãng lai'}
-                      </p>
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ${
-                          review.isHidden
-                            ? 'bg-slate-900 text-white ring-slate-900'
-                            : 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-                        }`}
-                      >
-                        {review.isHidden ? 'Đang ẩn' : 'Hiển thị'}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-sm text-slate-500">
-                      {review.store?.name ?? 'Không rõ gian hàng'} · {review.stars}/5 sao
-                    </p>
-                    <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">
-                      {review.content || 'Bình luận chỉ có điểm sao, chưa có nội dung chữ.'}
-                    </p>
-                    <div className="mt-3 flex items-center justify-between text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
-                      <span>{formatDate(review.createdAt)}</span>
-                      <span>{review.reportCount} báo cáo</span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </aside>
+            <Badge variant="muted">{activities.length}</Badge>
+          </CardHeader>
+          <CardContent className="pt-5">
+            {activities.length === 0 ? (
+              <div className="rounded-md bg-slate-50 px-3 py-8 text-center text-sm text-slate-500">
+                Chưa có hoạt động nào trong khoảng gần đây.
+              </div>
+            ) : (
+              <ul className="-my-2 divide-y divide-slate-100">
+                {activities.map((item) => (
+                  <ActivityRow key={item.id} item={item} />
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
+}
+
+const QUEUE_TONE: Record<
+  string,
+  { ring: string; iconBg: string; iconText: string; valueColor: string }
+> = {
+  amber: {
+    ring: 'ring-amber-200/70',
+    iconBg: 'bg-amber-100',
+    iconText: 'text-amber-700',
+    valueColor: 'text-amber-700',
+  },
+  rose: {
+    ring: 'ring-rose-200/70',
+    iconBg: 'bg-rose-100',
+    iconText: 'text-rose-700',
+    valueColor: 'text-rose-700',
+  },
+  emerald: {
+    ring: 'ring-emerald-200/70',
+    iconBg: 'bg-emerald-100',
+    iconText: 'text-emerald-700',
+    valueColor: 'text-emerald-700',
+  },
+  cyan: {
+    ring: 'ring-cyan-200/70',
+    iconBg: 'bg-cyan-100',
+    iconText: 'text-cyan-700',
+    valueColor: 'text-cyan-700',
+  },
+};
+
+interface QueueCardProps {
+  href: string;
+  label: string;
+  value: number;
+  icon: typeof Users;
+  tone: keyof typeof QUEUE_TONE;
+}
+
+function QueueCard({ href, label, value, icon: Icon, tone }: QueueCardProps) {
+  const t = QUEUE_TONE[tone];
+  const empty = value === 0;
+  return (
+    <Link
+      href={href}
+      className={cn(
+        'group rounded-xl border bg-white p-4 ring-1 transition-shadow hover:shadow-md',
+        empty ? 'border-slate-200 ring-slate-200/70' : 'border-slate-200',
+        !empty && t.ring,
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
+          <p
+            className={cn(
+              'mt-2 text-3xl font-semibold tracking-tight',
+              empty ? 'text-slate-400' : t.valueColor,
+            )}
+          >
+            {value}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            {empty ? 'Không có mục nào đang chờ.' : 'đang chờ xử lý'}
+          </p>
+        </div>
+        <div
+          className={cn(
+            'grid h-9 w-9 shrink-0 place-items-center rounded-lg',
+            empty ? 'bg-slate-100 text-slate-400' : `${t.iconBg} ${t.iconText}`,
+          )}
+        >
+          <Icon className="h-4 w-4" />
+        </div>
+      </div>
+      <div className="mt-3 flex items-center gap-1.5 text-xs font-medium text-slate-500 transition-colors group-hover:text-slate-900">
+        Xem danh sách
+        <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+      </div>
+    </Link>
+  );
+}
+
+interface StatCardProps {
+  label: string;
+  value: number;
+  sub: string;
+  icon: typeof Users;
+  href: string;
+}
+
+function StatCard({ label, value, sub, icon: Icon, href }: StatCardProps) {
+  return (
+    <Link
+      href={href}
+      className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
+        <Icon className="h-4 w-4 text-slate-400 transition-colors group-hover:text-slate-700" />
+      </div>
+      <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">{value}</p>
+      <p className="mt-1 text-xs leading-5 text-slate-500">{sub}</p>
+    </Link>
+  );
+}
+
+function HealthBar({ label, current, total }: { label: string; current: number; total: number }) {
+  const pct = total === 0 ? 0 : Math.round((current / total) * 100);
+  const color =
+    pct >= 80 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-500' : pct === 0 ? 'bg-slate-300' : 'bg-rose-500';
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-2 text-sm">
+        <span className="text-slate-700">{label}</span>
+        <span className="font-medium text-slate-900">
+          {current}
+          <span className="text-slate-400">/{total}</span>
+          <span className="ml-2 text-xs text-slate-500">{pct}%</span>
+        </span>
+      </div>
+      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+        <div className={cn('h-full rounded-full transition-all', color)} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function ActivityRow({ item }: { item: ActivityItem }) {
+  const Icon = item.type === 'draft' ? FileEdit : item.type === 'report' ? Flag : Star;
+
+  const inner = (
+    <div className="flex gap-3 py-3">
+      <div
+        className={cn(
+          'mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-md',
+          item.type === 'draft' && 'bg-amber-100 text-amber-700',
+          item.type === 'report' && 'bg-rose-100 text-rose-700',
+          item.type === 'review' && 'bg-violet-100 text-violet-700',
+        )}
+      >
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <p className="truncate text-sm font-medium text-slate-900">{item.title}</p>
+          {item.badge ? <Badge variant={item.badge.variant}>{item.badge.label}</Badge> : null}
+        </div>
+        <p className="mt-0.5 truncate text-xs text-slate-500">{item.meta}</p>
+        {item.body ? (
+          <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600">{item.body}</p>
+        ) : null}
+        <p className="mt-1 text-[11px] uppercase tracking-wider text-slate-400">
+          {formatRelative(item.timestamp)}
+        </p>
+      </div>
+    </div>
+  );
+
+  if (item.href) {
+    return (
+      <li>
+        <Link
+          href={item.href}
+          className="block -mx-2 rounded-md px-2 transition-colors hover:bg-slate-50"
+        >
+          {inner}
+        </Link>
+      </li>
+    );
+  }
+  return <li>{inner}</li>;
 }

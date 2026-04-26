@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { cn } from '../../../lib/cn';
 
 type MetricTone =
   | 'slate'
@@ -19,89 +20,47 @@ interface AdminMetricItem {
   tone?: MetricTone;
 }
 
-const TONE_MAP: Record<
-  MetricTone,
-  { card: string; ring: string; icon: string; label: string; value: string }
-> = {
-  slate: {
-    card: 'from-white to-slate-50',
-    ring: 'ring-slate-200/80',
-    icon: 'bg-slate-900 text-white',
-    label: 'text-slate-500',
-    value: 'text-slate-950',
-  },
-  blue: {
-    card: 'from-blue-50 to-white',
-    ring: 'ring-blue-200/80',
-    icon: 'bg-blue-600 text-white',
-    label: 'text-blue-700',
-    value: 'text-blue-950',
-  },
-  emerald: {
-    card: 'from-emerald-50 to-white',
-    ring: 'ring-emerald-200/80',
-    icon: 'bg-emerald-600 text-white',
-    label: 'text-emerald-700',
-    value: 'text-emerald-950',
-  },
-  amber: {
-    card: 'from-amber-50 to-white',
-    ring: 'ring-amber-200/80',
-    icon: 'bg-amber-500 text-white',
-    label: 'text-amber-700',
-    value: 'text-amber-950',
-  },
-  rose: {
-    card: 'from-rose-50 to-white',
-    ring: 'ring-rose-200/80',
-    icon: 'bg-rose-600 text-white',
-    label: 'text-rose-700',
-    value: 'text-rose-950',
-  },
-  cyan: {
-    card: 'from-cyan-50 to-white',
-    ring: 'ring-cyan-200/80',
-    icon: 'bg-cyan-600 text-white',
-    label: 'text-cyan-700',
-    value: 'text-cyan-950',
-  },
-  violet: {
-    card: 'from-violet-50 to-white',
-    ring: 'ring-violet-200/80',
-    icon: 'bg-violet-600 text-white',
-    label: 'text-violet-700',
-    value: 'text-violet-950',
-  },
+const TONE_MAP: Record<MetricTone, string> = {
+  slate: 'bg-slate-100 text-slate-700',
+  blue: 'bg-blue-100 text-blue-700',
+  emerald: 'bg-emerald-100 text-emerald-700',
+  amber: 'bg-amber-100 text-amber-700',
+  rose: 'bg-rose-100 text-rose-700',
+  cyan: 'bg-cyan-100 text-cyan-700',
+  violet: 'bg-violet-100 text-violet-700',
 };
 
 export default function AdminMetricGrid({ items }: { items: AdminMetricItem[] }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {items.map((item) => {
-        const tone = TONE_MAP[item.tone ?? 'slate'];
+        const toneClass = TONE_MAP[item.tone ?? 'slate'];
 
         return (
           <div
             key={item.label}
-            className={`rounded-[28px] bg-gradient-to-br p-5 shadow-[0_16px_40px_-28px_rgba(15,23,42,0.45)] ring-1 ${tone.card} ${tone.ring}`}
+            className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
           >
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <p className={`text-xs font-semibold uppercase tracking-[0.22em] ${tone.label}`}>
-                  {item.label}
-                </p>
-                <div className={`mt-3 text-3xl font-semibold leading-none ${tone.value}`}>
-                  {item.value}
-                </div>
-              </div>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                {item.label}
+              </p>
               {item.icon ? (
-                <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${tone.icon}`}>
+                <div
+                  className={cn(
+                    'grid h-8 w-8 shrink-0 place-items-center rounded-lg [&_svg]:h-4 [&_svg]:w-4',
+                    toneClass,
+                  )}
+                >
                   {item.icon}
                 </div>
               ) : null}
             </div>
+            <div className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
+              {item.value}
+            </div>
             {item.description ? (
-              <div className="mt-4 text-sm leading-6 text-slate-500">{item.description}</div>
+              <div className="mt-1 text-xs leading-5 text-slate-500">{item.description}</div>
             ) : null}
           </div>
         );
