@@ -17,6 +17,10 @@ export class BoundaryCheckService {
    * Returns true if the given (lat, lng) is within the active food-street boundary.
    * Throws an error with code NO_ACTIVE_BOUNDARY when no boundary is configured.
    */
+  async getActiveBoundary(): Promise<FoodStreetBoundary | null> {
+    return this.boundaryRepo.findOne({ where: { isActive: true } });
+  }
+
   async isWithinBoundary(lat: number, lng: number): Promise<boolean> {
     const boundary = await this.boundaryRepo.findOne({
       where: { isActive: true },

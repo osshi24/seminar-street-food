@@ -14,7 +14,6 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { StoreOwnerAccount, StoreOwnerStatus } from '../entities/store-owner-account.entity';
-import { Store, StoreStatus } from '../entities/store.entity';
 import { AdminAccount } from '../entities/admin-account.entity';
 import { Notification, NotificationRecipientType } from '../entities/notification.entity';
 import { MailService } from '../mail/mail.service';
@@ -30,8 +29,6 @@ export class AuthService {
   constructor(
     @InjectRepository(StoreOwnerAccount)
     private readonly storeOwnerRepo: Repository<StoreOwnerAccount>,
-    @InjectRepository(Store)
-    private readonly storeRepo: Repository<Store>,
     @InjectRepository(AdminAccount)
     private readonly adminRepo: Repository<AdminAccount>,
     @InjectRepository(Notification)
@@ -62,13 +59,6 @@ export class AuthService {
       });
       const savedAccount = await manager.save(StoreOwnerAccount, account);
       savedAccountId = savedAccount.id;
-
-      const store = manager.create(Store, {
-        ownerId: savedAccount.id,
-        name: dto.storeName,
-        status: StoreStatus.INACTIVE,
-      });
-      await manager.save(Store, store);
 
       const admins = await this.adminRepo.find();
       for (const admin of admins) {

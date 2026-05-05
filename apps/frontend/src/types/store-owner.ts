@@ -11,18 +11,17 @@ export interface StoreOwner {
   lockoutUntil?: string | null;
   createdAt: string;
   updatedAt: string;
-  store?: Store;
+  stores?: Store[];
 }
 
 export interface Store {
   id: string;
   ownerId: string;
   name: string;
-  status: 'inactive' | 'active' | 'suspended';
+  status: 'inactive' | 'active';
+  approvalStatus: 'pending' | 'approved' | 'rejected';
   description?: string;
   address?: string;
-  latitude?: number;
-  longitude?: number;
   createdAt: string;
   updatedAt: string;
 }

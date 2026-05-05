@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { StoreOwnersService } from './store-owners.service';
 import { StoreOwnersController } from './store-owners.controller';
 import { StoreOwnerAccount } from '../entities/store-owner-account.entity';
-import { Store } from '../entities/store.entity';
+import { Store } from '../stores/entities/store.entity';
 import { Notification } from '../entities/notification.entity';
 import { AdminAccount } from '../entities/admin-account.entity';
 import { NotificationsModule } from '../notifications/notifications.module';

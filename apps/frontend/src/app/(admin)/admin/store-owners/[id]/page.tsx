@@ -251,24 +251,31 @@ export default function StoreOwnerDetailPage() {
         </dl>
       </StoreOwnerInfoSection>
 
-      {storeOwner.store && (
-        <StoreOwnerInfoSection title="Thông tin gian hàng">
-          <dl className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Tên gian hàng</dt>
-              <dd className="mt-1 text-sm text-slate-900">{storeOwner.store.name}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Địa chỉ</dt>
-              <dd className="mt-1 text-sm text-slate-900">{storeOwner.store.address || '—'}</dd>
-            </div>
-          </dl>
-          <a
-            href={`/admin/stores/${storeOwner.store.id}`}
-            className="mt-4 inline-flex text-sm font-medium text-cyan-700 hover:underline"
-          >
-            Xem chi tiết gian hàng →
-          </a>
+      {storeOwner.stores && storeOwner.stores.length > 0 && (
+        <StoreOwnerInfoSection title={`Gian hàng (${storeOwner.stores.length}/3)`}>
+          <div className="space-y-3">
+            {storeOwner.stores.map((store) => (
+              <div key={store.id} className="rounded-lg border border-slate-200 p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-slate-900">{store.name}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    store.approvalStatus === 'approved' ? 'bg-green-100 text-green-800' :
+                    store.approvalStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-red-100 text-red-800'
+                  }`}>
+                    {store.approvalStatus === 'approved' ? 'Đã duyệt' : store.approvalStatus === 'pending' ? 'Chờ duyệt' : 'Từ chối'}
+                  </span>
+                </div>
+                {store.address && <p className="mt-1 text-xs text-slate-500">{store.address}</p>}
+                <a
+                  href={`/admin/stores/${store.id}`}
+                  className="mt-2 inline-flex text-xs font-medium text-cyan-700 hover:underline"
+                >
+                  Xem chi tiết →
+                </a>
+              </div>
+            ))}
+          </div>
         </StoreOwnerInfoSection>
       )}
 
@@ -317,7 +324,7 @@ export default function StoreOwnerDetailPage() {
         isOpen={modals.deactivate}
         isLoading={actionLoading}
         storeOwnerName={storeOwner.fullName}
-        storeName={storeOwner.store?.name}
+        storeName={storeOwner.stores?.[0]?.name}
         onConfirm={handleDeactivate}
         onCancel={() => setModals({ ...modals, deactivate: false })}
       />

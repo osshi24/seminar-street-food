@@ -1,16 +1,21 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 import {
-  getMyStore,
-  revokeDraft,
-  updateStoreInfo,
+  getStoreById,
+  updateStoreInfoById,
+  saveDraftById,
+  submitDraftById,
+  revokeDraftById,
+  getDraftById,
   type StoreImageItem,
   type UpdateStoreInfoDto,
-} from '../../../../lib/api/stores';
-import StoreEditForm from '../../../../components/stores/StoreEditForm';
-import ImageUploader from '../../../../components/stores/ImageUploader';
-import StoreQrSection from '../../../../components/stores/StoreQrSection';
+  type StoreDraft,
+} from '../../../../../lib/api/stores';
+import StoreDetailEditForm from '../../../../../components/stores/StoreDetailEditForm';
+import ImageUploader from '../../../../../components/stores/ImageUploader';
+import StoreQrSection from '../../../../../components/stores/StoreQrSection';
 
 type TabKey = 'info' | 'images' | 'qr';
 
@@ -23,8 +28,8 @@ interface StoreData {
   openingHours?: string | null;
   socialLinks?: { facebook?: string; instagram?: string; tiktok?: string } | null;
   status: string;
+  approvalStatus: 'pending' | 'approved' | 'rejected';
   hasPendingDraft: boolean;
-  draft?: { status: string; rejectionReason?: string | null } | null;
   images: StoreImageItem[];
 }
 
@@ -34,14 +39,18 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'qr', label: 'QR Code' },
 ];
 
-export default function StorePage() {
+export default function StoreDetailPage() {
+  const params = useParams();
+  const storeId = params.id as string;
+
   const [store, setStore] = useState<StoreData | null>(null);
+  const [draft, setDraft] = useState<StoreDraft | null>(null);
   const [tab, setTab] = useState<TabKey>('info');
   const [editingDraft, setEditingDraft] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [revoking, setRevoking] = useState(false);
 
-  // Info form state
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [openingHours, setOpeningHours] = useState('');
@@ -49,10 +58,23 @@ export default function StorePage() {
   const [instagram, setInstagram] = useState('');
   const [tiktok, setTiktok] = useState('');
 
+  const loadDraft = useCallback(async (s: StoreData) => {
+    if (!s.hasPendingDraft) {
+      setDraft(null);
+      return;
+    }
+    try {
+      const d = await getDraftById(s.id);
+      setDraft(d);
+    } catch {
+      setDraft(null);
+    }
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await getMyStore();
+      const res = await getStoreById(storeId);
       const s = res.data as StoreData;
       setStore(s);
       setPhone(s.phone ?? '');
@@ -61,17 +83,15 @@ export default function StorePage() {
       setFacebook(s.socialLinks?.facebook ?? '');
       setInstagram(s.socialLinks?.instagram ?? '');
       setTiktok(s.socialLinks?.tiktok ?? '');
+      await loadDraft(s);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [storeId, loadDraft]);
 
-  useEffect(() => { load(); }, [load]);
-
-  async function handleRevoke() {
-    await revokeDraft();
+  useEffect(() => {
     load();
-  }
+  }, [load]);
 
   async function handleSaveInfo(e: React.FormEvent) {
     e.preventDefault();
@@ -85,10 +105,28 @@ export default function StorePage() {
           ? { facebook: facebook || undefined, instagram: instagram || undefined, tiktok: tiktok || undefined }
           : undefined,
       };
-      await updateStoreInfo(dto);
+      await updateStoreInfoById(storeId, dto);
       await load();
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleSaveDraft(data: { name: string; description?: string }) {
+    await saveDraftById(storeId, data);
+    await submitDraftById(storeId);
+    setEditingDraft(false);
+    await load();
+  }
+
+  async function handleRevokeDraft() {
+    if (!confirm('Bạn có chắc muốn rút lại bản nháp này?')) return;
+    setRevoking(true);
+    try {
+      await revokeDraftById(storeId);
+      await load();
+    } finally {
+      setRevoking(false);
     }
   }
 
@@ -105,27 +143,57 @@ export default function StorePage() {
 
   if (!store) return <p className="p-6 text-red-600">Không tìm thấy gian hàng</p>;
 
+  // Single banner — ưu tiên: draft pending > draft rejected > store pending > store rejected > (không cần banner khi approved)
+  const banner = (() => {
+    if (store.hasPendingDraft && draft) {
+      return {
+        bg: 'bg-yellow-50 border-yellow-200',
+        text: 'Có bản nháp tên/mô tả đang chờ admin phê duyệt.',
+        showRevoke: true,
+      };
+    }
+    if (draft?.status === 'rejected') {
+      return {
+        bg: 'bg-red-50 border-red-200',
+        text: `Bản nháp bị từ chối${draft.rejectionReason ? `: ${draft.rejectionReason}` : '.'}`,
+        showRevoke: false,
+      };
+    }
+    if (store.approvalStatus === 'pending') {
+      return {
+        bg: 'bg-yellow-50 border-yellow-200',
+        text: 'Gian hàng đang chờ admin phê duyệt lần đầu.',
+        showRevoke: false,
+      };
+    }
+    if (store.approvalStatus === 'rejected') {
+      return {
+        bg: 'bg-red-50 border-red-200',
+        text: 'Gian hàng đã bị từ chối.',
+        showRevoke: false,
+      };
+    }
+    return null;
+  })();
+
+  const canEditNameDesc = store.approvalStatus === 'approved' && !store.hasPendingDraft;
+
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Gian hàng của tôi</h1>
+      <h1 className="text-2xl font-bold text-gray-900">{store.name}</h1>
 
-      {/* Draft banners */}
-      {store.hasPendingDraft && (
-        <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-4 flex items-start gap-3">
-          <svg className="h-5 w-5 text-yellow-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-          </svg>
-          <div>
-            <p className="text-sm text-yellow-800 font-medium">Bản nháp đang chờ Admin phê duyệt</p>
-            <button onClick={handleRevoke} className="mt-1 text-xs text-red-600 hover:underline">Thu hồi bản nháp</button>
-          </div>
-        </div>
-      )}
-      {store.draft?.status === 'rejected' && (
-        <div className="rounded-lg bg-red-50 border border-red-200 p-4">
-          <p className="text-sm text-red-800 font-medium">Bản nháp bị từ chối</p>
-          {store.draft.rejectionReason && <p className="mt-1 text-sm text-red-700">Lý do: {store.draft.rejectionReason}</p>}
-          <button onClick={() => setEditingDraft(true)} className="mt-2 text-xs text-blue-600 hover:underline">Chỉnh sửa lại</button>
+      {banner && (
+        <div className={`rounded-lg border p-4 flex items-start justify-between gap-4 ${banner.bg}`}>
+          <p className="text-sm font-medium text-gray-800">{banner.text}</p>
+          {banner.showRevoke && (
+            <button
+              onClick={handleRevokeDraft}
+              disabled={revoking}
+              className="shrink-0 text-sm text-red-600 hover:underline disabled:opacity-50"
+            >
+              {revoking ? 'Đang rút...' : 'Rút bản nháp'}
+            </button>
+          )}
         </div>
       )}
 
@@ -153,33 +221,50 @@ export default function StorePage() {
         </nav>
       </div>
 
-      {/* Tab: Info */}
       {tab === 'info' && (
         <div className="space-y-6">
-          {/* Name & Description (draft workflow) */}
+          {/* Tên & Thuyết minh */}
           <div className="rounded-lg bg-white border p-5 shadow-sm">
             <div className="flex items-center justify-between mb-1">
               <h2 className="text-base font-semibold text-gray-800">Tên & Thuyết minh</h2>
-              {!store.hasPendingDraft && !editingDraft && (
-                <button onClick={() => setEditingDraft(true)} className="text-sm text-blue-600 hover:underline">Chỉnh sửa</button>
+              {canEditNameDesc && !editingDraft && (
+                <button onClick={() => setEditingDraft(true)} className="text-sm text-blue-600 hover:underline">
+                  Chỉnh sửa
+                </button>
               )}
             </div>
+
             <p className="mb-4 text-xs text-gray-400">Nội dung thuyết minh sẽ được đọc tự động khi khách quét QR gian hàng.</p>
+
             {editingDraft ? (
-              <StoreEditForm
+              <StoreDetailEditForm
+                storeId={storeId}
                 initialName={store.name}
                 initialDescription={store.description}
-                onSuccess={() => { setEditingDraft(false); load(); }}
+                onSaveDraft={handleSaveDraft}
+                onCancel={() => setEditingDraft(false)}
               />
             ) : (
               <div className="space-y-2">
                 <p className="text-lg font-semibold text-gray-900">{store.name}</p>
-                <p className="text-sm text-gray-600">{store.description || <span className="italic text-gray-400">Chưa có nội dung thuyết minh</span>}</p>
+                <p className="text-sm text-gray-600">
+                  {store.description || <span className="italic text-gray-400">Chưa có nội dung thuyết minh</span>}
+                </p>
+                {store.approvalStatus !== 'approved' && (
+                  <p className="text-xs text-gray-400 mt-2">
+                    Có thể chỉnh sửa tên và thuyết minh sau khi gian hàng được admin phê duyệt lần đầu.
+                  </p>
+                )}
+                {store.approvalStatus === 'approved' && store.hasPendingDraft && (
+                  <p className="text-xs text-yellow-600 mt-2">
+                    Đang có bản nháp chờ duyệt — không thể chỉnh sửa cho đến khi bản nháp được xử lý.
+                  </p>
+                )}
               </div>
             )}
           </div>
 
-          {/* Additional info (direct update) */}
+          {/* Thông tin liên hệ */}
           <form onSubmit={handleSaveInfo} className="rounded-lg bg-white border p-5 shadow-sm space-y-4">
             <h2 className="text-base font-semibold text-gray-800">Thông tin liên hệ</h2>
 
@@ -264,17 +349,15 @@ export default function StorePage() {
         </div>
       )}
 
-      {/* Tab: Images */}
       {tab === 'images' && (
         <div className="rounded-lg bg-white border p-5 shadow-sm">
           <h2 className="text-base font-semibold text-gray-800 mb-4">Hình ảnh gian hàng</h2>
-          <ImageUploader storeId={store.id} images={store.images} onImagesChange={load} />
+          <ImageUploader storeId={storeId} images={store.images} onImagesChange={load} />
         </div>
       )}
 
-      {/* Tab: QR */}
       {tab === 'qr' && (
-        <StoreQrSection storeId={store.id} storeName={store.name} storeStatus={store.status} />
+        <StoreQrSection storeId={storeId} storeName={store.name} storeStatus={store.status} />
       )}
     </div>
   );
