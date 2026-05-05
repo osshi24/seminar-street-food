@@ -20,6 +20,6 @@ export class QrPublicController {
     if (result === 'unavailable') {
       return res.redirect(302, '/store-unavailable');
     }
-    return res.redirect(302, `/stores/${result}`);
+    return res.redirect(302, `/stores/${result}?autoplay=1`);
   }
 }

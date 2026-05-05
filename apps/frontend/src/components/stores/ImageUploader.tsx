@@ -3,18 +3,19 @@
 import { useCallback, useRef, useState } from 'react';
 import Image from 'next/image';
 import {
-  generateImageUploadUrl,
-  confirmImageUpload,
-  deleteStoreImage,
+  generateImageUploadUrlById,
+  confirmImageUploadById,
+  deleteStoreImageById,
   type StoreImageItem,
 } from '../../lib/api/stores';
 
 interface ImageUploaderProps {
+  storeId: string;
   images: StoreImageItem[];
   onImagesChange: () => void;
 }
 
-export default function ImageUploader({ images, onImagesChange }: ImageUploaderProps) {
+export default function ImageUploader({ storeId, images, onImagesChange }: ImageUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -39,18 +40,18 @@ export default function ImageUploader({ images, onImagesChange }: ImageUploaderP
 
     try {
       // 1. Get presigned URL from backend
-      const { presignedUrl, imageId } = await generateImageUploadUrl(file.type);
+      const { presignedUrl, imageId } = await generateImageUploadUrlById(storeId, file.type);
 
-      // 2. Upload directly to MinIO
+      // 2. Upload directly to MinIO via presigned URL
       const uploadRes = await fetch(presignedUrl, {
         method: 'PUT',
         body: file,
         headers: { 'Content-Type': file.type },
       });
-      if (!uploadRes.ok) throw new Error('Upload failed');
+      if (!uploadRes.ok) throw new Error(`Upload thất bại (${uploadRes.status})`);
 
-      // 3. Confirm upload
-      await confirmImageUpload(imageId);
+      // 3. Confirm upload with backend
+      await confirmImageUploadById(storeId, imageId);
 
       onImagesChange();
     } catch (err) {
@@ -59,24 +60,23 @@ export default function ImageUploader({ images, onImagesChange }: ImageUploaderP
       setUploading(false);
       if (inputRef.current) inputRef.current.value = '';
     }
-  }, [onImagesChange]);
+  }, [storeId, onImagesChange]);
 
   const handleDelete = useCallback(async (imageId: string) => {
     if (!confirm('Xóa ảnh này?')) return;
     setDeletingId(imageId);
     try {
-      await deleteStoreImage(imageId);
+      await deleteStoreImageById(storeId, imageId);
       onImagesChange();
     } catch {
       setError('Xóa ảnh thất bại');
     } finally {
       setDeletingId(null);
     }
-  }, [onImagesChange]);
+  }, [storeId, onImagesChange]);
 
   return (
     <div className="space-y-4">
-      {/* Upload button */}
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -115,7 +115,6 @@ export default function ImageUploader({ images, onImagesChange }: ImageUploaderP
         <p className="text-sm text-red-500">{error}</p>
       )}
 
-      {/* Image grid */}
       {images.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           {images.map((img) => (
@@ -124,14 +123,11 @@ export default function ImageUploader({ images, onImagesChange }: ImageUploaderP
                 src={img.url}
                 alt="Store image"
                 fill
+                unoptimized
                 className="object-cover"
                 sizes="(max-width: 768px) 50vw, 25vw"
               />
-              {img.isInDraft && (
-                <span className="absolute top-1 left-1 rounded bg-yellow-400 px-1.5 py-0.5 text-[10px] font-bold text-yellow-900">
-                  Chờ duyệt
-                </span>
-              )}
+
               <button
                 type="button"
                 onClick={() => handleDelete(img.id)}

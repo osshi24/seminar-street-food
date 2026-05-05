@@ -9,7 +9,6 @@ import { JwtAdminStrategy } from './strategies/jwt-admin.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { JwtCustomerStrategy } from './strategies/jwt-customer.strategy';
 import { StoreOwnerAccount } from '../entities/store-owner-account.entity';
-import { Store } from '../entities/store.entity';
 import { AdminAccount } from '../entities/admin-account.entity';
 import { Notification } from '../entities/notification.entity';
 import { CustomerGoogleAccount } from '../entities/customer-google-account.entity';
@@ -18,7 +17,7 @@ import { MailModule } from '../mail/mail.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([StoreOwnerAccount, Store, AdminAccount, Notification, CustomerGoogleAccount]),
+    TypeOrmModule.forFeature([StoreOwnerAccount, AdminAccount, Notification, CustomerGoogleAccount]),
     JwtModule.register({}),
     PassportModule,
     NotificationsModule,

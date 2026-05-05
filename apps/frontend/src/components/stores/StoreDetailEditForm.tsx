@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { saveDraft, submitDraft } from '../../lib/api/stores';
 
 const schema = z.object({
   name: z.string().min(1, 'Vui lòng nhập tên gian hàng').max(255),
@@ -13,15 +12,22 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-interface StoreEditFormProps {
+interface StoreDetailEditFormProps {
+  storeId: string;
   initialName: string;
   initialDescription?: string | null;
-  onSuccess: () => void;
+  onSaveDraft: (data: { name: string; description?: string }) => Promise<void>;
+  onCancel: () => void;
 }
 
-export default function StoreEditForm({ initialName, initialDescription, onSuccess }: StoreEditFormProps) {
+export default function StoreDetailEditForm({
+  storeId: _storeId,
+  initialName,
+  initialDescription,
+  onSaveDraft,
+  onCancel,
+}: StoreDetailEditFormProps) {
   const [serverError, setServerError] = useState<string | null>(null);
-  const [mode, setMode] = useState<'draft' | 'submit' | null>(null);
 
   const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -30,26 +36,17 @@ export default function StoreEditForm({ initialName, initialDescription, onSucce
 
   const description = watch('description') || '';
 
-  const onSubmit = async (data: FormData, submit = false) => {
+  const onSubmit = async (data: FormData) => {
     setServerError(null);
     try {
-      await saveDraft({ name: data.name, description: data.description });
-      if (submit) {
-        await submitDraft();
-      }
-      onSuccess();
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { code?: string } } };
-      if (error.response?.data?.code === 'DRAFT_PENDING') {
-        setServerError('Đã có bản nháp đang chờ duyệt. Vui lòng thu hồi trước.');
-      } else {
-        setServerError('Đã xảy ra lỗi. Vui lòng thử lại.');
-      }
+      await onSaveDraft({ name: data.name, description: data.description || undefined });
+    } catch {
+      setServerError('Đã xảy ra lỗi. Vui lòng thử lại.');
     }
   };
 
   return (
-    <form className="space-y-4">
+    <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
       {serverError && (
         <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{serverError}</div>
       )}
@@ -84,22 +81,25 @@ export default function StoreEditForm({ initialName, initialDescription, onSucce
         )}
       </div>
 
+      <p className="text-xs text-amber-600 bg-amber-50 rounded-md px-3 py-2">
+        Sau khi gửi, admin sẽ xem xét và phê duyệt. Nội dung thuyết minh sẽ được tự động dịch sang nhiều ngôn ngữ sau khi duyệt.
+      </p>
+
       <div className="flex gap-3">
         <button
-          type="button"
+          type="submit"
           disabled={isSubmitting}
-          onClick={handleSubmit((data) => { setMode('draft'); onSubmit(data, false); })}
-          className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
         >
-          Lưu nháp
+          {isSubmitting ? 'Đang gửi...' : 'Gửi để duyệt'}
         </button>
         <button
           type="button"
+          onClick={onCancel}
           disabled={isSubmitting}
-          onClick={handleSubmit((data) => { setMode('submit'); onSubmit(data, true); })}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
         >
-          {isSubmitting && mode === 'submit' ? 'Đang gửi...' : 'Gửi duyệt'}
+          Hủy
         </button>
       </div>
     </form>

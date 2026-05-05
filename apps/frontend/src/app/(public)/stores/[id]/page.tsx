@@ -6,9 +6,10 @@ import ReviewForm from '../../../../components/reviews/ReviewForm';
 
 interface StoreDetailPageProps {
   params: { id: string };
+  searchParams: { autoplay?: string };
 }
 
-export default async function StoreDetailPage({ params }: StoreDetailPageProps) {
+export default async function StoreDetailPage({ params, searchParams }: StoreDetailPageProps) {
   const cookieStore = cookies();
   const lang = cookieStore.get('phat_lang')?.value || 'vi';
 
@@ -38,6 +39,7 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
   if (!store) return null;
   const s = store.data;
   const isInactive = s.status === 'inactive';
+  const autoPlay = searchParams.autoplay === '1';
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -54,6 +56,7 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
           menuItems={s.menuItems}
           images={s.images}
           hasCommentary={!!s.activeCommentaryId}
+          autoPlay={autoPlay}
         />
 
         <section className="space-y-4">
