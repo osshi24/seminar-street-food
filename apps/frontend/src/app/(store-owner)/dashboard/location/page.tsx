@@ -2,6 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import {
+  CheckCircle2,
+  Clock,
+  MapPin,
+  Send,
+  Store as StoreIcon,
+  Undo2,
+} from 'lucide-react';
 import CoordinateForm from './components/CoordinateForm';
 import {
   getAllStoresLocation,
@@ -12,10 +20,26 @@ import {
   StoreLocationSummary,
 } from '../../../../lib/api/location';
 import { getPublicPins, type PublicPin } from '../../../../lib/api/map';
+import StoreOwnerPageHeader from '../../../../components/dashboard/common/StoreOwnerPageHeader';
+import StoreOwnerEmptyState from '../../../../components/dashboard/common/StoreOwnerEmptyState';
+import { Card, CardContent } from '../../../../components/ui/card';
+import { Button } from '../../../../components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../../../../components/ui/dialog';
+import { cn } from '../../../../lib/cn';
 
 const LocationMapPicker = dynamic(
   () => import('./components/LocationMapPicker'),
-  { ssr: false, loading: () => <div className="h-[360px] bg-gray-100 animate-pulse rounded-lg" /> },
+  {
+    ssr: false,
+    loading: () => <div className="h-[400px] animate-pulse rounded-xl bg-slate-100" />,
+  },
 );
 
 const STATUS_LABELS: Record<string, string> = {
@@ -35,6 +59,8 @@ export default function LocationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [boundary, setBoundary] = useState<{ lat: number; lng: number }[] | null>(null);
   const [allPublicPins, setAllPublicPins] = useState<PublicPin[]>([]);
+  const [revokeDialog, setRevokeDialog] = useState(false);
+  const [revoking, setRevoking] = useState(false);
 
   const showToast = (type: 'success' | 'error', msg: string) => {
     setToast({ type, msg });
@@ -73,8 +99,7 @@ export default function LocationPage() {
       setAllPublicPins(publicPinsData);
 
       if (storesData.length > 0) {
-        const firstId = storesData[0].storeId;
-        selectStore(firstId, storesData);
+        selectStore(storesData[0].storeId, storesData);
       }
     } catch {
       showToast('error', 'Không thể tải thông tin vị trí');
@@ -87,9 +112,7 @@ export default function LocationPage() {
     void loadData();
   }, [loadData]);
 
-  const handleSelectStore = (storeId: string) => {
-    selectStore(storeId, stores);
-  };
+  const handleSelectStore = (storeId: string) => selectStore(storeId, stores);
 
   const handleCoordChange = (newLat: number, newLng: number) => {
     setLat(String(newLat));
@@ -111,7 +134,7 @@ export default function LocationPage() {
       setStores((prev) =>
         prev.map((s) => (s.storeId === selectedStoreId ? { ...s, pending: pin } : s)),
       );
-      showToast('success', 'Đã gửi vị trí để duyệt');
+      showToast('success', 'Đã gửi vị trí để Admin duyệt');
     } catch (err: unknown) {
       const e = err as { response?: { data?: { code?: string } } };
       const code = e.response?.data?.code;
@@ -129,40 +152,46 @@ export default function LocationPage() {
 
   const handleRevoke = async () => {
     if (!selectedStoreId) return;
-    if (!confirm('Bạn có chắc muốn thu hồi vị trí đang chờ duyệt?')) return;
+    setRevoking(true);
     try {
       await revokePending(selectedStoreId);
       setStores((prev) =>
         prev.map((s) => (s.storeId === selectedStoreId ? { ...s, pending: null } : s)),
       );
       showToast('success', 'Đã thu hồi vị trí');
+      setRevokeDialog(false);
     } catch {
       showToast('error', 'Thu hồi thất bại');
+    } finally {
+      setRevoking(false);
     }
   };
 
   if (loading) {
     return (
-      <div className="flex h-full">
-        <div className="w-80 flex-shrink-0 p-6 border-r border-gray-100 space-y-4">
-          <div className="h-7 bg-gray-200 animate-pulse rounded w-40" />
-          <div className="h-4 bg-gray-100 animate-pulse rounded w-56" />
-          <div className="flex gap-2 pt-2">
-            {[1, 2].map((i) => <div key={i} className="h-9 w-28 bg-gray-200 animate-pulse rounded-lg" />)}
-          </div>
-          <div className="h-24 bg-gray-100 animate-pulse rounded-xl" />
-          <div className="h-24 bg-gray-100 animate-pulse rounded-xl" />
+      <div className="space-y-5">
+        <div className="h-20 animate-pulse rounded-xl bg-white" />
+        <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+          <div className="h-[500px] animate-pulse rounded-xl bg-white" />
+          <div className="h-[500px] animate-pulse rounded-xl bg-white" />
         </div>
-        <div className="flex-1 bg-gray-100 animate-pulse" />
       </div>
     );
   }
 
   if (stores.length === 0) {
     return (
-      <div className="p-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Vị trí gian hàng</h1>
-        <p className="text-gray-500 text-sm">Bạn chưa có gian hàng nào. Hãy tạo gian hàng trước.</p>
+      <div className="space-y-5">
+        <StoreOwnerPageHeader
+          badge="Bản đồ"
+          title="Vị trí gian hàng"
+          description="Ghim toạ độ chính xác để khách dễ dàng tìm đến gian hàng của bạn."
+        />
+        <StoreOwnerEmptyState
+          icon={MapPin}
+          title="Chưa có gian hàng nào"
+          description="Bạn cần tạo gian hàng trước khi có thể ghim vị trí trên bản đồ."
+        />
       </div>
     );
   }
@@ -171,7 +200,6 @@ export default function LocationPage() {
   const approved = selectedStore?.approved ?? null;
   const pending = selectedStore?.pending ?? null;
 
-  // Owner's own OTHER stores (not currently selected) — show approved or pending pin
   const ownOtherPins = stores
     .filter((s) => s.storeId !== selectedStoreId)
     .flatMap((s) => {
@@ -188,7 +216,6 @@ export default function LocationPage() {
       }];
     });
 
-  // Other owners' approved stores (exclude all own stores to avoid duplicate markers)
   const ownStoreIds = new Set(stores.map((s) => s.storeId));
   const otherOwnerPins = allPublicPins
     .filter((p) => !ownStoreIds.has(p.storeId))
@@ -207,153 +234,225 @@ export default function LocationPage() {
     lat && lng
       ? { lat: parseFloat(lat), lng: parseFloat(lng) }
       : approved
-      ? { lat: Number(approved.latitude), lng: Number(approved.longitude) }
-      : null;
+        ? { lat: Number(approved.latitude), lng: Number(approved.longitude) }
+        : null;
 
-  // main layout has p-6 (24px) and a 64px header → available = 100vh - 64 - 48 = calc(100vh - 112px)
-  const panelH = 'calc(100vh - 112px)';
+  const hasUnsavedChange =
+    !!lat &&
+    !!lng &&
+    (!approved ||
+      Number(approved.latitude).toFixed(6) !== Number(lat).toFixed(6) ||
+      Number(approved.longitude).toFixed(6) !== Number(lng).toFixed(6));
 
   return (
-    <div className="-m-6 flex">
-      {/* ── Left panel: controls ── */}
-      <div
-        className="w-80 flex-shrink-0 flex flex-col border-r border-gray-100 overflow-y-auto bg-white"
-        style={{ height: panelH }}
-      >
-        {/* Header */}
-        <div className="px-6 pt-6 pb-4">
-          <h1 className="text-xl font-bold text-gray-900">Vị trí gian hàng</h1>
-          <p className="text-gray-400 text-xs mt-1">
-            Kéo ghim hoặc nhập tọa độ rồi gửi duyệt.
-          </p>
+    <div className="space-y-5">
+      <StoreOwnerPageHeader
+        badge="Bản đồ"
+        title="Vị trí gian hàng"
+        description="Kéo ghim trên bản đồ hoặc nhập toạ độ rồi gửi Admin duyệt."
+        meta={
+          stores.length > 1
+            ? `Đang xem: ${selectedStore?.storeName ?? '—'}`
+            : undefined
+        }
+      />
+
+      {stores.length > 1 && (
+        <Card>
+          <CardContent className="flex flex-wrap gap-2 p-3">
+            {stores.map((store) => {
+              const isSelected = store.storeId === selectedStoreId;
+              const dot = store.pending
+                ? 'bg-amber-400'
+                : store.approved
+                  ? 'bg-emerald-500'
+                  : 'bg-slate-300';
+              return (
+                <button
+                  key={store.storeId}
+                  onClick={() => handleSelectStore(store.storeId)}
+                  className={cn(
+                    'inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors',
+                    isSelected
+                      ? 'border-orange-500 bg-orange-500 text-white shadow-sm'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600',
+                  )}
+                >
+                  <StoreIcon className="h-3.5 w-3.5" />
+                  <span className="max-w-[160px] truncate">{store.storeName}</span>
+                  <span className={cn('h-1.5 w-1.5 rounded-full', dot)} />
+                </button>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid gap-4 lg:grid-cols-[340px_1fr]">
+        <div className="space-y-3">
+          <StatusCard
+            tone="emerald"
+            label="Vị trí đã duyệt"
+            icon={CheckCircle2}
+            pin={approved}
+            emptyText="Chưa có vị trí được duyệt"
+          />
+          <StatusCard
+            tone="amber"
+            label="Đang chờ duyệt"
+            icon={Clock}
+            pin={pending}
+            emptyText="Không có yêu cầu chờ duyệt"
+            statusLabel={pending ? STATUS_LABELS[pending.status] : undefined}
+          />
+
+          <Card>
+            <CardContent className="space-y-3 p-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Toạ độ mới
+                </p>
+                <p className="mt-0.5 text-[11px] text-slate-400">
+                  Có thể kéo ghim trên bản đồ hoặc nhập trực tiếp.
+                </p>
+              </div>
+              <CoordinateForm
+                lat={lat}
+                lng={lng}
+                onChange={(newLat, newLng) => {
+                  setLat(newLat);
+                  setLng(newLng);
+                }}
+              />
+
+              <div className="flex flex-col gap-2 pt-1">
+                <Button
+                  onClick={handleSubmit}
+                  disabled={submitting || !!pending || !hasUnsavedChange}
+                  className="bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-50"
+                >
+                  <Send />
+                  {submitting
+                    ? 'Đang gửi...'
+                    : pending
+                      ? 'Đang chờ duyệt — không thể gửi'
+                      : !hasUnsavedChange
+                        ? 'Chưa có thay đổi'
+                        : 'Gửi duyệt vị trí'}
+                </Button>
+                {pending && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setRevokeDialog(true)}
+                    className="border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                  >
+                    <Undo2 />
+                    Thu hồi vị trí đang chờ
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        <div className="px-6 pb-6 flex flex-col gap-5 flex-1">
-          {/* Store selector */}
-          {stores.length > 1 && (
-            <div className="flex flex-col gap-2">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Chọn gian hàng</p>
-              <div className="flex flex-col gap-1.5">
-                {stores.map((store) => {
-                  const isSelected = store.storeId === selectedStoreId;
-                  const hasPending = !!store.pending;
-                  const hasApproved = !!store.approved;
-                  return (
-                    <button
-                      key={store.storeId}
-                      onClick={() => handleSelectStore(store.storeId)}
-                      className={`flex items-center justify-between px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors text-left ${
-                        isSelected
-                          ? 'bg-orange-50 text-orange-700 border-orange-300'
-                          : 'bg-white text-gray-600 border-gray-200 hover:border-orange-300 hover:text-orange-600'
-                      }`}
-                    >
-                      <span className="truncate">{store.storeName}</span>
-                      <span className="flex items-center gap-1 ml-2 flex-shrink-0">
-                        {hasPending && (
-                          <span title="Đang chờ duyệt" className="w-2 h-2 rounded-full bg-yellow-400" />
-                        )}
-                        {!hasPending && hasApproved && (
-                          <span title="Đã có vị trí" className="w-2 h-2 rounded-full bg-green-500" />
-                        )}
-                        {!hasPending && !hasApproved && (
-                          <span title="Chưa có vị trí" className="w-2 h-2 rounded-full bg-gray-300" />
-                        )}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Status */}
-          <div className="flex flex-col gap-2">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Trạng thái vị trí</p>
-            <div className={`rounded-xl border p-3.5 ${approved ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Đã duyệt</p>
-              {approved ? (
-                <>
-                  <p className="text-sm font-semibold text-green-700">{STATUS_LABELS[approved.status]}</p>
-                  <p className="text-xs text-gray-500 mt-0.5 font-mono">
-                    {Number(approved.latitude).toFixed(6)}, {Number(approved.longitude).toFixed(6)}
-                  </p>
-                </>
-              ) : (
-                <p className="text-sm text-gray-400">Chưa có</p>
-              )}
-            </div>
-            <div className={`rounded-xl border p-3.5 ${pending ? 'border-yellow-200 bg-yellow-50' : 'border-gray-200 bg-gray-50'}`}>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Đang chờ duyệt</p>
-              {pending ? (
-                <>
-                  <p className="text-sm font-semibold text-yellow-700">{STATUS_LABELS[pending.status]}</p>
-                  <p className="text-xs text-gray-500 mt-0.5 font-mono">
-                    {Number(pending.latitude).toFixed(6)}, {Number(pending.longitude).toFixed(6)}
-                  </p>
-                </>
-              ) : (
-                <p className="text-sm text-gray-400">Không có</p>
-              )}
-            </div>
-          </div>
-
-          {/* Coordinates */}
-          <div className="flex flex-col gap-2">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Tọa độ</p>
-            <CoordinateForm
-              lat={lat}
-              lng={lng}
-              onChange={(newLat, newLng) => {
-                setLat(newLat);
-                setLng(newLng);
-              }}
+        <Card className="overflow-hidden p-0">
+          <div className="h-[560px] w-full">
+            <LocationMapPicker
+              key={selectedStoreId ?? 'default'}
+              initialMarker={markerCoord}
+              boundary={boundary}
+              otherPins={otherPins}
+              height="560px"
+              onCoordinateChange={handleCoordChange}
             />
           </div>
+        </Card>
+      </div>
 
-          {/* Actions */}
-          <div className="flex flex-col gap-2 mt-auto pt-2">
-            <button
-              onClick={handleSubmit}
-              disabled={submitting || !!pending}
-              className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-semibold py-2.5 px-4 rounded-xl transition text-sm"
+      <Dialog open={revokeDialog} onOpenChange={setRevokeDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Thu hồi vị trí đang chờ?</DialogTitle>
+            <DialogDescription>
+              Yêu cầu duyệt vị trí hiện tại sẽ bị huỷ. Bạn có thể gửi lại bất cứ lúc nào.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRevokeDialog(false)}>
+              Huỷ
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRevoke}
+              disabled={revoking}
             >
-              {submitting ? 'Đang gửi...' : 'Gửi duyệt vị trí'}
-            </button>
-            {pending && (
-              <button
-                onClick={handleRevoke}
-                className="w-full border border-red-300 text-red-600 hover:bg-red-50 font-medium py-2.5 px-4 rounded-xl transition text-sm"
-              >
-                Thu hồi vị trí đang chờ
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+              {revoking ? 'Đang xử lý...' : 'Thu hồi'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {/* ── Right panel: map ── */}
-      <div className="flex-1 min-w-0" style={{ height: panelH }}>
-        <LocationMapPicker
-          key={selectedStoreId ?? 'default'}
-          initialMarker={markerCoord}
-          boundary={boundary}
-          otherPins={otherPins}
-          height={panelH}
-          onCoordinateChange={handleCoordChange}
-        />
-      </div>
-
-      {/* Toast */}
       {toast && (
         <div
-          className={`fixed bottom-6 right-6 px-4 py-3 rounded-xl shadow-lg text-white text-sm z-50 ${
-            toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'
-          }`}
+          className={cn(
+            'fixed bottom-6 right-6 z-50 rounded-xl px-4 py-3 text-sm font-medium text-white shadow-lg',
+            toast.type === 'success' ? 'bg-emerald-600' : 'bg-rose-600',
+          )}
         >
           {toast.msg}
         </div>
       )}
     </div>
+  );
+}
+
+interface StatusCardProps {
+  tone: 'emerald' | 'amber';
+  label: string;
+  icon: typeof CheckCircle2;
+  pin: LocationPin | null;
+  emptyText: string;
+  statusLabel?: string;
+}
+
+function StatusCard({ tone, label, icon: Icon, pin, emptyText, statusLabel }: StatusCardProps) {
+  const tones = {
+    emerald: {
+      ring: pin ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-white',
+      iconBg: pin ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400',
+      text: pin ? 'text-emerald-700' : 'text-slate-400',
+    },
+    amber: {
+      ring: pin ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-white',
+      iconBg: pin ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-400',
+      text: pin ? 'text-amber-700' : 'text-slate-400',
+    },
+  }[tone];
+
+  return (
+    <Card className={cn('border', tones.ring)}>
+      <CardContent className="flex items-start gap-3 p-4">
+        <div className={cn('grid h-9 w-9 shrink-0 place-items-center rounded-full', tones.iconBg)}>
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            {label}
+          </p>
+          {pin ? (
+            <>
+              <p className={cn('mt-0.5 text-sm font-semibold', tones.text)}>
+                {statusLabel ?? STATUS_LABELS[pin.status]}
+              </p>
+              <p className="mt-0.5 truncate font-mono text-xs text-slate-500">
+                {Number(pin.latitude).toFixed(6)}, {Number(pin.longitude).toFixed(6)}
+              </p>
+            </>
+          ) : (
+            <p className="mt-0.5 text-sm text-slate-400">{emptyText}</p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

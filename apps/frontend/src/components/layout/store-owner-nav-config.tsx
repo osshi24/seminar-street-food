@@ -3,6 +3,8 @@ import {
   Store,
   MapPin,
   MessageSquare,
+  Bell,
+  UserCircle,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -57,6 +59,23 @@ export const STORE_OWNER_NAV_GROUPS: StoreOwnerNavGroup[] = [
         href: '/dashboard/reviews',
         icon: MessageSquare,
         description: 'Phản hồi và báo cáo bình luận',
+      },
+      {
+        label: 'Thông báo',
+        href: '/dashboard/notifications',
+        icon: Bell,
+        description: 'Tin từ Admin và cập nhật tài khoản',
+      },
+    ],
+  },
+  {
+    label: 'Tài khoản',
+    items: [
+      {
+        label: 'Hồ sơ cá nhân',
+        href: '/dashboard/account',
+        icon: UserCircle,
+        description: 'Thông tin & đổi mật khẩu',
       },
     ],
   },

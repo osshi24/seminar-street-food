@@ -1,8 +1,9 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
 import Cookies from 'js-cookie';
-import { LogOut, Store, User, ExternalLink } from 'lucide-react';
+import { LogOut, Store, UserCircle, ExternalLink } from 'lucide-react';
 import { clearAccessToken } from '../../lib/auth/session';
 import { logoutStoreOwner } from '../../lib/api/auth';
 import NotificationBell from '../notifications/NotificationBell';
@@ -83,9 +84,11 @@ export default function DashboardHeader({ storeName }: DashboardHeaderProps) {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>Tài khoản chủ gian hàng</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem disabled>
-              <User />
-              Hồ sơ (sắp ra)
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/account">
+                <UserCircle />
+                Hồ sơ cá nhân
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

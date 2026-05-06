@@ -6,6 +6,8 @@ import {
   HttpException,
   HttpStatus,
   Logger,
+  NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
@@ -218,6 +220,69 @@ export class AuthService {
 
     this.logger.log(`Admin logged in: ${dto.email}`);
     return { accessToken, admin };
+  }
+
+  async getStoreOwnerProfile(accountId: string) {
+    const account = await this.storeOwnerRepo.findOne({ where: { id: accountId } });
+    if (!account) {
+      throw new NotFoundException({ code: 'ACCOUNT_NOT_FOUND', message: 'Account not found' });
+    }
+    return {
+      id: account.id,
+      fullName: account.fullName,
+      email: account.email,
+      phone: account.phone,
+      status: account.status,
+      createdAt: account.createdAt,
+    };
+  }
+
+  async updateStoreOwnerProfile(
+    accountId: string,
+    data: { fullName?: string; phone?: string },
+  ) {
+    const account = await this.storeOwnerRepo.findOne({ where: { id: accountId } });
+    if (!account) {
+      throw new NotFoundException({ code: 'ACCOUNT_NOT_FOUND', message: 'Account not found' });
+    }
+    if (data.fullName !== undefined) account.fullName = data.fullName;
+    if (data.phone !== undefined) account.phone = data.phone;
+    await this.storeOwnerRepo.save(account);
+    return {
+      id: account.id,
+      fullName: account.fullName,
+      email: account.email,
+      phone: account.phone,
+      status: account.status,
+      createdAt: account.createdAt,
+    };
+  }
+
+  async changeStoreOwnerPassword(
+    accountId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    const account = await this.storeOwnerRepo.findOne({ where: { id: accountId } });
+    if (!account) {
+      throw new NotFoundException({ code: 'ACCOUNT_NOT_FOUND', message: 'Account not found' });
+    }
+    const valid = await bcrypt.compare(currentPassword, account.passwordHash);
+    if (!valid) {
+      throw new BadRequestException({
+        code: 'INVALID_CURRENT_PASSWORD',
+        message: 'Current password is incorrect',
+      });
+    }
+    if (currentPassword === newPassword) {
+      throw new BadRequestException({
+        code: 'PASSWORD_UNCHANGED',
+        message: 'New password must differ from current password',
+      });
+    }
+    account.passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.storeOwnerRepo.save(account);
+    this.logger.log(`Store Owner changed password: ${account.email}`);
   }
 
   issueCustomerJwt(customer: { id: string; displayName: string; avatarUrl: string | null }): string {

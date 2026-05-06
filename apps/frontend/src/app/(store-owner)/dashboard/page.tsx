@@ -29,6 +29,7 @@ import {
 } from '../../../components/ui/card';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
+import Thumbnail from '../../../components/ui/thumbnail';
 import { getMyStores, type StoreListItem } from '../../../lib/api/stores';
 import { cn } from '../../../lib/cn';
 
@@ -397,15 +398,12 @@ function StoreRow({ store }: { store: StoreListItem }) {
         className="group flex items-center gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-slate-50"
       >
         <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-lg bg-slate-100">
-          {store.thumbnailUrl ? (
-            <img
-              src={store.thumbnailUrl}
-              alt={store.name}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <ImageOff className="h-4 w-4 text-slate-400" />
-          )}
+          <Thumbnail
+            src={store.thumbnailUrl}
+            alt={store.name}
+            className="h-full w-full object-cover"
+            fallback={<ImageOff className="h-4 w-4 text-slate-400" />}
+          />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
