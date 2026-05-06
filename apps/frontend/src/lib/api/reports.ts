@@ -6,7 +6,9 @@ const API = '/api/backend';
 export async function fetchReportReasons(): Promise<ReportReason[]> {
   const res = await fetch(`${API}/report-reasons`);
   if (!res.ok) throw new Error('Failed to fetch report reasons');
-  return res.json();
+  const json = await res.json();
+  // Backend có thể trả { data: [...] } hoặc thẳng array
+  return Array.isArray(json) ? json : (json.data ?? []);
 }
 
 export async function submitReport(
