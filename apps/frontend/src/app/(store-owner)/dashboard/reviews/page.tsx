@@ -1,9 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { MessageSquare, Store as StoreIcon } from 'lucide-react';
 import ReviewList from '../../../../components/reviews/ReviewList';
 import { getMyStores } from '../../../../lib/api/stores';
 import { getAccessToken } from '../../../../lib/auth/session';
+import StoreOwnerPageHeader from '../../../../components/dashboard/common/StoreOwnerPageHeader';
+import StoreOwnerEmptyState from '../../../../components/dashboard/common/StoreOwnerEmptyState';
+import { Card, CardContent } from '../../../../components/ui/card';
+import { cn } from '../../../../lib/cn';
 
 interface StoreItem {
   id: string;
@@ -31,44 +36,65 @@ export default function StoreOwnerReviewsPage() {
 
   if (loading) {
     return (
-      <div className="animate-pulse space-y-3">
-        {[1, 2, 3].map((i) => <div key={i} className="h-20 rounded-lg bg-gray-100" />)}
+      <div className="space-y-5">
+        <div className="h-20 animate-pulse rounded-xl bg-white" />
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-24 animate-pulse rounded-xl bg-white" />
+          ))}
+        </div>
       </div>
     );
   }
 
   if (stores.length === 0) {
     return (
-      <div className="rounded-lg border border-gray-100 bg-white p-8 text-center text-sm text-gray-400">
-        Không tìm thấy thông tin gian hàng.
+      <div className="space-y-5">
+        <StoreOwnerPageHeader
+          badge="Phản hồi"
+          title="Bình luận khách hàng"
+          description="Theo dõi đánh giá và báo cáo bình luận vi phạm."
+        />
+        <StoreOwnerEmptyState
+          icon={MessageSquare}
+          title="Chưa có gian hàng nào"
+          description="Bạn cần tạo gian hàng trước để xem bình luận từ khách."
+        />
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-bold text-gray-800">Bình luận khách hàng</h1>
-      <p className="text-sm text-gray-500">
-        Xem và quản lý đánh giá từ khách hàng. Bạn có thể báo cáo bình luận vi phạm để Admin xem xét.
-      </p>
+    <div className="space-y-5">
+      <StoreOwnerPageHeader
+        badge="Phản hồi"
+        title="Bình luận khách hàng"
+        description="Xem và quản lý đánh giá từ khách hàng. Bạn có thể báo cáo bình luận vi phạm để Admin xem xét."
+      />
 
-      {/* Store selector — chỉ hiện khi có nhiều hơn 1 gian hàng */}
       {stores.length > 1 && (
-        <div className="flex gap-2 flex-wrap">
-          {stores.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => setSelectedId(s.id)}
-              className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-                selectedId === s.id
-                  ? 'bg-blue-600 text-white'
-                  : 'border border-gray-300 bg-white text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              {s.name}
-            </button>
-          ))}
-        </div>
+        <Card>
+          <CardContent className="flex flex-wrap gap-2 p-3">
+            {stores.map((s) => {
+              const active = selectedId === s.id;
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => setSelectedId(s.id)}
+                  className={cn(
+                    'inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors',
+                    active
+                      ? 'border-orange-500 bg-orange-500 text-white shadow-sm'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600',
+                  )}
+                >
+                  <StoreIcon className="h-3.5 w-3.5" />
+                  {s.name}
+                </button>
+              );
+            })}
+          </CardContent>
+        </Card>
       )}
 
       {selectedId && (
