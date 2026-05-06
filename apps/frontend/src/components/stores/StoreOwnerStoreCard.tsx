@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ArrowRight, ImageOff } from 'lucide-react';
 import { Badge } from '../ui/badge';
+import Thumbnail from '../ui/thumbnail';
 import { cn } from '../../lib/cn';
 import { type StoreListItem } from '../../lib/api/stores';
 
@@ -32,17 +33,16 @@ export default function StoreOwnerStoreCard({ store }: StoreOwnerStoreCardProps)
       )}
     >
       <div className="relative aspect-[16/9] w-full overflow-hidden bg-slate-100">
-        {store.thumbnailUrl ? (
-          <img
-            src={store.thumbnailUrl}
-            alt={store.name}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-slate-300">
-            <ImageOff className="h-10 w-10" />
-          </div>
-        )}
+        <Thumbnail
+          src={store.thumbnailUrl}
+          alt={store.name}
+          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+          fallback={
+            <div className="flex h-full items-center justify-center text-slate-300">
+              <ImageOff className="h-10 w-10" />
+            </div>
+          }
+        />
         <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
           <Badge variant={approval.variant}>{approval.label}</Badge>
           {store.approvalStatus === 'approved' && (

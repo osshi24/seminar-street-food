@@ -2,10 +2,14 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import {
   AlertTriangle,
   CheckCircle2,
   Clock,
+  ExternalLink,
+  Eye,
+  EyeOff,
   Info,
   MoreVertical,
   Pencil,
@@ -23,6 +27,7 @@ import {
   getDraftById,
   requestStoreDeletion,
   revokeStoreDeletionRequest,
+  toggleStoreStatus,
   type StoreImageItem,
   type UpdateStoreInfoDto,
   type StoreDraft,
@@ -100,6 +105,7 @@ export default function StoreDetailPage() {
   const [saving, setSaving] = useState(false);
   const [revoking, setRevoking] = useState(false);
   const [deletionLoading, setDeletionLoading] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     title: string;
@@ -235,6 +241,30 @@ export default function StoreDetailPage() {
     }
   }
 
+  function handleToggleStatus() {
+    if (!store) return;
+    const turningOff = store.status === 'active';
+    setConfirmDialog({
+      open: true,
+      title: turningOff ? 'Tạm ẩn gian hàng' : 'Bật lại gian hàng',
+      description: turningOff
+        ? `Khi tạm ẩn, gian hàng "${store.name}" sẽ không hiển thị trên bản đồ và khách quét QR sẽ không xem được. Bạn có thể bật lại bất cứ lúc nào.`
+        : `Bật lại gian hàng "${store.name}" để khách hàng có thể tìm thấy trên bản đồ và quét QR.`,
+      confirmLabel: turningOff ? 'Tạm ẩn' : 'Bật hoạt động',
+      danger: turningOff,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        setStatusLoading(true);
+        try {
+          await toggleStoreStatus(storeId, !turningOff);
+          await load();
+        } finally {
+          setStatusLoading(false);
+        }
+      },
+    });
+  }
+
   if (loading) {
     return (
       <div className="space-y-5">
@@ -317,6 +347,17 @@ export default function StoreDetailPage() {
                 Chờ xoá
               </Badge>
             )}
+            {store.approvalStatus === 'approved' && (
+              <Link
+                href={`/stores/${store.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden h-9 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-600 transition-colors hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700 sm:inline-flex"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Xem công khai
+              </Link>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -330,6 +371,27 @@ export default function StoreDetailPage() {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>Tác vụ gian hàng</DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                {store.approvalStatus === 'approved' && (
+                  <DropdownMenuItem asChild className="sm:hidden">
+                    <Link
+                      href={`/stores/${store.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <ExternalLink />
+                      Xem trang công khai
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                {store.approvalStatus === 'approved' && (
+                  <DropdownMenuItem
+                    onSelect={handleToggleStatus}
+                    disabled={statusLoading}
+                  >
+                    {isActive ? <EyeOff /> : <Eye />}
+                    {isActive ? 'Tạm ẩn gian hàng' : 'Bật hoạt động'}
+                  </DropdownMenuItem>
+                )}
                 {hasDeletionRequest ? (
                   <DropdownMenuItem
                     onSelect={handleRevokeDeletion}
@@ -393,6 +455,35 @@ export default function StoreDetailPage() {
                 {revoking ? 'Đang rút...' : 'Rút bản nháp'}
               </Button>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {store.approvalStatus === 'approved' && !isActive && !hasDeletionRequest && (
+        <Card className="border-slate-200 bg-slate-50">
+          <CardContent className="flex items-start justify-between gap-3 p-4">
+            <div className="flex items-start gap-3">
+              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-slate-200 text-slate-700">
+                <EyeOff className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-800">
+                  Gian hàng đang tạm ẩn
+                </p>
+                <p className="mt-0.5 text-xs text-slate-600">
+                  Khách không thấy gian hàng trên bản đồ và không xem được khi quét QR.
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              onClick={handleToggleStatus}
+              disabled={statusLoading}
+              className="shrink-0 bg-orange-500 text-white hover:bg-orange-600"
+            >
+              <Eye />
+              {statusLoading ? 'Đang xử lý...' : 'Bật lại'}
+            </Button>
           </CardContent>
         </Card>
       )}
