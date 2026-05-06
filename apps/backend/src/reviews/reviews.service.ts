@@ -29,15 +29,21 @@ export class ReviewsService {
       throw new NotFoundException({ code: 'STORE_NOT_FOUND', message: 'Store not found' });
     }
 
-    const [reviews, total] = await this.reviewRepo
+    const qb = this.reviewRepo
       .createQueryBuilder('r')
       .leftJoinAndSelect('r.customer', 'c')
       .where('r.storeId = :storeId', { storeId })
-      .andWhere('r.isHidden = false')
-      .orderBy('r.createdAt', 'DESC')
+      .andWhere('r.isHidden = false');
+
+    if (query.stars) {
+      qb.andWhere('r.stars = :stars', { stars: query.stars });
+    }
+
+    qb.orderBy('r.createdAt', query.sort === 'asc' ? 'ASC' : 'DESC')
       .skip((page - 1) * limit)
-      .take(limit)
-      .getManyAndCount();
+      .take(limit);
+
+    const [reviews, total] = await qb.getManyAndCount();
 
     return {
       data: reviews.map((r) => ({

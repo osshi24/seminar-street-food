@@ -9,6 +9,8 @@ import {
   submitDraftById,
   revokeDraftById,
   getDraftById,
+  requestStoreDeletion,
+  revokeStoreDeletionRequest,
   type StoreImageItem,
   type UpdateStoreInfoDto,
   type StoreDraft,
@@ -16,8 +18,18 @@ import {
 import StoreDetailEditForm from '../../../../../components/stores/StoreDetailEditForm';
 import ImageUploader from '../../../../../components/stores/ImageUploader';
 import StoreQrSection from '../../../../../components/stores/StoreQrSection';
+import StoreMenuTab from '../../../../../components/stores/StoreMenuTab';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '../../../../../components/ui/dialog';
+import { Button } from '../../../../../components/ui/button';
 
-type TabKey = 'info' | 'images' | 'qr';
+type TabKey = 'info' | 'images' | 'qr' | 'menu';
 
 interface StoreData {
   id: string;
@@ -30,11 +42,13 @@ interface StoreData {
   status: string;
   approvalStatus: 'pending' | 'approved' | 'rejected';
   hasPendingDraft: boolean;
+  deletionRequestedAt?: string | null;
   images: StoreImageItem[];
 }
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'info', label: 'Thông tin' },
+  { key: 'menu', label: 'Thực đơn' },
   { key: 'images', label: 'Hình ảnh' },
   { key: 'qr', label: 'QR Code' },
 ];
@@ -50,6 +64,15 @@ export default function StoreDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [revoking, setRevoking] = useState(false);
+  const [deletionLoading, setDeletionLoading] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+    confirmLabel: string;
+    danger?: boolean;
+  } | null>(null);
 
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
@@ -119,14 +142,55 @@ export default function StoreDetailPage() {
     await load();
   }
 
-  async function handleRevokeDraft() {
-    if (!confirm('Bạn có chắc muốn rút lại bản nháp này?')) return;
-    setRevoking(true);
+  function handleRevokeDraft() {
+    setConfirmDialog({
+      open: true,
+      title: 'Rút lại bản nháp',
+      description: 'Bạn có chắc muốn rút lại bản nháp này? Các thay đổi chưa được phê duyệt sẽ bị hủy.',
+      confirmLabel: 'Rút bản nháp',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        setRevoking(true);
+        try {
+          await revokeDraftById(storeId);
+          await load();
+        } finally {
+          setRevoking(false);
+        }
+      },
+    });
+  }
+
+  function handleRequestDeletion() {
+    if (!store) return;
+    setConfirmDialog({
+      open: true,
+      title: 'Yêu cầu xóa gian hàng',
+      description: `Gửi yêu cầu xóa gian hàng "${store.name}" đến Admin? Gian hàng sẽ bị ẩn khỏi bản đồ sau khi Admin phê duyệt.`,
+      confirmLabel: 'Gửi yêu cầu',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        setDeletionLoading(true);
+        try {
+          await requestStoreDeletion(storeId);
+          await load();
+        } finally {
+          setDeletionLoading(false);
+        }
+      },
+    });
+  }
+
+  async function handleRevokeDeletion() {
+    if (!store) return;
+    setDeletionLoading(true);
     try {
-      await revokeDraftById(storeId);
+      await revokeStoreDeletionRequest(storeId);
       await load();
     } finally {
-      setRevoking(false);
+      setDeletionLoading(false);
     }
   }
 
@@ -349,6 +413,13 @@ export default function StoreDetailPage() {
         </div>
       )}
 
+      {tab === 'menu' && (
+        <div className="rounded-lg bg-white border p-5 shadow-sm">
+          <h2 className="text-base font-semibold text-gray-800 mb-4">Quản lý thực đơn</h2>
+          <StoreMenuTab storeId={storeId} />
+        </div>
+      )}
+
       {tab === 'images' && (
         <div className="rounded-lg bg-white border p-5 shadow-sm">
           <h2 className="text-base font-semibold text-gray-800 mb-4">Hình ảnh gian hàng</h2>
@@ -359,6 +430,70 @@ export default function StoreDetailPage() {
       {tab === 'qr' && (
         <StoreQrSection storeId={storeId} storeName={store.name} storeStatus={store.status} />
       )}
+
+      <Dialog
+        open={confirmDialog?.open ?? false}
+        onOpenChange={(open) => { if (!open) setConfirmDialog(null); }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{confirmDialog?.title}</DialogTitle>
+            <DialogDescription>{confirmDialog?.description}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDialog(null)}>Hủy</Button>
+            <Button
+              variant={confirmDialog?.danger ? 'destructive' : 'default'}
+              onClick={() => confirmDialog?.onConfirm()}
+            >
+              {confirmDialog?.confirmLabel}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Danger zone */}
+      <div className="rounded-lg border border-red-200 bg-red-50 p-5">
+        <h2 className="text-base font-semibold text-red-800 mb-1">Vùng nguy hiểm</h2>
+
+        {store.deletionRequestedAt ? (
+          <div className="space-y-3">
+            <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 flex items-start gap-3">
+              <svg className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+              <div>
+                <p className="text-sm font-semibold text-yellow-800">Đang chờ Admin phê duyệt</p>
+                <p className="text-xs text-yellow-700 mt-0.5">
+                  Yêu cầu xóa đã được gửi lúc{' '}
+                  {new Date(store.deletionRequestedAt).toLocaleString('vi-VN')}.
+                  Gian hàng sẽ bị ẩn sau khi Admin xử lý.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleRevokeDeletion}
+              disabled={deletionLoading}
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              {deletionLoading ? 'Đang xử lý...' : 'Hủy yêu cầu xóa'}
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-red-600">
+              Yêu cầu xóa sẽ được gửi đến Admin để xem xét. Gian hàng sẽ bị ẩn khỏi bản đồ sau khi được phê duyệt.
+            </p>
+            <button
+              onClick={handleRequestDeletion}
+              disabled={deletionLoading}
+              className="rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50"
+            >
+              {deletionLoading ? 'Đang gửi...' : 'Yêu cầu xóa gian hàng'}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

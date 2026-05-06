@@ -25,7 +25,7 @@ const apiClient: AxiosInstance = axios.create({
 });
 
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  const token = accessToken || getCookie('admin_access_token');
+  const token = accessToken || getCookie('access_token') || getCookie('admin_access_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

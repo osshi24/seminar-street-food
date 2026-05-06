@@ -75,6 +75,9 @@ export class Store {
   @Column({ name: 'review_count', type: 'int', default: 0 })
   reviewCount: number;
 
+  @Column({ name: 'deletion_requested_at', type: 'timestamptz', nullable: true })
+  deletionRequestedAt: Date | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
