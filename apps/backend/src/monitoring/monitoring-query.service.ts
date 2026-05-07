@@ -160,9 +160,9 @@ export class MonitoringQueryService {
     const hourlyRows = await this.requestRepo
       .createQueryBuilder('r')
       .select(`date_trunc('hour', r.ts)`, 'hour')
-      .addSelect('COUNT(DISTINCT r.user_id)', 'authed')
+      .addSelect('COUNT(DISTINCT r.userId)', 'authed')
       .addSelect(
-        'COUNT(DISTINCT CASE WHEN r.user_id IS NULL THEN r.ip END)',
+        'COUNT(DISTINCT CASE WHEN r.userId IS NULL THEN r.ip END)',
         'anonIps',
       )
       .where(`r.ts >= now() - interval '24 hours'`)
@@ -186,11 +186,11 @@ export class MonitoringQueryService {
 
     const roleRows = await this.requestRepo
       .createQueryBuilder('r')
-      .select('r.user_role', 'role')
-      .addSelect('COUNT(DISTINCT r.user_id)', 'count')
+      .select('r.userRole', 'role')
+      .addSelect('COUNT(DISTINCT r.userId)', 'count')
       .where('r.ts >= :since', { since })
-      .andWhere('r.user_id IS NOT NULL')
-      .groupBy('r.user_role')
+      .andWhere('r.userId IS NOT NULL')
+      .groupBy('r.userRole')
       .getRawMany<{ role: string | null; count: string }>();
 
     const byRole = { admin: 0, store_owner: 0, customer: 0, other: 0 };
