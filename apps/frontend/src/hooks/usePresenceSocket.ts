@@ -30,7 +30,8 @@ export function usePresenceSocket(role: PresenceRole): void {
     let socket: Socket | null = null;
     const token = resolveToken(role);
 
-    socket = io('/presence', {
+    const beUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:3001';
+    socket = io(`${beUrl}/presence`, {
       path: '/socket.io',
       transports: ['polling'],
       auth: { token: token ?? undefined, role },

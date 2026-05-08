@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-// Always use the proxy path — this module only runs in the browser
-const API_URL = '/api/backend';
+import { getApiUrl } from './config';
+const API_URL = getApiUrl();
 
 let accessToken: string | null = null;
 

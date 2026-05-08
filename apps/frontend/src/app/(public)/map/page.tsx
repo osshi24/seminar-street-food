@@ -279,7 +279,6 @@ export default function MapPage() {
     // Mobile: fixed full-screen (map behind bottom tab bar, overlays float above).
     // Desktop (sm+): normal flow below the 64px header.
     <div className="fixed inset-0 sm:relative sm:inset-auto sm:w-full sm:h-[calc(100dvh-64px)]">
-      <GpsPermissionBanner />
       {/* Map fills the container */}
       <MapView
         pins={pins}
@@ -303,6 +302,8 @@ export default function MapPage() {
           setSelectedPin(null);
         }}
       />
+
+      <GpsPermissionBanner />
 
       {/* Top-left overlay */}
       <div className="absolute top-3 left-3 z-[500]">

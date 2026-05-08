@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Clock,
   MapPin,
+  Navigation,
   Send,
   Store as StoreIcon,
   Undo2,
@@ -61,6 +62,8 @@ export default function LocationPage() {
   const [allPublicPins, setAllPublicPins] = useState<PublicPin[]>([]);
   const [revokeDialog, setRevokeDialog] = useState(false);
   const [revoking, setRevoking] = useState(false);
+  const [gpsModal, setGpsModal] = useState(false);
+  const [gpsLoading, setGpsLoading] = useState(false);
 
   const showToast = (type: 'success' | 'error', msg: string) => {
     setToast({ type, msg });
@@ -165,6 +168,27 @@ export default function LocationPage() {
     } finally {
       setRevoking(false);
     }
+  };
+
+  const handleGetGps = () => {
+    if (!navigator.geolocation) {
+      showToast('error', 'Trình duyệt không hỗ trợ GPS');
+      return;
+    }
+    setGpsLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLat(String(pos.coords.latitude));
+        setLng(String(pos.coords.longitude));
+        setGpsLoading(false);
+        setGpsModal(false);
+      },
+      () => {
+        setGpsLoading(false);
+        setGpsModal(true);
+      },
+      { timeout: 15000, enableHighAccuracy: false, maximumAge: 60000 },
+    );
   };
 
   if (loading) {
@@ -316,6 +340,16 @@ export default function LocationPage() {
                   Có thể kéo ghim trên bản đồ hoặc nhập trực tiếp.
                 </p>
               </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full border-orange-200 text-orange-600 hover:bg-orange-50 hover:border-orange-300"
+                onClick={handleGetGps}
+                disabled={gpsLoading}
+              >
+                <Navigation className="h-4 w-4" />
+                {gpsLoading ? 'Đang lấy vị trí...' : 'Lấy vị trí hiện tại (GPS)'}
+              </Button>
               <CoordinateForm
                 lat={lat}
                 lng={lng}
@@ -368,6 +402,30 @@ export default function LocationPage() {
           </div>
         </Card>
       </div>
+
+      <Dialog open={gpsModal} onOpenChange={setGpsModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cần quyền truy cập vị trí</DialogTitle>
+            <DialogDescription>
+              Trình duyệt chưa được cấp quyền GPS. Hãy cho phép truy cập vị trí khi trình duyệt hỏi, sau đó nhấn <strong>Thử lại</strong> để tự động điền tọa độ.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGpsModal(false)}>
+              Huỷ
+            </Button>
+            <Button
+              className="bg-orange-500 hover:bg-orange-600 text-white"
+              onClick={handleGetGps}
+              disabled={gpsLoading}
+            >
+              <Navigation className="h-4 w-4" />
+              {gpsLoading ? 'Đang lấy vị trí...' : 'Thử lại'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={revokeDialog} onOpenChange={setRevokeDialog}>
         <DialogContent>

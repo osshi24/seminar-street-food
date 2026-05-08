@@ -29,7 +29,7 @@ export function usePublicPresence(): void {
 
     const send = () => {
       if (document.visibilityState !== 'visible') return;
-      void fetch('/api/backend/public/presence/heartbeat', {
+      void fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:3001'}/api/public/presence/heartbeat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ visitorId }),

@@ -91,7 +91,8 @@ export default function MonitoringOverviewPanel() {
   }, []);
 
   useEffect(() => {
-    const socket = io('/admin/monitoring', {
+    const beUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:3001';
+    const socket = io(`${beUrl}/admin/monitoring`, {
       path: '/socket.io',
       transports: ['polling'],
     });
