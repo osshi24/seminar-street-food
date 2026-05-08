@@ -24,7 +24,7 @@ export interface PresenceSnapshot {
 
 type ChangeListener = (snapshot: PresenceSnapshot) => void;
 
-const PUBLIC_VISITOR_TTL_MS = 60_000;
+const PUBLIC_VISITOR_TTL_MS = 45_000;
 const SWEEP_INTERVAL_MS = 30_000;
 
 @Injectable()
@@ -71,7 +71,7 @@ export class PresenceService implements OnModuleInit, OnModuleDestroy {
     const uniqueUsers = new Set<string>();
     for (const c of this.connections.values()) {
       byRole[c.role] += 1;
-      if (c.userId) uniqueUsers.add(`${c.role}:${c.userId}`);
+      if (c.userId) uniqueUsers.add(c.userId);
     }
     return {
       total: this.connections.size,

@@ -11,7 +11,7 @@ import {
 
 function computeTotal(s: PresenceSnapshot | null): number {
   if (!s) return 0;
-  return s.byRole.admin + s.byRole.store_owner + s.byRole.customer + s.publicVisitors;
+  return s.uniqueUsers + s.publicVisitors;
 }
 
 export default function OnlinePresenceCard() {
