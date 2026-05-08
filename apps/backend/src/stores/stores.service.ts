@@ -42,31 +42,6 @@ export class StoresService {
     private readonly dataSource: DataSource,
   ) {}
 
-  async getMyStore(ownerId: string) {
-    const store = await this.storeRepo.findOne({
-      where: { ownerId },
-    });
-    if (!store) throw new NotFoundException('Store not found');
-
-    const menuItems = await this.menuItemRepo.find({
-      where: { storeId: store.id, isInDraft: false },
-    });
-    const images = await this.storeImageRepo.find({
-      where: { storeId: store.id },
-      order: { orderIndex: 'ASC', createdAt: 'DESC' },
-    });
-    const pendingDraft = await this.draftRepo.findOne({
-      where: { storeId: store.id, status: DraftStatus.PENDING },
-    });
-
-    return {
-      ...store,
-      menuItems,
-      images,
-      hasPendingDraft: !!pendingDraft,
-    };
-  }
-
   async getMyStores(ownerId: string) {
     const stores = await this.storeRepo.find({
       where: { ownerId },
@@ -144,9 +119,8 @@ export class StoresService {
     await this.storeRepo.save(store);
   }
 
-  async updateStoreInfo(ownerId: string, dto: UpdateStoreInfoDto, storeId?: string): Promise<Store> {
-    const where = storeId ? { id: storeId, ownerId } : { ownerId };
-    const store = await this.storeRepo.findOne({ where });
+  async updateStoreInfo(ownerId: string, dto: UpdateStoreInfoDto, storeId: string): Promise<Store> {
+    const store = await this.storeRepo.findOne({ where: { id: storeId, ownerId } });
     if (!store) throw new NotFoundException('Store not found');
 
     if (dto.phone !== undefined) store.phone = dto.phone || null;
@@ -170,14 +144,13 @@ export class StoresService {
     return this.storeRepo.save(store);
   }
 
-  private async findStoreOrThrow(ownerId: string, storeId?: string): Promise<Store> {
-    const where = storeId ? { id: storeId, ownerId } : { ownerId };
-    const store = await this.storeRepo.findOne({ where });
+  private async findStoreOrThrow(ownerId: string, storeId: string): Promise<Store> {
+    const store = await this.storeRepo.findOne({ where: { id: storeId, ownerId } });
     if (!store) throw new NotFoundException('Store not found');
     return store;
   }
 
-  async saveDraft(ownerId: string, dto: UpdateStoreDto, storeId?: string): Promise<StoreContentDraft> {
+  async saveDraft(ownerId: string, dto: UpdateStoreDto, storeId: string): Promise<StoreContentDraft> {
     const store = await this.findStoreOrThrow(ownerId, storeId);
 
     const existing = await this.draftRepo.findOne({
@@ -196,7 +169,7 @@ export class StoresService {
     return this.draftRepo.save(draft);
   }
 
-  async submitDraft(ownerId: string, storeId?: string): Promise<StoreContentDraft> {
+  async submitDraft(ownerId: string, storeId: string): Promise<StoreContentDraft> {
     const store = await this.findStoreOrThrow(ownerId, storeId);
 
     const draft = await this.draftRepo.findOne({
@@ -218,7 +191,7 @@ export class StoresService {
     return draft;
   }
 
-  async revokeDraft(ownerId: string, storeId?: string): Promise<void> {
+  async revokeDraft(ownerId: string, storeId: string): Promise<void> {
     const store = await this.findStoreOrThrow(ownerId, storeId);
 
     await this.dataSource.transaction(async (manager) => {
@@ -236,7 +209,7 @@ export class StoresService {
     });
   }
 
-  async getMyDraft(ownerId: string, storeId?: string): Promise<StoreContentDraft> {
+  async getMyDraft(ownerId: string, storeId: string): Promise<StoreContentDraft> {
     const store = await this.findStoreOrThrow(ownerId, storeId);
 
     const draft = await this.draftRepo.findOne({
@@ -250,12 +223,12 @@ export class StoresService {
     return draft;
   }
 
-  async getMenuItems(ownerId: string, storeId?: string): Promise<MenuItem[]> {
+  async getMenuItems(ownerId: string, storeId: string): Promise<MenuItem[]> {
     const store = await this.findStoreOrThrow(ownerId, storeId);
     return this.menuItemRepo.find({ where: { storeId: store.id } });
   }
 
-  async addMenuItem(ownerId: string, dto: CreateMenuItemDto, storeId?: string): Promise<MenuItem> {
+  async addMenuItem(ownerId: string, dto: CreateMenuItemDto, storeId: string): Promise<MenuItem> {
     const store = await this.findStoreOrThrow(ownerId, storeId);
 
     const item = this.menuItemRepo.create({
@@ -268,7 +241,7 @@ export class StoresService {
     return this.menuItemRepo.save(item);
   }
 
-  async updateMenuItem(ownerId: string, itemId: string, dto: UpdateMenuItemDto, storeId?: string): Promise<MenuItem> {
+  async updateMenuItem(ownerId: string, itemId: string, dto: UpdateMenuItemDto, storeId: string): Promise<MenuItem> {
     const store = await this.findStoreOrThrow(ownerId, storeId);
 
     const item = await this.menuItemRepo.findOne({
@@ -298,7 +271,7 @@ export class StoresService {
     return this.menuItemRepo.save(item);
   }
 
-  async removeMenuItem(ownerId: string, itemId: string, storeId?: string): Promise<void> {
+  async removeMenuItem(ownerId: string, itemId: string, storeId: string): Promise<void> {
     const store = await this.findStoreOrThrow(ownerId, storeId);
 
     const item = await this.menuItemRepo.findOne({ where: { id: itemId } });
@@ -322,7 +295,7 @@ export class StoresService {
     ownerId: string,
     itemId: string,
     contentType: string,
-    storeId?: string,
+    storeId: string,
   ): Promise<{ presignedUrl: string; imageUrl: string }> {
     const store = await this.findStoreOrThrow(ownerId, storeId);
 
@@ -368,7 +341,7 @@ export class StoresService {
     return { presignedUrl, imageUrl };
   }
 
-  async deleteMenuItemImage(ownerId: string, itemId: string, storeId?: string): Promise<void> {
+  async deleteMenuItemImage(ownerId: string, itemId: string, storeId: string): Promise<void> {
     const store = await this.findStoreOrThrow(ownerId, storeId);
 
     const item = await this.menuItemRepo.findOne({ where: { id: itemId } });
@@ -384,7 +357,7 @@ export class StoresService {
     await this.menuItemRepo.save(item);
   }
 
-  async generateImageUploadUrl(ownerId: string, contentType: string, storeId?: string): Promise<{ presignedUrl: string; s3Key: string; imageId: string }> {
+  async generateImageUploadUrl(ownerId: string, contentType: string, storeId: string): Promise<{ presignedUrl: string; s3Key: string; imageId: string }> {
     const store = await this.findStoreOrThrow(ownerId, storeId);
 
     const activeImages = await this.storeImageRepo.count({
@@ -410,7 +383,7 @@ export class StoresService {
     return { presignedUrl, s3Key, imageId: saved.id };
   }
 
-  async confirmImageUpload(ownerId: string, imageId: string, storeId?: string): Promise<StoreImage> {
+  async confirmImageUpload(ownerId: string, imageId: string, storeId: string): Promise<StoreImage> {
     const store = await this.findStoreOrThrow(ownerId, storeId);
 
     const image = await this.storeImageRepo.findOne({ where: { id: imageId } });
@@ -420,7 +393,7 @@ export class StoresService {
     return this.storeImageRepo.save(image);
   }
 
-  async deleteImage(ownerId: string, imageId: string, storeId?: string): Promise<void> {
+  async deleteImage(ownerId: string, imageId: string, storeId: string): Promise<void> {
     const store = await this.findStoreOrThrow(ownerId, storeId);
 
     const image = await this.storeImageRepo.findOne({ where: { id: imageId } });

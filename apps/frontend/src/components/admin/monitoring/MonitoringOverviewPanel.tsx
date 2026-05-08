@@ -93,7 +93,7 @@ export default function MonitoringOverviewPanel() {
   useEffect(() => {
     const socket = io('/admin/monitoring', {
       path: '/socket.io',
-      transports: ['polling', 'websocket'],
+      transports: ['polling'],
     });
     socketRef.current = socket;
 
