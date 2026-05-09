@@ -1,0 +1,74 @@
+@startuml 11-list-reviews
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 8
+skinparam sequenceParticipantBorderColor #555
+skinparam sequenceParticipantBackgroundColor #FFF
+skinparam noteBorderColor #888
+skinparam noteBackgroundColor #FFFDE7
+
+title [11] Xem Danh Sách Đánh Giá Gian Hàng (Public)
+
+actor "Khách du lịch" as User
+participant "StorePage\napp/(public)/stores/[id]/page.tsx" as Page
+participant "ReviewList\n(component trong stores/[id])" as List
+participant "reviews.ts\nlib/api/reviews.ts" as ReviewAPI
+participant "ReviewsController\nbackend/src/reviews/reviews.controller.ts" as Ctrl
+participant "ReviewsService\nbackend/src/reviews/reviews.service.ts" as Svc
+database "Postgres\n(reviews)" as DB
+
+== 1. Load đánh giá khi vào trang ==
+
+User -> Page : truy cập /stores/{id}
+Page -> List : render <ReviewList storeId />
+
+List -> ReviewAPI : listReviews(storeId, page=1, limit=20)
+note right of ReviewAPI
+  GET /stores/{storeId}/reviews?page=1&limit=20
+  lib/api/reviews.ts
+  Không cần auth — public endpoint
+end note
+
+ReviewAPI -> Ctrl : GET /stores/:storeId/reviews
+Ctrl -> Svc : listPublicReviews(storeId, query)
+Svc -> DB : SELECT reviews\nWHERE storeId = ?\nORDER BY createdAt DESC\nOFFSET/LIMIT
+DB --> Svc : { reviews[], total }
+Svc --> Ctrl : { items[], pagination }
+Ctrl --> ReviewAPI : response
+ReviewAPI --> List : data
+List --> User : Hiển thị danh sách đánh giá:\n- Avatar + tên người dùng\n- Số sao ⭐\n- Nội dung nhận xét\n- Ngày đánh giá
+
+== 2. Lọc và sắp xếp ==
+
+User -> List : chọn lọc theo số sao (vd: 5 sao)
+List -> ReviewAPI : listReviews(storeId, page=1, filters={ stars: 5 })
+note right of ReviewAPI
+  GET /stores/{storeId}/reviews?page=1&stars=5
+end note
+ReviewAPI -> Ctrl : GET với query stars=5
+Ctrl -> Svc : listPublicReviews(storeId, { stars: 5 })
+Svc -> DB : SELECT reviews\nWHERE storeId = ? AND stars = 5
+DB --> Svc : filtered reviews
+Svc --> Ctrl : response
+Ctrl --> ReviewAPI : response
+ReviewAPI --> List : filtered data
+List --> User : Hiển thị chỉ đánh giá 5 sao
+
+== 3. Phân trang ==
+
+User -> List : click "Trang tiếp theo"
+List -> ReviewAPI : listReviews(storeId, page=2, limit=20)
+note right of ReviewAPI
+  GET /stores/{storeId}/reviews?page=2&limit=20
+end note
+ReviewAPI -> Ctrl : GET trang 2
+Ctrl -> Svc : listPublicReviews(storeId, { page: 2 })
+Svc -> DB : SELECT với OFFSET 20
+DB --> Svc : page 2 reviews
+Svc --> Ctrl : response
+Ctrl --> ReviewAPI : response
+ReviewAPI --> List : trang 2
+List --> User : Cập nhật danh sách trang 2
+
+@enduml

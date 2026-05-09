@@ -1,0 +1,67 @@
+@startuml 10-submit-review
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 8
+skinparam sequenceParticipantBorderColor #555
+skinparam sequenceParticipantBackgroundColor #FFF
+skinparam noteBorderColor #888
+skinparam noteBackgroundColor #FFFDE7
+
+title [10] Viết Đánh Giá Gian Hàng (Yêu Cầu Đăng Nhập)
+
+actor "Khách du lịch" as User
+participant "StorePage\napp/(public)/stores/[id]/page.tsx" as Page
+participant "ReviewForm\n(component trong stores/[id])" as Form
+participant "customer-session.ts\nlib/auth/customer-session.ts" as Session
+participant "reviews.ts\nlib/api/reviews.ts" as ReviewAPI
+participant "CustomerJwtGuard\nbackend/src/auth/guards/customer-jwt.guard.ts" as Guard
+participant "ReviewsController\nbackend/src/reviews/reviews.controller.ts" as Ctrl
+participant "ReviewsService\nbackend/src/reviews/reviews.service.ts" as Svc
+database "Postgres\n(reviews)" as DB
+
+== 1. Kiểm tra đăng nhập ==
+
+User -> Page : cuộn xuống phần Đánh giá
+Page -> Form : render <ReviewForm storeId />
+Form -> Session : getCustomerToken()
+
+alt chưa đăng nhập (token = null)
+    Form --> User : Hiện nút "Đăng nhập để đánh giá"
+    User -> Form : click "Đăng nhập"
+    Form -> Form : redirectToGoogleOAuth(returnUrl)\n(flow 09)
+else đã đăng nhập
+    Form --> User : Hiện form đánh giá (stars + textarea)
+end
+
+== 2. User điền và gửi đánh giá ==
+
+User -> Form : chọn số sao (1-5) + nhập nội dung
+User -> Form : click "Gửi đánh giá"
+
+Form -> Session : getCustomerToken() → Bearer token
+Form -> ReviewAPI : submitReview(storeId, { stars, content }, token)
+note right of ReviewAPI
+  POST /stores/{storeId}/reviews
+  Header: Authorization: Bearer {token}
+  Body: { stars: 4, content: "..." }
+  lib/api/reviews.ts
+  Throttle: 3 lần / 60 giây
+end note
+
+ReviewAPI -> Guard : CustomerJwtGuard → validate JWT
+Guard -> Guard : JwtCustomerStrategy.validate(payload)\n→ req.user = { id, displayName }
+
+Guard --> Ctrl : request authenticated
+Ctrl -> Svc : submitReview(storeId, user.id, { stars, content })
+Svc -> DB : INSERT INTO reviews\n(storeId, customerId, stars, content, createdAt)
+Svc -> DB : UPDATE stores\nSET rating = AVG(reviews.stars)\nWHERE id = storeId
+DB --> Svc : review created
+Svc --> Ctrl : { id, stars, content, createdAt }
+Ctrl --> ReviewAPI : 201 Created
+ReviewAPI --> Form : success
+
+Form -> Form : invalidate reviews query\n(refetch danh sách đánh giá)
+Form --> User : Hiện thông báo "Đánh giá thành công"\nDanh sách đánh giá cập nhật
+
+@enduml

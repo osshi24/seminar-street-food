@@ -1,0 +1,64 @@
+@startuml 05-qr-scan
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 8
+skinparam sequenceParticipantBorderColor #555
+skinparam sequenceParticipantBackgroundColor #FFF
+skinparam noteBorderColor #888
+skinparam noteBackgroundColor #FFFDE7
+
+title [05] Quét Mã QR → Mở Chi Tiết Gian Hàng
+
+actor "Khách du lịch" as User
+participant "Camera\n(QR app)" as Cam
+participant "QrPage\napp/(public)/qr/[token]/page.tsx" as Page
+participant "QrTracker\napp/(public)/qr/[token]/QrTracker.tsx" as Tracker
+participant "qr.ts\nlib/api/qr.ts" as QrAPI
+participant "QrPublicController\nbackend/src/qr/qr-public.controller.ts" as Ctrl
+participant "QrService\nbackend/src/qr/qr.service.ts" as Svc
+participant "StoreAnalyticsService\nbackend/src/store-analytics/store-analytics.service.ts" as Analytics
+database "Postgres" as DB
+participant "StorePage\napp/(public)/stores/[id]/page.tsx" as StorePage
+
+User -> Cam : Quét mã QR gán trên gian hàng
+Cam -> Page : Mở URL https://app/qr/{token}
+
+Page -> QrAPI : resolveQrJson(token)
+note right of QrAPI
+  GET /qr/{token}/resolve
+  lib/api/qr.ts
+end note
+
+QrAPI -> Ctrl : GET /qr/:token/resolve
+Ctrl -> Svc : resolveTokenData(token)
+Svc -> DB : SELECT QrCode\nWHERE token = ?\nINNER JOIN stores
+DB --> Svc : { qr, store }
+
+alt qr.isActive && store.status === ACTIVE
+    Svc -> Analytics : track(store.id, 'qr_scan')
+    note right
+      fire-and-forget (không await)
+      INSERT store_analytics_events
+    end note
+    Analytics -> DB : INSERT event (storeId, 'qr_scan', createdAt)
+
+    Svc --> Ctrl : { type: 'store', storeId }
+    Ctrl --> QrAPI : { type: 'store', storeId }
+    QrAPI --> Page : response
+
+    Page -> Tracker : render <QrTracker storeId />
+    Tracker -> Tracker : analytics.qrScanSuccess('store')\n(Umami track — lib/analytics.ts)
+    Page -> StorePage : router.push('/stores/{storeId}?autoplay=1')
+    StorePage --> User : Mở trang chi tiết gian hàng\n(có autoplay=1 → tự phát thuyết minh)
+
+else qr không hợp lệ hoặc store inactive
+    Svc --> Ctrl : { type: 'unavailable' }
+    Ctrl --> QrAPI : { type: 'unavailable' }
+    QrAPI --> Page : response
+    Page -> Tracker : analytics.qrScanFail()
+    Page -> Page : router.push('/store-unavailable')
+    Page --> User : Hiển thị trang lỗi "Gian hàng không khả dụng"
+end
+
+@enduml

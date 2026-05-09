@@ -1,0 +1,61 @@
+@startuml 06-store-detail
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 8
+skinparam sequenceParticipantBorderColor #555
+skinparam sequenceParticipantBackgroundColor #FFF
+skinparam noteBorderColor #888
+skinparam noteBackgroundColor #FFFDE7
+
+title [06] Xem Chi Tiết Gian Hàng
+
+actor "Khách du lịch" as User
+participant "StorePage\napp/(public)/stores/[id]/page.tsx" as Page
+participant "StoreVisitTracker\n(component trong stores/[id])" as Tracker
+participant "analytics.ts\nlib/api/analytics.ts" as AnalyticsAPI
+participant "PublicStoresController\nbackend/src/public/public-stores.controller.ts" as Ctrl
+participant "PublicStoresService\nbackend/src/public/public-stores.service.ts" as Svc
+participant "StoreAnalyticsController\nbackend/src/store-analytics/store-analytics.controller.ts" as ACtrl
+participant "StoreAnalyticsService\nbackend/src/store-analytics/store-analytics.service.ts" as ASvc
+database "Postgres" as DB
+
+User -> Page : truy cập /stores/{id}\n(từ map, QR, tìm kiếm, hoặc link trực tiếp)
+
+== Load thông tin gian hàng ==
+
+Page -> Ctrl : GET /stores/:id?lang={lang}
+Ctrl -> Svc : getStoreDetail(id, lang)
+Svc -> DB : SELECT stores\nJOIN store_images\nJOIN menu_items\nJOIN commentary + translations (lang)
+DB --> Svc : storeDetail
+Svc --> Ctrl : { name, description, images[], menuItems[], commentary, rating }
+Ctrl --> Page : response
+
+Page --> User : Hiển thị:\n- Tên + ảnh gian hàng\n- Mô tả + giờ mở cửa\n- Menu items\n- Nút nghe thuyết minh\n- Đánh giá (rating)
+
+== Track lượt ghé thăm ==
+
+Page -> Tracker : mount <StoreVisitTracker storeId />
+Tracker -> AnalyticsAPI : trackStoreVisit(storeId)
+note right of AnalyticsAPI
+  POST /public/analytics/track
+  body: { storeId, eventType: 'store_visit' }
+  lib/api/analytics.ts
+end note
+AnalyticsAPI -> ACtrl : POST /public/analytics/track
+ACtrl -> ASvc : track(storeId, 'store_visit')
+note right of ASvc
+  fire-and-forget (không await)
+end note
+ASvc -> DB : INSERT store_analytics_events
+ACtrl --> AnalyticsAPI : { ok: true }
+
+== Nếu có ?autoplay=1 (từ QR hoặc proximity) ==
+
+note over Page
+  searchParams.autoplay === '1'
+  → tự động bắt đầu phát thuyết minh
+  (gọi flow [04] Manual Commentary)
+end note
+
+@enduml
