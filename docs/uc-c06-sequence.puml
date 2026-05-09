@@ -1,0 +1,54 @@
+@startuml
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam sequenceArrowThickness 1.5
+skinparam roundcorner 8
+skinparam sequenceParticipantBorderColor #555
+skinparam sequenceParticipantBackgroundColor #F8F9FA
+skinparam sequenceLifeLineBackgroundColor #FFFFFF
+skinparam noteBorderColor #888
+skinparam noteBackgroundColor #FFFDE7
+
+title Sequence Diagram - Quy trình chuyển đổi ngôn ngữ (UC-C06)
+
+actor "Customer" as Customer
+participant "Web UI\n(LanguageSwitcher)" as UI
+participant "LanguageContext\n(useLang)" as Context
+participant "localStorage\n/ Cookie" as Storage
+participant "i18next\n(i18n instance)" as i18n
+
+Customer -> UI: Click chọn ngôn ngữ\n(VD: Tiếng Anh)
+activate UI
+
+UI -> Context: setLang('en')
+activate Context
+
+Context -> Storage: localStorage.setItem('phat-lang', 'en')
+activate Storage
+Storage --> Context: OK
+deactivate Storage
+
+Context -> Storage: document.cookie = "phat_lang=en"
+activate Storage
+Storage --> Context: OK
+deactivate Storage
+
+Context -> i18n: changeLanguage('en')
+activate i18n
+
+alt [Chưa tải file JSON ngôn ngữ (en.json)]
+    i18n -> i18n: Lazy load /locales/en.json
+end
+
+i18n --> Context: Promise resolved (Tải xong)
+deactivate i18n
+
+Context -> Context: Cập nhật React state (lang = 'en')
+Context --> UI: State updated
+deactivate Context
+
+UI -> UI: React Re-render toàn bộ component
+UI --> Customer: Giao diện hiển thị ngôn ngữ mới (Tiếng Anh)
+deactivate UI
+
+@enduml

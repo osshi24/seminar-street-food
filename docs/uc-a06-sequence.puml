@@ -1,0 +1,57 @@
+@startuml
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam sequenceArrowThickness 1.5
+skinparam roundcorner 8
+skinparam sequenceParticipantBorderColor #555
+skinparam sequenceParticipantBackgroundColor #F8F9FA
+skinparam sequenceLifeLineBackgroundColor #FFFFFF
+skinparam noteBorderColor #888
+skinparam noteBackgroundColor #FFFDE7
+
+title Sequence Diagram - Quy trình xử lý báo cáo bình luận (UC-A06)
+
+actor "Admin" as Admin
+participant "Web UI" as UI
+participant "AdminReports\nController" as Ctrl
+participant "AuditLog\nService" as Audit
+database "Database\n(Transaction)" as DB
+
+Admin -> UI: Chọn hướng xử lý\n(Ví dụ: "hide") và Xác nhận
+activate UI
+
+UI -> Ctrl: PATCH /api/admin/reports/{id}/resolve\n{ action: 'hide' }
+activate Ctrl
+
+Ctrl -> DB: findOne(id)
+activate DB
+DB --> Ctrl: report (status: PENDING)
+deactivate DB
+
+alt [Báo cáo không tồn tại hoặc đã xử lý]
+    Ctrl --> UI: 404 / 409 Error
+else [Hợp lệ]
+    Ctrl -> DB: Bắt đầu Transaction
+    activate DB
+    
+    Ctrl -> DB: Cập nhật Review\n(isHidden = true)
+    Ctrl -> DB: recalcRating(storeId)\nTính lại số sao trung bình
+    Ctrl -> DB: Cập nhật CommentReport\n(status = RESOLVED)
+    
+    DB --> Ctrl: Transaction Commit thành công
+    deactivate DB
+
+    Ctrl -> Audit: record(action='report.resolve.hide')
+    activate Audit
+    Audit --> Ctrl: log saved
+    deactivate Audit
+
+    Ctrl --> UI: 200 OK\n{ message: 'Report resolved' }
+end
+
+deactivate Ctrl
+
+UI --> Admin: Hiển thị thông báo thành công\nvà cập nhật danh sách
+deactivate UI
+
+@enduml

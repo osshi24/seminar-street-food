@@ -1,0 +1,67 @@
+@startuml
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam sequenceArrowThickness 1.5
+skinparam roundcorner 8
+skinparam sequenceParticipantBorderColor #555
+skinparam sequenceParticipantBackgroundColor #F8F9FA
+skinparam sequenceLifeLineBackgroundColor #FFFFFF
+skinparam noteBorderColor #888
+skinparam noteBackgroundColor #FFFDE7
+
+title Sequence Diagram - Quy trình duyệt tài khoản Store Owner (UC-A01)
+
+actor "Admin" as Admin
+participant "Web UI" as UI
+participant "StoreOwners\nController" as Ctrl
+participant "StoreOwners\nService" as Service
+participant "Notifications\nService" as Notify
+participant "Mail\nService" as Mail
+database "Database" as DB
+
+Admin -> UI: Chọn tài khoản chờ duyệt\nvà nhấn "Phê duyệt"
+activate UI
+
+UI -> Ctrl: PATCH /api/store-owners/{id}/approve
+activate Ctrl
+
+Ctrl -> Service: approve(id)
+activate Service
+
+Service -> DB: findOne(id)
+activate DB
+DB --> Service: account (status: PENDING)
+deactivate DB
+
+alt [Tài khoản không hợp lệ hoặc không phải PENDING]
+    Service --> Ctrl: BadRequestException
+    Ctrl --> UI: 400 Bad Request
+    UI --> Admin: Hiển thị lỗi
+else [Hợp lệ]
+    Service -> DB: save(account.status = ACTIVE)
+    activate DB
+    DB --> Service: saved account
+    deactivate DB
+
+    Service -> Notify: create(event='ACCOUNT_APPROVED')
+    activate Notify
+    Notify --> Service: notification created
+    deactivate Notify
+
+    Service -> Mail: enqueueEmail('account-approved')
+    activate Mail
+    Mail --> Service: job enqueued
+    deactivate Mail
+
+    Service --> Ctrl: StoreOwnerAccount
+end
+
+deactivate Service
+
+Ctrl --> UI: 200 OK
+deactivate Ctrl
+
+UI --> Admin: Hiển thị "Đã phê duyệt thành công"
+deactivate UI
+
+@enduml

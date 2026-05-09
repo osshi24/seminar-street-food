@@ -1,0 +1,79 @@
+@startuml
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam sequenceArrowThickness 1.5
+skinparam roundcorner 8
+skinparam sequenceParticipantBorderColor #555
+skinparam sequenceParticipantBackgroundColor #F8F9FA
+skinparam sequenceLifeLineBackgroundColor #FFFFFF
+skinparam noteBorderColor #888
+skinparam noteBackgroundColor #FFFDE7
+
+title Sequence Diagram - Quy trình Theo dõi hệ thống thời gian thực (Admin Monitoring)
+
+actor "Admin" as Admin
+participant "Web UI" as UI
+participant "AdminMonitoring\nController" as Ctrl
+participant "Monitoring\nGateway (WS)" as WS
+participant "MonitoringQuery\nService" as QuerySvc
+participant "Presence\nService" as Presence
+database "Database / Redis" as DB
+
+== 1. Tải dữ liệu ban đầu (Initial Load) ==
+Admin -> UI: Truy cập trang\nMonitoring Dashboard
+activate UI
+
+UI -> Ctrl: GET /api/admin/monitoring/overview
+activate Ctrl
+Ctrl -> QuerySvc: getOverview(rangeMinutes)
+activate QuerySvc
+QuerySvc -> DB: Lấy dữ liệu thống kê
+QuerySvc --> Ctrl: Trả về Overview Data
+deactivate QuerySvc
+Ctrl --> UI: 200 OK (Overview Data)
+deactivate Ctrl
+
+UI -> Ctrl: GET /api/admin/monitoring/audit-logs
+activate Ctrl
+Ctrl -> QuerySvc: getAuditLogs(...)
+QuerySvc -> DB: Truy vấn lịch sử hoạt động
+QuerySvc --> Ctrl: Danh sách Audit Logs
+Ctrl --> UI: 200 OK (Audit Logs)
+deactivate Ctrl
+
+UI --> Admin: Hiển thị Dashboard\n(Biểu đồ, Log, Lượt truy cập)
+
+== 2. Kết nối thời gian thực (Real-time updates) ==
+UI -> WS: Connect to WebSocket\n(Namespace: /monitoring)
+activate WS
+WS --> UI: Connection Established
+
+WS -> Presence: Đăng ký lắng nghe\nsự kiện (onChange)
+activate Presence
+Presence --> WS: Registered
+
+WS -> QuerySvc: Đăng ký lắng nghe\nMetrics (onSnapshot)
+activate QuerySvc
+QuerySvc --> WS: Registered
+
+loop Xảy ra sự kiện hoặc theo chu kỳ
+    QuerySvc -> WS: Emit System Metrics Snapshot
+    WS -> UI: socket.emit('metrics:snapshot', data)
+    UI --> Admin: Cập nhật biểu đồ System Health
+
+    Presence -> WS: Emit Presence Updates
+    WS -> UI: socket.emit('presence:updated', data)
+    UI --> Admin: Cập nhật danh sách người dùng Online
+end
+
+== 3. Ngắt kết nối ==
+Admin -> UI: Rời khỏi trang Dashboard
+UI -> WS: Disconnect
+WS -> Presence: Hủy đăng ký lắng nghe
+WS -> QuerySvc: Hủy đăng ký lắng nghe
+deactivate QuerySvc
+deactivate Presence
+deactivate WS
+deactivate UI
+
+@enduml

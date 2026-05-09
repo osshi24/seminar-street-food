@@ -20,5 +20,8 @@
   "packageManager": "npm@11.10.1",
   "engines": {
     "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "plantuml-encoder": "^1.4.0"
   }
 }
