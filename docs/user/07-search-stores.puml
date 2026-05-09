@@ -1,0 +1,54 @@
+@startuml 07-search-stores
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 8
+skinparam sequenceParticipantBorderColor #555
+skinparam sequenceParticipantBackgroundColor #FFF
+skinparam noteBorderColor #888
+skinparam noteBackgroundColor #FFFDE7
+
+title [07] Tìm Kiếm Gian Hàng
+
+actor "Khách du lịch" as User
+
+box "Frontend — Next.js" #F0F8FF
+participant "MapSearchOverlay\napp/(public)/map/components/MapSearchOverlay.tsx" as SearchUI
+participant "StoresPage\napp/(public)/stores/page.tsx" as StoresPage
+end box
+
+participant "PublicStoresController\nbackend/src/public/public-stores.controller.ts" as Ctrl
+participant "PublicStoresService\nbackend/src/public/public-stores.service.ts" as Svc
+database "Postgres" as DB
+
+== Tìm kiếm trên bản đồ (MapSearchOverlay) ==
+
+User -> SearchUI : nhập từ khoá vào ô tìm kiếm trên map
+SearchUI -> SearchUI : debounce input (300ms)
+
+SearchUI -> Ctrl : GET /stores?q={keyword}&lang={lang}
+Ctrl -> Svc : listStores(q, page=1, limit=20, lang)
+Svc -> DB : SELECT stores\nWHERE name ILIKE '%q%'\nOR description ILIKE '%q%'\nAND status = ACTIVE\nORDER BY name
+DB --> Svc : stores[]
+Svc --> Ctrl : { items[], total }
+Ctrl --> SearchUI : response
+
+SearchUI --> User : Hiển thị dropdown kết quả\n(tên gian hàng + thumbnail)
+
+User -> SearchUI : chọn 1 gian hàng từ kết quả
+SearchUI -> SearchUI : map.flyTo(pin.lat, pin.lng)\nopenStoreBottomSheet(storeId)
+SearchUI --> User : Bản đồ fly tới vị trí gian hàng\nHiện bottom sheet thông tin
+
+== Tìm kiếm trên trang danh sách (/stores) ==
+
+User -> StoresPage : truy cập /stores?q={keyword}&page={n}
+StoresPage -> Ctrl : GET /stores?q={keyword}&page={n}&limit=20&lang={lang}
+Ctrl -> Svc : listStores(q, page, limit, lang)
+Svc -> DB : SELECT với OFFSET/LIMIT\n(phân trang)
+DB --> Svc : { items[], total }
+Svc --> Ctrl : paginated response
+Ctrl --> StoresPage : response
+
+StoresPage --> User : Hiển thị danh sách dạng grid:\n- Ảnh thumbnail\n- Tên gian hàng\n- Rating\nNút phân trang
+
+@enduml

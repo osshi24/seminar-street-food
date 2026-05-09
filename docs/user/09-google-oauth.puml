@@ -1,0 +1,65 @@
+@startuml 09-google-oauth
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 8
+skinparam sequenceParticipantBorderColor #555
+skinparam sequenceParticipantBackgroundColor #FFF
+skinparam noteBorderColor #888
+skinparam noteBackgroundColor #FFFDE7
+
+title [09] Đăng Nhập Google OAuth (Khách Du Lịch)
+
+actor "Khách du lịch" as User
+participant "StorePage / bất kỳ page\nyêu cầu đăng nhập" as Page
+participant "auth-google.ts\nlib/api/auth-google.ts" as AuthLib
+participant "customer-session.ts\nlib/auth/customer-session.ts" as Session
+cloud "Google OAuth\n(accounts.google.com)" as Google
+participant "AuthController\nbackend/src/auth/auth.controller.ts" as Ctrl
+participant "GoogleAuthGuard\nbackend/src/auth/guards/google-auth.guard.ts" as Guard
+participant "GoogleStrategy\nbackend/src/auth/strategies/google.strategy.ts" as Strategy
+participant "AuthService\nbackend/src/auth/auth.service.ts" as Svc
+database "Postgres\n(customer_google_accounts)" as DB
+participant "AuthCallbackClient\napp/(auth)/auth/callback/AuthCallbackClient.tsx" as Callback
+
+== 1. User nhấn "Đăng nhập Google" ==
+
+User -> Page : click "Đăng nhập với Google"
+Page -> AuthLib : redirectToGoogleOAuth(returnUrl)
+AuthLib -> Session : saveReturnUrl(returnUrl)\n(lưu vào localStorage)
+AuthLib -> AuthLib : window.location.href =\n'{BACKEND_URL}/api/auth/google'
+
+== 2. Backend redirect sang Google ==
+
+AuthLib -> Ctrl : GET /auth/google
+Ctrl -> Guard : GoogleAuthGuard (Passport)
+Guard -> Google : redirect tới Google OAuth consent screen
+Google --> User : Hiện trang đăng nhập Google
+
+User -> Google : chọn tài khoản Google + đồng ý
+Google -> Strategy : callback → GET /auth/google/callback
+Strategy -> Svc : findOrCreateCustomer(googleProfile)
+Svc -> DB : SELECT customer WHERE googleId = ?\n(nếu chưa có → INSERT mới)
+DB --> Svc : CustomerGoogleAccount
+Svc --> Strategy : customer
+
+== 3. Backend issue JWT và redirect về frontend ==
+
+Strategy --> Ctrl : req.user = customer
+Ctrl -> Ctrl : authService.issueCustomerJwt(customer)\n→ JWT token (payload: id, displayName, avatarUrl)
+Ctrl -> Ctrl : res.redirect(\n  '{FRONTEND_URL}/auth/callback?token={jwt}'\n)
+
+== 4. Frontend nhận token và lưu session ==
+
+Ctrl --> Callback : redirect /auth/callback?token={jwt}
+Callback -> Callback : lấy token từ URL params
+Callback -> Session : saveCustomerToken(token)\n(lưu vào localStorage)
+Callback -> Callback : fetchCurrentCustomer(token)\n→ GET /auth/me (verify token)
+Callback -> Ctrl : GET /auth/me\n(Header: Authorization: Bearer {token})
+Ctrl -> Ctrl : CustomerJwtGuard → validate JWT
+Ctrl --> Callback : { id, displayName, avatarUrl }
+Callback -> Session : getReturnUrl() → lấy URL trước đó
+Callback -> Callback : router.push(returnUrl)
+Callback --> User : Đăng nhập thành công\nChuyển về trang trước
+
+@enduml
