@@ -1,0 +1,60 @@
+@startuml store-analytics
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 8
+skinparam sequenceParticipantBorderColor #555
+skinparam sequenceParticipantBackgroundColor #FFF
+skinparam noteBorderColor #888
+skinparam noteBackgroundColor #FFFDE7
+
+title Store Analytics: Track sự kiện + xem thống kê
+
+actor Customer
+actor "Store Owner" as Owner
+participant "StoreVisitTracker\n(.tsx)" as Tracker
+participant "StoreMonitorTab\n(.tsx)" as MonitorUI
+participant "StoreAnalytics\nController" as API
+participant "StoreAnalytics\nService" as Svc
+participant "QrService" as QrSvc
+database "store_analytics_events\n(Postgres)" as DB
+
+== 1. Track lượt ghé trang store ==
+
+Customer -> Tracker : vào /stores/{id}
+Tracker -> API : POST /public/analytics/track\nbody: { storeId, eventType: 'store_visit' }
+API -> Svc : track(storeId, 'store_visit')
+
+note right of Svc : fire-and-forget\n(không await)
+
+Svc -> DB : INSERT (storeId, eventType, createdAt)
+API --> Tracker : 200 { ok: true }
+
+== 2. Track quét QR (hook vào QrService) ==
+
+note over QrSvc, Svc
+  Trong QrService.resolveTokenData():
+  sau khi xác nhận store hợp lệ
+end note
+
+QrSvc -> Svc : track(storeId, 'qr_scan')
+Svc -> DB : INSERT event
+
+== 3. Store owner xem thống kê ==
+
+Owner -> MonitorUI : mở tab "Thống kê"
+MonitorUI -> API : GET /store-owner/stores/{id}/analytics
+API -> Svc : getAnalytics(storeId, ownerId)
+
+Svc -> DB : verify ownership (find store WHERE id AND ownerId)
+DB --> Svc : store
+
+Svc -> DB : Promise.all([\n  total counts (group by eventType),\n  today counts,\n  this week counts,\n  daily 14 ngày\n])
+DB --> Svc : aggregated rows
+
+Svc -> Svc : zero-fill 14 ngày + format
+Svc --> API : { qrScans, storeVisits, reviews, daily }
+API --> MonitorUI : data
+MonitorUI --> Owner : StatCards + MiniBarChart
+
+@enduml

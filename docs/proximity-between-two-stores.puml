@@ -1,4 +1,4 @@
-@startuml proximity-between-two-stores
+startuml proximity-between-two-stores
 !theme plain
 skinparam backgroundColor #FAFAFA
 skinparam sequenceArrowThickness 2

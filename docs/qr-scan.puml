@@ -1,0 +1,47 @@
+@startuml qr-scan
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 8
+skinparam sequenceParticipantBorderColor #555
+skinparam sequenceParticipantBackgroundColor #FFF
+skinparam noteBorderColor #888
+skinparam noteBackgroundColor #FFFDE7
+
+title Quét QR: User scan → mở chi tiết gian hàng
+
+actor User
+participant "Camera\n(QR app)" as Cam
+participant "Next.js page\n/qr/[token]" as Page
+participant "QrPublic\nController" as API
+participant "QrService" as Svc
+participant "StoreAnalytics\nService" as Analytics
+database Postgres
+
+User -> Cam : Quét mã QR
+Cam -> Page : Mở URL https://app/qr/{token}
+
+Page -> API : GET /qr/{token}\n(redirect: 'manual')
+API -> Svc : resolveToken(token)
+Svc -> Svc : resolveTokenData(token)
+Svc -> Postgres : findOne(QrCode\n  where token = ?,\n  relations: ['store'])
+Postgres --> Svc : qr + store
+
+alt qr.isActive && store.status === ACTIVE
+    Svc -> Analytics : track(store.id, 'qr_scan')
+    note right
+      fire-and-forget
+      lưu store_analytics_events
+    end note
+    Analytics -> Postgres : INSERT analytics event
+
+    Svc --> API : { type: 'store', storeId }
+    API --> Page : 302 → /stores/{storeId}?autoplay=1
+    Page --> User : load trang store detail\n(autoplay TTS)
+else qr không hợp lệ hoặc store inactive
+    Svc --> API : { type: 'unavailable' }
+    API --> Page : 302 → /store-unavailable
+    Page --> User : hiển thị trang lỗi
+end
+
+@enduml

@@ -1,0 +1,67 @@
+@startuml proximity-detection
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 8
+skinparam sequenceParticipantBorderColor #555
+skinparam sequenceParticipantBackgroundColor #FFF
+skinparam noteBorderColor #888
+skinparam noteBackgroundColor #FFFDE7
+
+title Proximity Detection: User đứng giữa 2 gian hàng
+
+actor User
+participant "Map page\n(component)" as Comp
+participant "useProximity\nDetection" as Hook
+participant "Geolocation API\n(browser)" as GPS
+participant "/map/pins API" as API
+participant "haversine\nMeters()" as Calc
+participant "GpsAutoPlay\nController" as Auto
+participant "useAutoPlay" as Play
+
+== 1. Mount: load danh sách pin ==
+
+Comp -> Hook : useProximityDetection(position)
+Hook -> API : getPublicPins() — chỉ gọi 1 lần
+API --> Hook : { pins[], boundary }
+Hook -> Hook : setPins(data.pins)
+
+== 2. Mỗi lần GPS có toạ độ mới ==
+
+GPS --> Comp : watchPosition → coords
+Comp -> Hook : truyền position prop
+
+note right of Hook
+  debounce 500ms
+  (tránh re-render khi GPS jitter)
+end note
+
+loop với mỗi pin
+    Hook -> Calc : haversineMeters(userLat, userLng, pinLat, pinLng)
+    Calc --> Hook : distance (m)
+end
+
+Hook -> Hook : filter distance ≤ 4m\nsort tăng dần
+Hook --> Comp : nearbyStores = [{ storeId, distanceMeters }]
+
+== 3. Logic khi User đứng giữa 2 store (mỗi store cách 3m) ==
+
+note over User
+  GH1 ← 3m ── User ── 3m → GH2
+end note
+
+Comp -> Auto : nearbyStores = [GH1, GH2]
+Auto -> Auto : find(s => !session.get(s))\n→ GH1 chưa phát → chọn GH1
+Auto -> Play : tryPlay(GH1)
+Play --> User : 🔊 phát thuyết minh GH1
+Auto -> Auto : session.set(GH1, true)
+
+... User vẫn đứng yên, GH1 đã phát xong ...
+
+Comp -> Auto : nearbyStores = [GH1, GH2]
+Auto -> Auto : GH1 đã phát → bỏ qua\nGH2 chưa phát → chọn GH2
+Auto -> Play : tryPlay(GH2)
+Play --> User : 🔊 phát thuyết minh GH2
+Auto -> Auto : session.set(GH2, true)
+
+@enduml
