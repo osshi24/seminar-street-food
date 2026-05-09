@@ -3,6 +3,7 @@ import { getStoreDetail } from '../../../../lib/api/commentary';
 import StoreDetailView from '../../../../components/stores/StoreDetailView';
 import ReviewList from '../../../../components/reviews/ReviewList';
 import ReviewForm from '../../../../components/reviews/ReviewForm';
+import StoreVisitTracker from '../../../../components/stores/StoreVisitTracker';
 
 interface StoreDetailPageProps {
   params: { id: string };
@@ -43,6 +44,7 @@ export default async function StoreDetailPage({ params, searchParams }: StoreDet
 
   return (
     <main className="min-h-screen bg-gray-50">
+      <StoreVisitTracker storeId={s.id} />
       {isInactive && (
         <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2 text-center text-sm text-yellow-800">
           Gian hàng này hiện tạm ngưng hoạt động

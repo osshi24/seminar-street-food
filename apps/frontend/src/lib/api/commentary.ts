@@ -18,11 +18,22 @@ export async function getStoreCommentary(storeId: string, lang: string): Promise
   return res.data;
 }
 
-export async function getStoreDetail(storeId: string, lang = 'vi') {
+export interface StoreDetailData {
+  id: string;
+  name: string;
+  description?: string | null;
+  status: string;
+  activeCommentaryId?: string | null;
+  pipelineStatus?: string | null;
+  menuItems: Array<{ id: string; name: string; description?: string | null; price: number; tags?: { id: number; nameVi: string }[] }>;
+  images: Array<{ id: string; url: string; orderIndex: number }>;
+}
+
+export async function getStoreDetail(storeId: string, lang = 'vi'): Promise<{ data: StoreDetailData }> {
   const url = `${getApiUrl()}/stores/${storeId}?lang=${lang}`;
   const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error('Store not found');
-  return res.json() as Promise<{ data: Record<string, unknown> }>;
+  return res.json() as Promise<{ data: StoreDetailData }>;
 }
 
 export async function listStores(params?: { q?: string; page?: number; limit?: number; lang?: string }) {

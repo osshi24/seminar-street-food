@@ -289,7 +289,7 @@ export default function MapPage() {
         flyTo={flyTo}
         tracking={isNavigating && !arrived}
         onArrived={() => { setArrived(true); analytics.navigationArrived(selectedPin?.storeName ?? ''); }}
-        onUserPositionUpdate={(pos) => setFlyTo({ lat: pos[0], lng: pos[1] })}
+        onUserPositionUpdate={(lat, lng) => setFlyTo({ lat, lng })}
         onPinSelect={(pin) => {
           setBoundaryQr(null);
           setQrFocus(null);

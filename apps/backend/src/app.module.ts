@@ -22,6 +22,7 @@ import { QrModule } from './qr/qr.module';
 import { TagsModule } from './tags/tags.module';
 import { RecommendationsModule } from './recommendations/recommendations.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
+import { StoreAnalyticsModule } from './store-analytics/store-analytics.module';
 
 @Module({
   imports: [
@@ -83,6 +84,7 @@ import { MonitoringModule } from './monitoring/monitoring.module';
     TagsModule,
     RecommendationsModule,
     MonitoringModule,
+    StoreAnalyticsModule,
   ],
 })
 export class AppModule {}
